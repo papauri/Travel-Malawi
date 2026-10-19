@@ -1,25 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  WifiOff, 
-  Wifi, 
-  RefreshCw, 
-  Info, 
-  X, 
-  MapPin, 
-  HardDrive, 
-  FileCheck2, 
-  Clock, 
-  ChevronRight,
-  ShieldCheck,
-  Palmtree
-} from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw, X, HardDrive } from 'lucide-react';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useOfflineBookings } from '../hooks/useOfflineBookings';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import OfflineBookingsQueue from './OfflineBookingsQueue';
 import toast from 'react-hot-toast';
+
+const BANNER_CLASS =
+  'pointer-events-auto w-full max-w-md rounded-xl border border-stone-200 bg-white p-3 text-stone-800 shadow-sm';
 
 export default function OfflineIndicator() {
   const { isOnline, isChecking, justReconnected, checkConnection } = useNetworkStatus();
@@ -49,9 +39,9 @@ export default function OfflineIndicator() {
   const handleManualCheck = async () => {
     const success = await checkConnection();
     if (success) {
-      toast.success('Connection re-established!');
+      toast.success('You are back online.');
     } else {
-      toast.error('Still offline. Check your mobile data or Wi-Fi settings.', {
+      toast.error('Still offline. Check your mobile data or Wi-Fi.', {
         id: 'offline-check-failed',
       });
     }
@@ -59,156 +49,119 @@ export default function OfflineIndicator() {
 
   return (
     <>
-      {/* 1. Main Floating Offline / Reconnected Banner */}
+      {/* 1. Main floating offline / reconnected banner */}
       <div className="fixed top-16 sm:top-18 md:top-20 inset-x-0 z-[90] pointer-events-none flex justify-center px-3 sm:px-4">
         <AnimatePresence mode="wait">
-          {/* Reconnected Notification Banner */}
+          {/* Reconnected */}
           {justReconnected && (
             <motion.div
               key="reconnected-banner"
-              initial={{ opacity: 0, y: -20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.96, transition: { duration: 0.2 } }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="pointer-events-auto bg-stone-900 text-stone-100 border border-stone-800 shadow-xl rounded-2xl px-4 py-2.5 flex items-center gap-3 backdrop-blur-md max-w-md w-full"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.2 }}
+              className={`${BANNER_CLASS} flex items-center gap-3`}
             >
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                <Wifi className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>Back Online</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                </p>
-                <p className="text-[11px] text-stone-300 truncate">
+              <Wifi className="h-5 w-5 shrink-0 text-emerald-700" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-stone-900">Back online</p>
+                <p className="tm-muted truncate">
                   {pendingCount > 0
-                    ? `Synchronizing ${pendingCount} offline booking request(s) with Firebase...`
-                    : 'Platform synchronized with live availability & rates.'}
+                    ? `Sending ${pendingCount} saved booking request${pendingCount === 1 ? '' : 's'}.`
+                    : 'Rates and availability are up to date.'}
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* Online with Pending Offline Bookings Banner */}
+          {/* Online with saved booking requests waiting */}
           {isOnline && !justReconnected && pendingCount > 0 && !isDismissed && (
             <motion.div
               key="pending-sync-banner"
-              initial={{ opacity: 0, y: -20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.96, transition: { duration: 0.2 } }}
-              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              className="pointer-events-auto bg-stone-900/95 text-stone-100 border border-stone-800 shadow-xl rounded-2xl p-3 sm:px-4 sm:py-2.5 backdrop-blur-md max-w-md w-full flex items-center justify-between gap-3"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.2 }}
+              className={`${BANNER_CLASS} flex items-center justify-between gap-3`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400">
-                  <HardDrive className="w-4 h-4" />
-                </div>
+              <div className="flex min-w-0 items-center gap-3">
+                <HardDrive className="h-5 w-5 shrink-0 text-amber-700" />
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">
-                    {pendingCount} Offline Booking{pendingCount > 1 ? 's' : ''} Ready
+                  <p className="truncate text-sm font-medium text-stone-900">
+                    {pendingCount} booking request{pendingCount > 1 ? 's' : ''} waiting
                   </p>
-                  <p className="text-[11px] text-stone-300 truncate">
-                    Stored in IndexedDB &bull; Ready to push to Firebase.
-                  </p>
+                  <p className="tm-muted truncate">Saved on this device.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
                   onClick={() => syncNow()}
                   disabled={isSyncing}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                  <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Sending...' : 'Send now'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsDismissed(true)}
-                  aria-label="Dismiss offline bookings banner"
-                  className="p-1 rounded-lg text-stone-400 hover:text-white"
+                  aria-label="Dismiss"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* Offline Mode Active Banner */}
+          {/* Offline */}
           {!isOnline && !isDismissed && (
             <motion.div
               key="offline-banner"
-              initial={{ opacity: 0, y: -20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.96, transition: { duration: 0.2 } }}
-              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              className="pointer-events-auto bg-stone-900/95 text-stone-100 border border-stone-800/90 shadow-2xl rounded-2xl p-3 sm:px-4 sm:py-3 backdrop-blur-md max-w-xl w-full"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.2 }}
+              className={`${BANNER_CLASS} max-w-xl`}
             >
               <div className="flex items-center justify-between gap-3">
-                {/* Left: Icon & Description */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <WifiOff className="w-4 h-4 text-amber-400" />
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse ring-2 ring-stone-900" />
-                  </div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <WifiOff className="h-5 w-5 shrink-0 text-amber-700" />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-xs font-bold text-white tracking-wide">
-                        Offline Mode Active
-                      </p>
-                      {pendingCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowGuideModal(true)}
-                          className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:bg-amber-500/35 transition cursor-pointer flex items-center gap-1"
-                        >
-                          <HardDrive className="w-2.5 h-2.5" />
-                          <span>{pendingCount} Queued {pendingCount === 1 ? 'Booking' : 'Bookings'}</span>
-                        </button>
-                      ) : (
-                        <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-stone-800 text-amber-300 border border-stone-700">
-                          Cached Guides Ready
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-stone-300 truncate mt-0.5">
-                      Previously viewed lodges, road guides &amp; vouchers remain accessible.
+                    <p className="text-sm font-medium text-stone-900">You are offline</p>
+                    <p className="tm-muted truncate">
+                      {pendingCount > 0
+                        ? `${pendingCount} booking request${pendingCount === 1 ? '' : 's'} saved to send later.`
+                        : 'Places you have already opened still work.'}
                     </p>
                   </div>
                 </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setShowGuideModal(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700/80 text-[11px] font-semibold transition cursor-pointer"
-                    title="View what is accessible offline"
+                    className="tm-btn tm-btn-quiet tm-btn-sm"
                   >
-                    <Info className="w-3.5 h-3.5 text-stone-400" />
-                    <span className="hidden md:inline">Offline Features</span>
-                    <span className="md:hidden">Info</span>
+                    What works
                   </button>
-
                   <button
                     type="button"
                     onClick={handleManualCheck}
                     disabled={isChecking}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50"
-                    title="Check network connectivity"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
+                    title="Check connection"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3.5 w-3.5 ${isChecking ? 'animate-spin' : ''}`} />
                     <span className="hidden sm:inline">{isChecking ? 'Checking...' : 'Retry'}</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setIsDismissed(true)}
-                    className="p-1.5 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition cursor-pointer"
-                    title="Minimize banner"
-                    aria-label="Minimize offline banner"
+                    className="tm-btn tm-btn-quiet tm-btn-sm"
+                    aria-label="Minimise offline banner"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -217,37 +170,31 @@ export default function OfflineIndicator() {
         </AnimatePresence>
       </div>
 
-      {/* 2. Minimized Floating Pill when banner was closed */}
+      {/* 2. Small pill once the banner is closed */}
       <AnimatePresence>
         {!isOnline && isDismissed && (
           <motion.div
             key="offline-floating-pill"
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
             className="fixed bottom-20 sm:bottom-6 left-4 z-40"
           >
             <button
               type="button"
               onClick={() => setIsDismissed(false)}
-              className="group bg-stone-900/95 hover:bg-stone-850 text-stone-100 border border-stone-800 shadow-xl rounded-full px-3.5 py-2 flex items-center gap-2 text-xs font-semibold backdrop-blur-md transition cursor-pointer"
-              title="Click to view offline status &amp; guides"
+              className="tm-btn tm-btn-secondary tm-btn-sm rounded-full shadow-sm"
+              title="Show offline status"
             >
-              <div className="relative">
-                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              </div>
-              <span className="text-stone-200">Offline</span>
-              <span className="text-[10px] text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded-md border border-stone-700/60 font-medium">
-                Tap to expand
-              </span>
+              <WifiOff className="h-3.5 w-3.5 text-amber-700" />
+              Offline
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 3. Offline Capabilities & Guide Modal */}
+      {/* 3. What works offline */}
       <AnimatePresence>
         {showGuideModal && (
           <div key="offline-guide-modal-wrapper" className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -256,125 +203,62 @@ export default function OfflineIndicator() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowGuideModal(false)}
-              className="fixed inset-0 bg-stone-950/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-stone-950/50"
             />
 
             <motion.div
               ref={guideDialogRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Travel Malawi offline mode"
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-lg bg-white rounded-2xl border border-stone-200 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto z-10"
+              aria-label="Using Travel Malawi offline"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="tm-panel relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto shadow-sm sm:p-6"
             >
-              <div className="flex items-start justify-between gap-4 pb-4 border-b border-stone-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
-                    <WifiOff className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
-                      Travel Malawi Offline Mode
-                    </h3>
-                    <p className="text-xs text-stone-500">
-                      Reliable local functionality designed for remote wilderness areas.
-                    </p>
-                  </div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 className="tm-h2">Using Travel Malawi offline</h2>
+                  <p className="tm-muted">Enough to get you to your stay without signal.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowGuideModal(false)}
-                  aria-label="Close offline guide"
-                  className="p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+                  aria-label="Close"
+                  className="tm-btn tm-btn-quiet tm-btn-sm shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              {/* Offline Features Checklist */}
-              <div className="mt-4 space-y-3">
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
-                    <HardDrive className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900">Cached Lodge Profiles &amp; Photos</h4>
-                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
-                      Lodges, cottages, and camps you previously explored are stored in your device storage and remain viewable without cell reception.
-                    </p>
-                  </div>
-                </div>
+              <ul className="mt-4 space-y-3 text-sm text-stone-700">
+                <li>
+                  <strong className="text-stone-900">Places you have viewed.</strong> Profiles and photos stay available.
+                </li>
+                <li>
+                  <strong className="text-stone-900">Saved maps.</strong> Areas you saved offline keep their map and coordinates.
+                </li>
+                <li>
+                  <strong className="text-stone-900">Your bookings.</strong> References and host contacts are kept on this device.
+                </li>
+                <li>
+                  <strong className="text-stone-900">New requests.</strong> They are saved here and sent when you reconnect.
+                </li>
+              </ul>
 
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
-                    <MapPin className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900">Offline Road Navigation &amp; GPS Guides</h4>
-                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
-                      Cached map tiles for Lake Malawi, Liwonde, Majete, and Nyika continue providing interactive turn orientation and coordinates.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
-                    <FileCheck2 className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900">Stay Vouchers &amp; Booking Details</h4>
-                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
-                      Confirmed booking references and property manager contacts are preserved locally for easy check-in at lodge reception.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
-                    <HardDrive className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900">Offline Booking Requests (IndexedDB)</h4>
-                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
-                      Reserve rooms while offline. Requests are safely queued in your device's IndexedDB and automatically pushed to Firebase once you reconnect.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-stone-900">Automatic Sync on Reconnection</h4>
-                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
-                      When your device regains network signal (Airtel, TNM, or Wi-Fi), live rates, new messages, and reservations will synchronize immediately.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Offline Bookings Queue */}
               <OfflineBookingsQueue className="mt-4" />
 
-              <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between gap-3">
+              <div className="tm-divider mt-5 pt-4 tm-actions justify-between">
                 <button
                   type="button"
                   onClick={handleManualCheck}
                   disabled={isChecking}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                  className="tm-btn tm-btn-primary"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
-                  <span>{isChecking ? 'Checking Connection...' : 'Check Connection Now'}</span>
+                  <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+                  {isChecking ? 'Checking...' : 'Check connection'}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowGuideModal(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition cursor-pointer"
-                >
+                <button type="button" onClick={() => setShowGuideModal(false)} className="tm-btn tm-btn-secondary">
                   Close
                 </button>
               </div>

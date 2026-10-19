@@ -166,27 +166,26 @@ export default function DocEditorModal({
   const lineCount = content ? content.split('\n').length : 0;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/70 flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-stone-900"
+        className="bg-white rounded-xl border border-stone-200 shadow-sm w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-stone-900"
         role="dialog"
         aria-modal="true"
       >
         {/* Top Header Bar */}
-        <div className="p-4 sm:px-6 sm:py-4 bg-stone-900 text-white flex items-center justify-between gap-4 border-b border-stone-800 shrink-0">
+        <div className="p-4 sm:px-6 sm:py-4 bg-white text-stone-900 flex items-center justify-between gap-4 border-b border-stone-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-            <div>
+                        <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-stone-800 px-2 py-0.5 rounded">
-                  Marketing &amp; Admin Editor
+                <span className="tm-tag">
+                  Editor
                 </span>
-                <span className="text-xs text-stone-400 font-mono hidden sm:inline">
+                <span className="text-xs text-stone-400 hidden sm:inline">
                   {docId}
                 </span>
               </div>
-              <h2 className="text-sm sm:text-base font-serif font-bold text-white tracking-tight mt-0.5">
-                Edit Partner &amp; Operational Document
+              <h2 className="tm-h2 mt-0.5">
+                Edit document
               </h2>
             </div>
           </div>
@@ -195,7 +194,7 @@ export default function DocEditorModal({
             <button
               onClick={onClose}
               disabled={saving}
-              className="p-1.5 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
               title="Close editor"
             >
               <X className="w-5 h-5" />
@@ -207,7 +206,7 @@ export default function DocEditorModal({
         {loading ? (
           <div className="p-16 flex flex-col items-center justify-center gap-3 text-stone-500">
             <div className="w-7 h-7 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-semibold">Loading document content...</p>
+            <p className="text-xs font-semibold">Loading document...</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto flex flex-col">
@@ -215,8 +214,8 @@ export default function DocEditorModal({
             <div className="p-4 sm:px-6 bg-stone-50 border-b border-stone-200 space-y-3 shrink-0">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 <div className="sm:col-span-8">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1">
-                    Document Title
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Title
                   </label>
                   <input
                     type="text"
@@ -227,8 +226,8 @@ export default function DocEditorModal({
                   />
                 </div>
                 <div className="sm:col-span-4">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1">
-                    Category Tag
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Category
                   </label>
                   <input
                     type="text"
@@ -241,7 +240,7 @@ export default function DocEditorModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
                   Tagline / Subtitle
                 </label>
                 <input
@@ -341,7 +340,7 @@ export default function DocEditorModal({
                   type="button"
                   onClick={() => setViewMode('editor')}
                   className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
-                    viewMode === 'editor' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                    viewMode === 'editor' ? 'bg-white text-stone-900 font-bold' : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <Code2 className="w-3 h-3" />
@@ -351,7 +350,7 @@ export default function DocEditorModal({
                   type="button"
                   onClick={() => setViewMode('preview')}
                   className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
-                    viewMode === 'preview' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                    viewMode === 'preview' ? 'bg-white text-stone-900 font-bold' : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <Eye className="w-3 h-3" />
@@ -361,7 +360,7 @@ export default function DocEditorModal({
                   type="button"
                   onClick={() => setViewMode('split')}
                   className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 hidden md:flex ${
-                    viewMode === 'split' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'text-stone-600 hover:text-stone-900'
+                    viewMode === 'split' ? 'bg-white text-stone-900 font-bold' : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <Columns2 className="w-3 h-3" />
@@ -380,7 +379,7 @@ export default function DocEditorModal({
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Write or edit document markdown..."
-                    className="w-full flex-1 p-4 bg-white border border-stone-300 rounded-2xl font-mono text-xs sm:text-[13px] leading-relaxed text-stone-800 focus:outline-none focus:border-stone-900 transition resize-none shadow-2xs"
+                    className="tm-input"
                   />
                   <div className="flex items-center justify-between text-[11px] text-stone-500 pt-2 px-1">
                     <span>Monospace Markdown &bull; UTF-8</span>
@@ -394,7 +393,7 @@ export default function DocEditorModal({
                 <div className="flex-1 p-6 overflow-y-auto bg-white">
                   <div className="max-w-2xl mx-auto space-y-4">
                     <div className="border-b border-stone-200 pb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
                         {category || 'Document Category'}
                       </span>
                       <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mt-2">
@@ -465,7 +464,7 @@ export default function DocEditorModal({
               type="button"
               onClick={handleSave}
               disabled={saving || resetting}
-              className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold inline-flex items-center gap-2 shadow-md transition cursor-pointer disabled:opacity-50"
+              className="tm-btn tm-btn-primary"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? 'Publishing Updates...' : 'Save & Publish Changes'}</span>

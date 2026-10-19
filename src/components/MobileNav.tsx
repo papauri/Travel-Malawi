@@ -54,7 +54,7 @@ export default function MobileNav() {
       <div className="md:hidden fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-40">
         <button
           onClick={() => setIsOpen(true)}
-          className={`relative bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50 ${
+          className={`relative bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-sm hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50 ${
             isVibrating ? 'animate-bell-ring' : ''
           }`}
           aria-label="Menu"
@@ -93,7 +93,7 @@ export default function MobileNav() {
                 setIsOpen(false);
               }
             }}
-            className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60] cursor-pointer"
+            className="md:hidden fixed inset-0 bg-stone-900/60 z-[60] cursor-pointer"
           />
         )}
 
@@ -114,7 +114,7 @@ export default function MobileNav() {
                   <h2 className="font-serif font-bold text-xl text-stone-900">Menu</h2>
                   
                   {!isOnline && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50 text-[10px] font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50 text-[10px] font-bold">
                       <WifiOff className="w-3 h-3" />
                       <span>Offline</span>
                     </div>

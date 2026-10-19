@@ -48,9 +48,9 @@ export default function Refunds() {
         </div>
 
         {/* Paper Article */}
-        <article className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
+        <article className="bg-white rounded-xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
           <header className="border-b border-stone-200 pb-8">
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-500 mb-2.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 mb-2.5">
               <span>Travel Malawi</span>
               <span>·</span>
               <span>Direct Settlement Policy</span>
@@ -59,7 +59,7 @@ export default function Refunds() {
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
                 <RefreshCcw className="w-5 h-5 sm:w-6 sm:h-6 text-stone-800" />
               </div>
               <div>
@@ -75,17 +75,17 @@ export default function Refunds() {
             {/* Direct Model Core Principles */}
             <div className="mt-8 pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Fund Handling</span>
+                <span className="text-stone-400 block font-semibold text-xs">Fund Handling</span>
                 <span className="font-semibold text-stone-900 text-sm">We Do Not Collect Funds</span>
                 <p className="text-[11px] text-stone-500 mt-1">Zero payments or deposits pass through our servers.</p>
               </div>
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Cancellations &amp; Refunds</span>
+                <span className="text-stone-400 block font-semibold text-xs">Cancellations &amp; Refunds</span>
                 <span className="font-semibold text-stone-900 text-sm">At Stay&apos;s Sole Discretion</span>
                 <p className="text-[11px] text-stone-500 mt-1">Independent properties set and enforce their own terms.</p>
               </div>
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Grievances &amp; Disputes</span>
+                <span className="text-stone-400 block font-semibold text-xs">Grievances &amp; Disputes</span>
                 <span className="font-semibold text-stone-900 text-sm">Between User &amp; Stay Only</span>
                 <p className="text-[11px] text-stone-500 mt-1">Travel Malawi bears zero financial liability.</p>
               </div>
@@ -100,10 +100,10 @@ export default function Refunds() {
                 {/* Section 1: Explicit Zero Fund Handling */}
                 <section className="space-y-3">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">1</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">1</span>
                     <span>No Platform Handling of Funds</span>
                   </h2>
-                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
                     <p className="font-semibold text-stone-900">
                       Travel Malawi does not collect, receive, hold, or disburse any monies.
                     </p>
@@ -116,7 +116,7 @@ export default function Refunds() {
                 {/* Section 2: Property's Sole Discretion */}
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">2</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">2</span>
                     <span>Cancellations and Refunds Are at the Stay&apos;s Sole Discretion</span>
                   </h2>
                   <p>
@@ -138,10 +138,10 @@ export default function Refunds() {
                 {/* Section 3: Grievances, Disputes & Total Limitation of Liability */}
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">3</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">3</span>
                     <span>Grievances, Disputes &amp; Zero Platform Liability</span>
                   </h2>
-                  <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-2 text-amber-950">
+                  <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200/80 space-y-2 text-amber-950">
                     <div className="flex items-center gap-2 font-bold text-amber-900">
                       <AlertCircle className="w-4 h-4 text-amber-800 shrink-0" />
                       <span>All Disputes and Grievances Are Strictly Between the User and the Stay</span>
@@ -158,7 +158,7 @@ export default function Refunds() {
                 {/* Section 4: Force Majeure, Weather & Road Conditions */}
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">4</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">4</span>
                     <span>Weather, Road Conditions &amp; Travel Contingencies</span>
                   </h2>
                   <p>
@@ -172,7 +172,7 @@ export default function Refunds() {
                 {/* Section 5: How to Contact the Property Directly */}
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">5</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">5</span>
                     <span>Contacting Your Property Host</span>
                   </h2>
                   <p>
@@ -187,7 +187,7 @@ export default function Refunds() {
             <div>
               Travel Malawi Platform Operations · Lilongwe, Malawi
             </div>
-            <div className="font-mono text-[11px] text-stone-500">
+            <div className="text-xs text-stone-500">
               Direct Settlement · Zero Platform Liability
             </div>
           </footer>

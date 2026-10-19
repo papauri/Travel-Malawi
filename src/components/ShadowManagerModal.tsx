@@ -268,69 +268,58 @@ export default function ShadowManagerModal({ open, onClose }: Props) {
       }
     } catch (err: any) {
       console.error('Failed to shadow manager:', err);
-      toast.error(err?.message || 'Failed to shadow manager.');
+      toast.error(err?.message || "Couldn't switch to that host. Please try again.");
     } finally {
       setIsShadowingInProgress(null);
     }
   };
 
+  const chipClass = (active: boolean) =>
+    `tm-btn tm-btn-sm ${active ? 'tm-btn-primary' : 'tm-btn-secondary'}`;
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Shadow a Property Manager"
-      description="View the platform exactly as any host sees it. Useful for onboarding, diagnostics, rates verification, and live support."
+      title="View as a host"
+      description="See the site exactly as a property manager sees it, to help them or check their setup."
       size="3xl"
     >
-      <div className="space-y-4 text-stone-900">
-        {/* Search bar & filter pills */}
+      <div className="space-y-4 text-stone-900 min-w-0">
         <div className="space-y-2.5">
           <div className="relative">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by host name, email, lodge / cottage name, or location..."
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/15 focus:border-stone-400 focus:bg-white transition"
+              placeholder="Search by name, email, property or town"
+              aria-label="Search hosts"
+              className="tm-input pl-9 pr-16"
               autoFocus
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-semibold"
+                className="absolute right-2 top-1/2 -translate-y-1/2 tm-btn tm-btn-quiet tm-btn-sm"
               >
                 Clear
               </button>
             )}
           </div>
 
-          {/* Quick location chips */}
           {locations.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap text-xs">
-              <span className="text-[11px] text-stone-500 font-semibold mr-1">Filter by region:</span>
-              <button
-                type="button"
-                onClick={() => setSelectedLocation('all')}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${
-                  selectedLocation === 'all'
-                    ? 'bg-stone-900 text-white'
-                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                }`}
-              >
-                All Regions
+            <div className="tm-actions">
+              <button type="button" onClick={() => setSelectedLocation('all')} className={chipClass(selectedLocation === 'all')}>
+                All areas
               </button>
               {locations.map(loc => (
                 <button
                   key={loc}
                   type="button"
                   onClick={() => setSelectedLocation(selectedLocation === loc ? 'all' : loc)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${
-                    selectedLocation === loc
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                  }`}
+                  className={chipClass(selectedLocation === loc)}
                 >
                   {loc}
                 </button>
@@ -339,30 +328,26 @@ export default function ShadowManagerModal({ open, onClose }: Props) {
           )}
         </div>
 
-        {/* Loading state */}
         {loading && (
-          <div className="py-12 flex flex-col items-center justify-center text-center">
-            <RefreshCw className="w-6 h-6 animate-spin text-stone-600 mb-2" />
-            <p className="text-xs font-semibold text-stone-600">Loading verified property managers...</p>
+          <div className="py-12 flex items-center justify-center gap-2 tm-muted">
+            <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
+            <span>Loading hosts...</span>
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && filteredManagers.length === 0 && (
-          <div className="py-12 text-center border border-dashed border-stone-200 rounded-2xl bg-stone-50/50">
-            <Users className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-stone-800">No matching hosts found</h4>
-            <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+          <div className="py-10 text-center">
+            <Users className="w-6 h-6 text-stone-400 mx-auto mb-2" aria-hidden="true" />
+            <p className="tm-muted">
               {searchTerm
-                ? `No property manager matches "${searchTerm}". Try searching by lodge name or a different keyword.`
-                : 'No property managers are currently registered.'}
+                ? `No host matches "${searchTerm}". Try a property name or town.`
+                : 'No property managers have signed up yet.'}
             </p>
           </div>
         )}
 
-        {/* Manager cards list */}
         {!loading && filteredManagers.length > 0 && (
-          <div className="max-h-[55vh] overflow-y-auto space-y-2.5 pr-1">
+          <ul className="max-h-[55vh] overflow-y-auto divide-y divide-stone-200 border-y border-stone-200">
             {filteredManagers.map(({ user: mUser, properties, propertiesCount }) => {
               const initials = mUser.displayName
                 ? mUser.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -376,93 +361,71 @@ export default function ShadowManagerModal({ open, onClose }: Props) {
               const isShadowingThis = isShadowingInProgress === mUser.uid;
 
               return (
-                <div
+                <li
                   key={`${mUser.uid}_${mUser.email}`}
-                  className="border border-stone-200 rounded-xl p-3.5 bg-white hover:border-stone-300 hover:shadow-xs transition flex items-center justify-between gap-3 flex-wrap"
+                  className="py-3 flex items-center justify-between gap-3 flex-wrap"
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="w-9 h-9 rounded-full bg-stone-800 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                    <div className="w-9 h-9 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center font-semibold text-xs shrink-0" aria-hidden="true">
                       {initials}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs sm:text-sm text-stone-900 truncate">
+                        <span className="font-semibold text-sm text-stone-900 truncate">
                           {mUser.displayName || mUser.email}
                         </span>
                         {propertiesCount > 0 && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            {propertiesCount} {propertiesCount === 1 ? 'Stay' : 'Stays'}
+                          <span className="tm-tag">
+                            {propertiesCount} {propertiesCount === 1 ? 'property' : 'properties'}
                           </span>
                         )}
-                        {isCurrent && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
-                            Currently Shadowing
-                          </span>
-                        )}
+                        {isCurrent && <span className="tm-tag tm-tag-warn">Viewing now</span>}
                       </div>
 
-                      <div className="text-[11px] text-stone-500 truncate mt-0.5 font-mono">
-                        {mUser.email}
-                      </div>
+                      <div className="text-xs text-stone-500 truncate mt-0.5">{mUser.email}</div>
 
-                      {/* Managed properties chips */}
                       {properties.length > 0 && (
-                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                          {properties.map(p => (
-                            <span
-                              key={p.id}
-                              className="inline-flex items-center gap-1 bg-stone-50 text-stone-700 px-2 py-0.5 rounded-md text-[10px] border border-stone-200 font-medium"
-                            >
-                              <Building2 className="w-3 h-3 text-stone-400" />
-                              <span className="truncate max-w-[140px]">{p.name}</span>
-                              {p.location && (
-                                <span className="text-stone-400">· {p.location.split(',')[0]}</span>
-                              )}
+                        <p className="text-xs text-stone-600 mt-1 break-words">
+                          {properties.map((p, i) => (
+                            <span key={p.id}>
+                              {i > 0 && ' · '}
+                              {p.name}
+                              {p.location && <span className="text-stone-400"> ({p.location.split(',')[0]})</span>}
                             </span>
                           ))}
-                        </div>
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="shrink-0 flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={isCurrent || isShadowingThis}
-                      onClick={() => handleSelectShadow(mUser)}
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs ${
-                        isCurrent
-                          ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                          : 'bg-stone-900 hover:bg-stone-800 text-white hover:shadow-sm'
-                      }`}
-                    >
-                      {isShadowingThis ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Switching...</span>
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="w-3.5 h-3.5" />
-                          <span>Shadow Host</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+                  <button
+                    type="button"
+                    disabled={isCurrent || isShadowingThis}
+                    onClick={() => handleSelectShadow(mUser)}
+                    className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
+                  >
+                    {isShadowingThis ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                        <span>Switching...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>View as host</span>
+                      </>
+                    )}
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
 
-        <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
-          <span>Security Notice: All actions performed while in shadow mode are tracked in audit logs.</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-stone-600 hover:text-stone-900 font-medium px-2 py-1"
-          >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-stone-500">Everything you do while viewing as a host is logged.</span>
+          <button type="button" onClick={onClose} className="tm-btn tm-btn-quiet tm-btn-sm">
             Close
           </button>
         </div>

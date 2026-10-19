@@ -26,4 +26,20 @@ Checked, no defects: Modal, SmartImage (alt+fallback chain), Pagination, ErrorBo
 - [H-orch-D1] DONE index.html, check-validation, take-screenshots, HostStarterPack fixed; no lodge names in other ui content pages/server/docs; public/hotels deletion pending others (ui-19)
 - [H-orch-D1] DONE public/hotels/*.jpg (13 lodge photos: kaya/makokola/pumulani/rosalyn) git rm'd by orchestrator after grep showed zero references in src/server/scripts/index.html/vite.config
 - [ui-16] P2 FIXED scripts/check-validation.ts — currency checks expected exchange-rate conversion; now assert prices kept per currency (owner decision) (orchestrator, verify)
+status: in-progress
+- [ui-20] wave D2 started: baseline node agents/checks/d2.mjs on ui files = 219 hits / 19 files (mostly font-mono in guide pages)
+- [ui-50] P2 FIXED src/pages/StayOwnerLeaflet.tsx — 212→~130 lines: 3 collapsed steps, 4 one-line benefits, kit buttons, token-aware download via downloadDocHtml (D2)
+- [ui-51] P2 FIXED src/pages/ConceptValidationSurvey.tsx — 454→~330 lines: intro prose and option sub-text cut, kit inputs/buttons, same fields and payload; also fixed double-toggle on checkbox labels (label onClick + native click cancelled out); download via downloadDocHtml (D2)
+- [ui-21] P2 FIXED src/pages/PropertyListingGuide.tsx — 400→~190 lines: 7 short numbered steps with collapsed Details, tm-* kit, removed table/cards/long prose; doc edit/download/share/form payload unchanged (D2)
+- [ui-30] P2 FIXED src/pages/HowHostingWorks.tsx — 1139 -> ~120 lines: 5 numbered steps with one collapsed Details each, dropped sketch SVGs/KPI strip/OTA comparison/photo framework, kept links (/list-your-property, /host-guide, /leaflet, /listing-guide, WhatsApp) and SEOHead (D2)
+- [ui-40] P2 FIXED src/pages/HostStarterPack.tsx — 1459 lines to ~330: six numbered steps (photos, prices, guests, calendar, payouts, send details), one collapsed Details each, SVG sketches/stat bar/template walls removed; tm-* kit, form+payload, doc edit/share/print kept, download now token fetch via downloadDocHtml, anchors kept (D2)
+- [ui-22] P2 FIXED src/pages/OperationsStarterPack.tsx — 464→~170 lines: 7 numbered steps, scripts/objections/checklist/shadow SOP collapsed into Details, tm-* kit, calmer default title; doc hooks, download, lead form payload unchanged; D1 placeholder lodge name removed (D2)
+- [ui-52] P2 FIXED src/pages/PlatformGuideUat.tsx — 568 to ~390 lines: pillar prose replaced by 4-step How to test; each checklist test collapses steps/expected under details; kit buttons/inputs/panel; same localStorage, form payload and ConfirmDialog (D2)
+- [ui-23] P2 FIXED src/pages/MarketingDeck.tsx — kit buttons/inputs/panels/dividers, calmer headings and wording (no 'Trojan Horse'/'Sovereign'/'Leverage'), calmer toolbar; content, doc hooks, download and form payload unchanged (D2)
+- [ui-24] P2 FIXED src/pages/{Terms,Privacy,Refunds}.tsx — styling only: removed font-mono and tiny uppercase eyebrows, rounded-3xl/2xl→xl; legal text untouched (D2)
+- [ui-25] P2 FIXED src/components/{Lightbox,PageLoader,Modal,ConfirmDialog,ErrorBoundary,MobileNav,Navbar,Breadcrumbs}.tsx — removed backdrop-blur, glow/gradient top bar, shadow-xl/2xl→sm, rounded-3xl→xl, eyebrow caps, mono (D2)
+- [ui-26] P2 FIXED src/components/{HotelCard,CompactHotelCard,Tooltip,MarkdownContent}.tsx — dropped tiny tracked-caps eyebrow, rounded-2xl/shadow-md/lg→xl/sm (D2)
+- [ui-27] P3 LOGGED remaining 7 d2 hits are font-mono on submission reference IDs / error detail text (legitimate); HowHostingWorks, HostStarterPack, PlatformGuideUat, StayOwnerLeaflet, ConceptValidationSurvey rewritten by ui-30/40/50-52
+- [H-orch-D2] DONE guides cut to short numbered steps with collapsed Details (doc edit/download hooks kept); MarketingDeck, legal pages, shared components restyled with tm-* kit; d2 hits 219 -> 7 (all legitimate mono); tsc clean in ui files
+- [ui-30] P2 FIXED src/components/Footer.tsx — dark footer used emerald logo/QA badge/green status dot (AI look) → amber logo, plain link, no dot (D2; orchestrator, from ai report)
 status: done

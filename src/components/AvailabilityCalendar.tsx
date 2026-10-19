@@ -292,9 +292,9 @@ export default function AvailabilityCalendar({
   };
 
   const dotStyles: Record<Availability, string> = {
-    available: 'bg-emerald-400',
-    limited:   'bg-amber-400',
-    full:      'bg-red-400',
+    available: 'bg-emerald-600',
+    limited:   'bg-amber-500',
+    full:      'bg-red-500',
     blocked:   'bg-stone-400',
     past:      'hidden',
     empty:     'hidden',
@@ -308,40 +308,35 @@ export default function AvailabilityCalendar({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+    <div className="tm-panel !p-0 overflow-hidden min-w-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-stone-100 gap-4">
-        <div className="flex-1">
-          <h3 className="text-xl font-serif text-stone-900">Availability</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-100 gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="tm-h2">Availability</h3>
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
-            <p className="font-medium text-stone-700">{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
-            {!isManagerMode && (
-              <p className="text-xs text-stone-500 flex items-center gap-1.5 font-normal">
-                <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                <span>Greyed-out and dark dates indicate <strong>no availability</strong> (already reserved or blocked by host).</span>
-              </p>
-            )}
+            <p>{isManagerMode ? 'Tap a date to block or unblock it.' : 'Pick your check-in and check-out dates.'}</p>
             {(!isManagerMode && (checkIn || checkOut)) && (
               <div className="flex flex-col gap-2 mt-1">
-                <p className="font-semibold text-emerald-700 bg-emerald-50 self-start px-3 py-1 rounded-md border border-emerald-100/50">
+                <p className="font-medium text-stone-900 self-start">
                   {checkIn ? formatDateStr(checkIn) : 'Select check-in'}
-                  <span className="text-emerald-400 mx-2">→</span>
+                  <span className="text-stone-400 mx-2">→</span>
                   {checkOut ? formatDateStr(checkOut) : 'Select check-out'}
                 </p>
                 {checkIn && checkOut && (
                   <div className="text-xs">
                     {availableRoomNames.length > 0 ? (
                       <div className="flex flex-col items-start gap-1">
-                        <span className="text-emerald-700 font-medium">Available: {availableRoomNames.join(', ')}</span>
-                        <button 
+                        <span className="text-emerald-800 break-words">Available: {availableRoomNames.join(', ')}</span>
+                        <button
+                          type="button"
                           onClick={() => document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                          className="mt-1 bg-stone-900 text-white px-3 py-1.5 rounded-full font-bold uppercase tracking-wider text-[9px] hover:bg-emerald-700 transition-colors shadow-sm"
+                          className="mt-1 tm-btn tm-btn-secondary tm-btn-sm"
                         >
-                          Scroll to Book
+                          See rooms
                         </button>
                       </div>
                     ) : (
-                      <span className="text-red-500 font-medium">No rooms available for these dates.</span>
+                      <span className="text-red-700">No rooms free on these dates. Try other dates.</span>
                     )}
                   </div>
                 )}
@@ -354,7 +349,7 @@ export default function AvailabilityCalendar({
             type="button"
             onClick={prevMonth}
             disabled={isPrevDisabled}
-            className="p-2 rounded-full hover:bg-stone-100 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg hover:bg-stone-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-5 w-5 text-stone-600" />
@@ -365,7 +360,7 @@ export default function AvailabilityCalendar({
           <button
             type="button"
             onClick={nextMonth}
-            className="p-2 rounded-full hover:bg-stone-100 transition"
+            className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
             aria-label="Next month"
           >
             <ChevronRight className="h-5 w-5 text-stone-600" />
@@ -378,23 +373,22 @@ export default function AvailabilityCalendar({
           <div className="h-7 w-7 animate-spin rounded-full border-4 border-stone-200 border-t-stone-700" />
         </div>
       ) : totalRooms === 0 && !isManagerMode ? (
-        <div className="px-8 py-12 text-center">
-          <p className="text-stone-500">This property has not published its room availability yet.</p>
-          <p className="text-sm text-stone-400 mt-1">Contact them directly to check dates.</p>
+        <div className="px-6 py-10 text-center">
+          <p className="tm-muted">No availability published yet. Message the property to check dates.</p>
         </div>
       ) : (
-        <div className="px-4 sm:px-6 md:px-8 py-6">
+        <div className="px-3 sm:px-6 py-5">
           {/* Day name headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAY_NAMES.map((d, dIdx) => (
-              <div key={`${d}-${dIdx}`} className="text-center text-xs font-semibold text-stone-400 uppercase tracking-wider py-2">
+              <div key={`${d}-${dIdx}`} className="text-center text-xs font-medium text-stone-500 py-2">
                 {d}
               </div>
             ))}
           </div>
 
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-7 gap-1">
             {cells.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} />;
               const avail = getAvailability(day);
@@ -445,7 +439,7 @@ export default function AvailabilityCalendar({
                   }
                   className={`
                     relative flex flex-col items-center justify-center
-                    rounded-xl py-2 px-1 text-sm font-medium transition
+                    rounded-lg py-2 px-1 text-sm font-medium transition-colors
                     ${rangeStyles}
                     ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
                     ${isToday && !isSelected ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
@@ -463,8 +457,7 @@ export default function AvailabilityCalendar({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-6 mt-6 pt-4 border-t border-stone-100 flex-wrap">
-            <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Legend</span>
+          <div className="flex items-center gap-x-4 gap-y-2 mt-5 pt-4 border-t border-stone-100 flex-wrap">
             {legend.map(({ avail, label }, lIdx) => (
               <div key={`${avail}-${lIdx}`} className="flex items-center gap-1.5">
                 <span className={`h-2.5 w-2.5 rounded-full ${avail === 'blocked' ? 'bg-stone-800' : dotStyles[avail]}`} />

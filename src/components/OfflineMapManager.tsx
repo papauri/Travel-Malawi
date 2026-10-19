@@ -240,7 +240,7 @@ export default function OfflineMapManager({
                 onClick={() => setShowModal(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-2xs active:scale-98"
               >
-                <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                <Compass className="w-3.5 h-3.5 text-amber-500" />
                 <span>Offline Guide &amp; GPS</span>
               </button>
             </div>
@@ -302,7 +302,7 @@ export default function OfflineMapManager({
                     onClick={() => setShowModal(true)}
                     className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
                   >
-                    <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                    <Compass className="w-3.5 h-3.5 text-amber-500" />
                     Open Offline Guide
                   </button>
                   <button
@@ -331,13 +331,13 @@ export default function OfflineMapManager({
 
       {/* 2. OFFLINE NAVIGATION GUIDE & GPS MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-[3000] bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[3000] bg-stone-950/70 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
           <div
             ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label={`Offline navigation guide for ${property.name}`}
-            className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]"
+            className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm overflow-hidden my-auto flex flex-col max-h-[92vh]"
           >
             {/* Header */}
             <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-stone-100 flex items-start justify-between gap-4 bg-stone-50/80">
@@ -456,7 +456,7 @@ export default function OfflineMapManager({
                     <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
                       Decimal Coordinates
                     </span>
-                    <span className="font-mono text-xs font-bold text-stone-900">
+                    <span className="tabular-nums text-xs font-bold text-stone-900">
                       {formatCoordinates(property.coordinates)}
                     </span>
                   </div>
@@ -479,7 +479,7 @@ export default function OfflineMapManager({
                     <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
                       DMS Format (4x4 GPS / In-Car)
                     </span>
-                    <span className="font-mono text-xs font-bold text-stone-900">
+                    <span className="tabular-nums text-xs font-bold text-stone-900">
                       {formatCoordinatesDMS(property.coordinates)}
                     </span>
                   </div>
@@ -507,7 +507,7 @@ export default function OfflineMapManager({
                   </div>
                   <a
                     href={geoUri}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg font-bold text-xs transition"
                   >
                     <span>Launch GPS App</span>
                     <ExternalLink className="w-3 h-3" />
@@ -553,7 +553,7 @@ export default function OfflineMapManager({
                         href={`tel:${property.contactPhone}`}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-bold hover:bg-stone-800 transition"
                       >
-                        <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                        <PhoneCall className="w-3.5 h-3.5 text-amber-500" />
                         <span>Call Host: {property.contactPhone}</span>
                       </a>
                     )}

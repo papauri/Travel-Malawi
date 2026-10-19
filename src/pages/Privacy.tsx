@@ -48,9 +48,9 @@ export default function Privacy() {
         </div>
 
         {/* Paper Article */}
-        <article className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
+        <article className="bg-white rounded-xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
           <header className="border-b border-stone-200 pb-8">
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-500 mb-2.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 mb-2.5">
               <span>Travel Malawi</span>
               <span>·</span>
               <span>Legal &amp; Data Integrity</span>
@@ -59,7 +59,7 @@ export default function Privacy() {
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-stone-800" />
               </div>
               <div>
@@ -75,15 +75,15 @@ export default function Privacy() {
             {/* Privacy Commitments Strip */}
             <div className="mt-8 pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Data Monetization</span>
+                <span className="text-stone-400 block font-semibold text-xs">Data Monetization</span>
                 <span className="font-semibold text-stone-900 text-sm">0% Sold to Third Parties</span>
               </div>
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Financial Cards</span>
+                <span className="text-stone-400 block font-semibold text-xs">Financial Cards</span>
                 <span className="font-semibold text-stone-900 text-sm">Never Stored on Servers</span>
               </div>
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Direct Dispatch</span>
+                <span className="text-stone-400 block font-semibold text-xs">Direct Dispatch</span>
                 <span className="font-semibold text-stone-900 text-sm">Straight to Assigned Host</span>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function Privacy() {
               <>
                 <section className="space-y-3">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">1</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">1</span>
                     <span>What Information We Collect</span>
                   </h2>
                   <p>
@@ -111,7 +111,7 @@ export default function Privacy() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">2</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">2</span>
                     <span>How We Use Your Information</span>
                   </h2>
                   <p>
@@ -126,10 +126,10 @@ export default function Privacy() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">3</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">3</span>
                     <span>Payment &amp; Financial Data</span>
                   </h2>
-                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
                     <p className="font-semibold text-stone-900">
                       We never store your credit cards, debit cards, or banking passwords.
                     </p>
@@ -141,7 +141,7 @@ export default function Privacy() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">4</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">4</span>
                     <span>Device Permissions &amp; Location Caching</span>
                   </h2>
                   <p>
@@ -155,7 +155,7 @@ export default function Privacy() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">5</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">5</span>
                     <span>Your Rights &amp; Account Deletion</span>
                   </h2>
                   <p>
@@ -170,7 +170,7 @@ export default function Privacy() {
             <div>
               Travel Malawi Platform Operations · Lilongwe, Malawi
             </div>
-            <div className="font-mono text-[11px] text-stone-500">
+            <div className="text-xs text-stone-500">
               Last Updated: 2026 · 0% Commission
             </div>
           </footer>

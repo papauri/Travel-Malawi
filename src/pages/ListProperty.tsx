@@ -21,9 +21,9 @@ import toast from 'react-hot-toast';
 import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
-  Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
+  FileText, CheckCircle2, Wallet, X, DollarSign, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Compass, Globe,
+  User, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Globe,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -141,7 +141,7 @@ export function authenticMalawianDescription(propName: string, category: Propert
     return `Welcome to ${propName}. Situated in ${loc}, our bush retreat immerses you in Malawi's rich wilderness and wildlife. Enjoy guided game drives, tranquil evenings around the campfire under starry African skies, solar-powered comforts, and genuine Malawian warmth.`;
   }
   if (category === 'Romantic Escape' || category === 'Luxury') {
-    return `Welcome to ${propName}, an exclusive sanctuary in ${loc}, Malawi. Designed for serenity and elevated comfort, guests enjoy handcrafted luxury suites, breathtaking natural vistas, attentive personalized service, and exquisite local cuisine.`;
+    return `Welcome to ${propName} in ${loc}, Malawi. A quiet, comfortable place to stay with attentive service and good local food.`;
   }
   if (category === 'Cottage & Chalet') {
     return `Welcome to ${propName}. Offering peaceful, self-contained chalets surrounded by scenic greenery in ${loc}, Malawi. Perfect for families and relaxing weekend getaways with private verandas, fully equipped amenities, secure grounds, and warm hospitality.`;
@@ -200,17 +200,17 @@ function getDraftStorageKey(uid?: string | null): string {
 
 export function getSteps(stayType?: string) {
   return [
-    { title: 'Property Basics', blurb: 'Name, stay type, category, and location.', time: '~1 min' },
-    { title: 'Description & Features', blurb: 'Property highlights and guest amenities.', time: '~1 min' },
-    { title: 'Photos', blurb: 'Cover image and photo gallery.', time: '~30 secs' },
+    { title: 'Your property', blurb: 'Its name, type and where it is.', time: '~1 min' },
+    { title: 'Description and amenities', blurb: 'What guests should know and what you offer.', time: '~1 min' },
+    { title: 'Photos', blurb: 'A cover photo and a few more.', time: '~30 secs' },
     {
-      title: stayType === 'entire_place' ? 'Whole Space & Rates' : 'Rooms & Rates',
-      blurb: stayType === 'entire_place' ? 'Capacity and nightly rates in MWK or USD.' : 'Room types and nightly rates in MWK or USD.',
+      title: stayType === 'entire_place' ? 'The place and its rate' : 'Rooms and rates',
+      blurb: stayType === 'entire_place' ? 'How many guests and the nightly rate.' : 'Your room types and nightly rates.',
       time: '~1 min',
     },
-    { title: 'Host & Contacts', blurb: 'Manager details and booking phone.', time: '~30 secs' },
-    { title: 'Listing Plan', blurb: 'Free direct listing with 0% commission.', time: '~15 secs' },
-    { title: 'Review & Submit', blurb: 'Review your listing before publishing.', time: '~15 secs' },
+    { title: 'Host and contacts', blurb: 'Who guests and our team can reach.', time: '~30 secs' },
+    { title: 'Listing plan', blurb: 'Listing is free, with no commission.', time: '~15 secs' },
+    { title: 'Review and submit', blurb: 'Check everything, then send it for review.', time: '~15 secs' },
   ];
 }
 
@@ -231,16 +231,16 @@ function readDraftForUser(uid?: string | null): ListingDraft {
   return emptyDraft();
 }
 
+// Mirrors tm-input as plain utilities so per-field padding overrides (pl-8/pl-11) still win.
 const fieldClass =
-  'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-stone-900 outline-none ' +
-  'transition placeholder:text-stone-400 focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 leading-relaxed';
+  'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 ' +
+  'focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-700/20 leading-relaxed';
 
 const textareaClass =
-  'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-stone-900 outline-none ' +
-  'transition placeholder:text-stone-400 focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 leading-relaxed ' +
+  fieldClass + ' ' +
   'min-h-[140px] resize-y overflow-y-auto scrollbar-thin scrollbar-thumb-stone-200 hover:scrollbar-thumb-stone-300';
 
-const labelClass = 'block text-xs font-bold uppercase tracking-[0.14em] text-stone-500 mb-2';
+const labelClass = 'tm-label';
 
 export default function ListProperty() {
   const { whatsappEnabled } = useWhatsAppSettings();
@@ -448,7 +448,7 @@ export default function ListProperty() {
     setStep(0);
     setExistingMatch(null);
     setAiPropertySuggestion(null);
-    toast.success('Draft cleared. Starting fresh!');
+    toast.success('Draft cleared. Starting fresh');
   };
 
   // Real-time check against Firestore database for duplicate or existing property
@@ -579,16 +579,16 @@ export default function ListProperty() {
             })
           : current.rooms,
       }));
-      toast.success(`Loaded verified details for "${item.name}"!`);
+      toast.success(`Loaded verified details for "${item.name}"`);
       return;
     }
 
     if (item.source === 'registry') {
-      toast.success(`Matched verified lodge "${item.name}" (${item.badge || item.category})!`);
+      toast.success(`Matched verified lodge "${item.name}" (${item.badge || item.category})`);
     } else if (item.source === 'smart_suggestion') {
-      toast.success(`Applied naming idea "${item.name}"!`);
+      toast.success(`Applied naming idea "${item.name}"`);
     } else {
-      toast.success(`Selected "${item.name}" in Malawi!`);
+      toast.success(`Selected "${item.name}" in Malawi`);
     }
   };
 
@@ -805,12 +805,12 @@ export default function ListProperty() {
           setAiCategorized(true);
           const hasImportedPrice = rooms.some(r => Number(r.priceUsd || 0) > 0 || Number(r.priceMwk || 0) > 0);
           if (hasImportedPrice) {
-            toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} with listed rates (${verifiedCategory})!`, { duration: 6000 });
+            toast.success(`Imported "${finalOfficialName}" in ${finalLocation} with listed rates (${verifiedCategory})`, { duration: 6000 });
           } else {
-            toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} (${verifiedCategory})! Set room rates manually on Step 4.`, { duration: 6000 });
+            toast.success(`Imported "${finalOfficialName}" in ${finalLocation} (${verifiedCategory})! Set room rates manually on Step 4.`, { duration: 6000 });
           }
         } else {
-          toast.success(`Draft Assistant matched "${finalOfficialName}" & auto-categorized as "${verifiedCategory}"!`);
+          toast.success(`Draft Assistant matched "${finalOfficialName}" & auto-categorized as "${verifiedCategory}"`);
         }
       } else if (matchedCoords || searchName) {
         const suggestion = {
@@ -842,7 +842,7 @@ export default function ListProperty() {
             locationNotes: resolvedNotes || prev.locationNotes,
           }));
         }
-        toast.success(`Draft Assistant prepared details & auto-categorized as "${verifiedCategory}"!`);
+        toast.success(`Draft Assistant prepared details & auto-categorized as "${verifiedCategory}"`);
       } else {
         toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
       }
@@ -930,7 +930,7 @@ export default function ListProperty() {
     if (applyAllFields) {
       toast.success(`Draft Assistant filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
     } else {
-      toast.success(`Applied verified details for "${s.officialName}"!`);
+      toast.success(`Applied verified details for "${s.officialName}"`);
     }
     setAiPropertySuggestion(null);
   };
@@ -1063,7 +1063,7 @@ export default function ListProperty() {
         set('amenities', combined);
       }
 
-      toast.success(`Linked ${matchedAmens.length} amenities and category '${matchedCats[0] || draft.category}' from description!`);
+      toast.success(`Linked ${matchedAmens.length} amenities and category '${matchedCats[0] || draft.category}' from description`);
     } catch {
       const local = analyzeDescriptionLocal(desc, draft.name, draft.location);
       if (local.categories.length > 0 && !draft.category) {
@@ -1073,7 +1073,7 @@ export default function ListProperty() {
         const combined = Array.from(new Set([...(draft.amenities || []), ...local.matchedAmenities]));
         set('amenities', combined);
       }
-      toast.success(`Linked ${local.matchedAmenities.length} amenities from description!`);
+      toast.success(`Linked ${local.matchedAmenities.length} amenities from description`);
     } finally {
       setLinkingDescription(false);
     }
@@ -1292,7 +1292,7 @@ export default function ListProperty() {
     });
     set('rooms', [...(draft.rooms || []), ...newRooms]);
     setSuggestedRooms([]);
-    toast.success(`Added ${newRooms.length} room types with dual-currency rates!`);
+    toast.success(`Added ${newRooms.length} room types with dual-currency rates`);
   };
 
   // AI Rate Advisor for individual room
@@ -1556,26 +1556,26 @@ export default function ListProperty() {
                 navigate('/');
               }
             }}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 transition cursor-pointer"
+            className="tm-btn tm-btn-quiet tm-btn-sm -ml-3"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>{user && isHost ? 'Dashboard' : 'Explore Stays'}</span>
+            <span>{user && isHost ? 'Dashboard' : 'Explore stays'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="tm-actions">
             <button
               type="button"
               onClick={() => setShowPropertyImporter(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-3 py-1.5 rounded-xl shadow-2xs cursor-pointer"
-              title="Import property details from a document or rate sheet"
+              className="tm-btn tm-btn-secondary tm-btn-sm"
+              title="Fill the form from a brochure or rate sheet"
             >
               <FileText className="w-3.5 h-3.5 text-stone-600" />
-              <span>Import Document</span>
+              <span>Import from document</span>
             </button>
             <button
               type="button"
               onClick={handleDiscardDraft}
-              className="inline-flex items-center gap-1 text-xs font-medium text-stone-400 hover:text-red-600 transition px-2.5 py-1.5 rounded-xl hover:bg-red-50 cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm hover:text-red-700"
               title="Clear all fields and start a fresh draft"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1586,40 +1586,40 @@ export default function ListProperty() {
 
         {/* Hospitable Welcome Banner for Unauthenticated Visitors */}
         {!user && (
-          <div className="mb-4 sm:mb-6 px-3.5 py-2.5 rounded-xl bg-stone-100/90 border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-700 shadow-2xs">
+          <div className="mb-4 sm:mb-6 px-3.5 py-2.5 rounded-xl bg-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-700">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="font-semibold text-stone-900 shrink-0">Takulandirani:</span>
-              <span className="truncate sm:whitespace-normal">Direct listing with 0% commission. Your draft auto-saves locally.</span>
+              <span className="font-semibold text-stone-900 shrink-0">Takulandirani.</span>
+              <span className="sm:whitespace-normal">Listing is free. Your draft is saved on this device.</span>
             </div>
             <button
               type="button"
               onClick={() => openAuth('host')}
-              className="text-xs font-semibold text-stone-900 underline hover:no-underline whitespace-nowrap cursor-pointer self-start sm:self-auto shrink-0"
+              className="tm-link text-xs whitespace-nowrap cursor-pointer self-start sm:self-auto shrink-0"
             >
-              Sign in to save account →
+              Sign in to keep it
             </button>
           </div>
         )}
 
         {/* Upgrade Banner for Logged-In Guests Becoming Hosts */}
         {user && !isHost && (
-          <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-stone-100/90 border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="space-y-0.5">
+          <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
               <h3 className="font-semibold text-sm text-stone-900">
-                Start Hosting on This Account
+                Turn on hosting for this account
               </h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Signed in as <strong>{user.displayName || user.email}</strong>. Enable hosting to manage direct bookings.
+              <p className="text-xs text-stone-600 leading-relaxed break-words">
+                Signed in as <strong>{user.displayName || user.email}</strong>. You need hosting on to take bookings.
               </p>
             </div>
             <button
               type="button"
               onClick={handleEnableHosting}
               disabled={enabling}
-              className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+              className="tm-btn tm-btn-secondary tm-btn-sm shrink-0 self-start sm:self-auto"
             >
               {enabling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
-              <span>Enable Hosting</span>
+              <span>Turn on hosting</span>
             </button>
           </div>
         )}
@@ -1627,17 +1627,11 @@ export default function ListProperty() {
         {/* Clean, Unified Step Header & Stepper */}
         <header className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 font-mono">
-                Step {step + 1} of {steps.length}
-              </span>
-              <span className="text-stone-300">·</span>
-              <span className="text-xs text-stone-600 font-medium">
-                {steps[step].title}
-              </span>
-            </div>
-            <span className="text-[11px] font-mono text-stone-400">
-              {Math.round(((step + 1) / steps.length) * 100)}%
+            <span className="text-xs font-medium text-stone-500">
+              Step {step + 1} of {steps.length}
+            </span>
+            <span className="text-xs text-stone-400">
+              Your draft saves as you go
             </span>
           </div>
 
@@ -1666,39 +1660,35 @@ export default function ListProperty() {
             })}
           </div>
 
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
+          <h1 className="tm-h1">
             {steps[step].title}
           </h1>
-          <p className="mt-1 text-xs sm:text-sm text-stone-500">
+          <p className="mt-1 tm-lead">
             {steps[step].blurb}
           </p>
         </header>
 
-        <div className="rounded-2xl sm:rounded-3xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8 shadow-xs">
+        <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8">
           {step === 0 && (
             <div className="space-y-8">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md hidden sm:flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-stone-500" />
-                      Malawi Registry & Maps
-                    </span>
                     {aiStatus.enabled && aiStatus.available && (
                       <button
                         type="button"
                         onClick={() => handleLookupPropertyAI(draft.name, { forceWebScrape: true })}
                         disabled={aiLookupLoading || !draft.name.trim()}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                        title="Auto-fill listing details from the web or registry"
+                        className="tm-btn tm-btn-secondary tm-btn-sm"
+                        title="Fill in details from your website or Google listing"
                       >
                         {aiLookupLoading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
                         ) : (
                           <Globe className="w-3.5 h-3.5 text-stone-600" />
                         )}
-                        <span>{aiLookupLoading ? 'Fetching details...' : 'Auto-fill from web'}</span>
+                        <span>{aiLookupLoading ? 'Looking up…' : 'Fill in from the web'}</span>
                       </button>
                     )}
                   </div>
@@ -1725,8 +1715,8 @@ export default function ListProperty() {
                         }
                         toast.success(
                           extractedName
-                            ? `Extracted "${extractedName}" & coordinates from Google Maps!`
-                            : `Extracted location coordinates from Google Maps link!`,
+                            ? `Got "${extractedName}" and the map pin from Google Maps`
+                            : `Got the map pin from Google Maps`,
                           { icon: '📍' }
                         );
                         if (extractedName) {
@@ -1746,7 +1736,7 @@ export default function ListProperty() {
                           initialBrand = candidate.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
                         } catch {}
                         set('name', initialBrand || 'Fetching property...');
-                        toast('🌐 Website link detected! Swarming agents to extract full name, location, rates & amenities...', { icon: '🤖' });
+                        toast('Website link found. Looking up the name, location, rates and amenities…');
                         const norm = trimmedVal.startsWith('www.') ? `https://${trimmedVal}` : trimmedVal;
                         handleLookupPropertyAI(trimmedVal, { forceWebScrape: true, url: norm });
                         return;
@@ -1769,21 +1759,18 @@ export default function ListProperty() {
                   {showPlaceDropdown && placeSuggestions.length > 0 && (
                     <div
                       ref={placeDropdownRef}
-                      className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-1"
+                      className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-1"
                     >
-                      <div className="px-4 py-2 bg-stone-900 text-stone-200 border-b border-stone-800 flex items-center justify-between text-[11px] font-semibold tracking-wider">
-                        <span className="flex items-center gap-1.5 text-stone-200">
-                          <Compass className="w-3.5 h-3.5 text-stone-400" />
-                          <span>Malawi Hospitality &amp; Location Registry</span>
-                        </span>
+                      <div className="px-4 py-2 bg-stone-50 text-stone-600 border-b border-stone-200 flex items-center justify-between text-xs font-medium">
+                        <span>Matches in Malawi</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-stone-400 font-mono">
+                          <span className="text-[11px] text-stone-400">
                             {placeSuggestions.length} found
                           </span>
                           <button
                             type="button"
                             onClick={() => setShowPlaceDropdown(false)}
-                            className="text-stone-400 hover:text-white p-0.5 rounded-full hover:bg-stone-800 transition"
+                            className="text-stone-400 hover:text-stone-700 p-0.5 rounded-lg hover:bg-stone-100 transition"
                             title="Close suggestions"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -1805,21 +1792,11 @@ export default function ListProperty() {
                                 onClick={() => handleSelectMalawiPlace(item)}
                                 className="flex-1 text-left flex items-start gap-3 min-w-0 cursor-pointer"
                               >
-                                <div
-                                  className={`p-2 rounded-xl transition shrink-0 mt-0.5 border ${
-                                    isReg
-                                      ? 'bg-stone-100 text-stone-800 border-stone-200'
-                                      : isIdea
-                                      ? 'bg-stone-100 text-stone-800 border-stone-200'
-                                      : 'bg-stone-100 text-stone-700 border-stone-200'
-                                  }`}
-                                >
-                                  {isReg ? (
-                                    <Building2 className="w-4 h-4 text-stone-700" />
-                                  ) : isIdea ? (
-                                    <Building2 className="w-4 h-4 text-stone-600" />
+                                <div className="shrink-0 mt-0.5">
+                                  {isReg || isIdea ? (
+                                    <Building2 className="w-4 h-4 text-stone-500" />
                                   ) : (
-                                    <MapPin className="w-4 h-4 text-stone-600" />
+                                    <MapPin className="w-4 h-4 text-stone-500" />
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -1828,17 +1805,17 @@ export default function ListProperty() {
                                       {item.name}
                                     </p>
                                     {isReg && (
-                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-stone-100 text-stone-800 border border-stone-200">
-                                        Verified Lodge
+                                      <span className="tm-tag">
+                                        Listed
                                       </span>
                                     )}
                                     {isIdea && (
-                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
-                                        Naming Idea
+                                      <span className="tm-tag">
+                                        Name idea
                                       </span>
                                     )}
                                     {item.category && (
-                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                                      <span className="tm-tag">
                                         {item.category}
                                       </span>
                                     )}
@@ -1855,11 +1832,11 @@ export default function ListProperty() {
                                   e.stopPropagation();
                                   handleSelectMalawiPlace(item, true);
                                 }}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95 shadow-2xs border bg-stone-900 hover:bg-stone-800 text-white border-stone-900"
-                                title="1-Click load complete listing details"
+                                className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
+                                title="Fill in the details for this place"
                               >
-                                <Check className="w-3 h-3 text-stone-400" />
-                                <span>{isReg ? '1-Click Auto-Fill' : 'Auto-Fill'}</span>
+                                <Check className="w-3 h-3" />
+                                <span>Use</span>
                               </button>
                             </li>
                           );
@@ -1871,15 +1848,15 @@ export default function ListProperty() {
 
                 {/* Duplicate / Existing Property Warning */}
                 {existingMatch?.exists && (
-                  <div className="mt-3 p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-stone-900 text-xs flex items-start gap-3 animate-in fade-in">
-                    <AlertTriangle className="w-4 h-4 text-stone-700 shrink-0 mt-0.5" />
+                  <div className="mt-3 p-3.5 rounded-xl bg-amber-50 text-amber-900 text-xs flex items-start gap-3 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold">
-                        Property Already Registered on Travel Malawi
+                      <p className="font-semibold">
+                        This property is already listed
                       </p>
-                      <p className="mt-0.5 text-stone-600 leading-relaxed">
-                        "{existingMatch.hotel?.name}" in {existingMatch.hotel?.location} already exists in our directory (Status: <span className="font-semibold uppercase">{existingMatch.hotel?.status || 'pending'}</span>).
-                        If you are the owner or authorized manager of this property, please sign in with your registered account or contact support.
+                      <p className="mt-0.5 leading-relaxed break-words">
+                        "{existingMatch.hotel?.name}" in {existingMatch.hotel?.location} is on Travel Malawi ({existingMatch.hotel?.status || 'pending'}).
+                        If it is yours, sign in with the account that listed it, or contact support.
                       </p>
                     </div>
                   </div>
@@ -1887,16 +1864,16 @@ export default function ListProperty() {
 
                 {/* Discovered Property Card */}
                 {aiPropertySuggestion && (
-                  <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 shadow-2xs animate-in fade-in space-y-3.5">
+                  <div className="mt-4 p-4 sm:p-5 rounded-xl bg-stone-50 text-stone-800 animate-in fade-in space-y-3.5">
                     <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stone-900 text-white font-semibold text-[10px] uppercase tracking-wider">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        <span>Verified Registry Match</span>
-                      </div>
+                      <span className="tm-tag tm-tag-good">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Details found</span>
+                      </span>
                       <button
                         type="button"
                         onClick={() => setAiPropertySuggestion(null)}
-                        className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-200/60 transition cursor-pointer"
+                        className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-200/60 transition cursor-pointer"
                         title="Dismiss suggestion"
                       >
                         <X className="w-4 h-4" />
@@ -1905,11 +1882,11 @@ export default function ListProperty() {
 
                     <div>
                       <div className="flex flex-wrap items-center gap-2 justify-between">
-                        <h4 className="font-serif text-lg sm:text-xl font-bold text-stone-900">
+                        <h4 className="tm-h2 break-words">
                           {aiPropertySuggestion.officialName}
                         </h4>
                         {aiPropertySuggestion.category && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-stone-200 text-stone-800 font-semibold text-xs shadow-2xs">
+                          <span className="tm-tag">
                             {aiPropertySuggestion.category}
                           </span>
                         )}
@@ -1917,48 +1894,48 @@ export default function ListProperty() {
 
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                         {aiPropertySuggestion.location && (
-                          <span className="inline-flex items-center gap-1 text-stone-700 bg-white px-2 py-0.5 rounded-lg border border-stone-200 font-medium shadow-2xs">
+                          <span className="tm-tag">
                             <MapPin className="w-3 h-3 text-stone-500" />
                             {aiPropertySuggestion.location}
                           </span>
                         )}
                         {aiPropertySuggestion.coordinates && (
-                          <span className="inline-flex items-center gap-1 text-stone-700 bg-white px-2 py-0.5 rounded-lg font-medium border border-stone-200 shadow-2xs">
+                          <span className="tm-tag">
                             <CheckCircle2 className="w-3 h-3 text-stone-600" />
-                            GPS Pinned
+                            Map pin found
                           </span>
                         )}
                       </div>
                     </div>
 
                     {aiPropertySuggestion.summary && (
-                      <p className="text-xs text-stone-600 leading-relaxed italic bg-white p-3 rounded-xl border border-stone-200 shadow-2xs">
+                      <p className="text-xs text-stone-600 leading-relaxed italic">
                         "{aiPropertySuggestion.summary}"
                       </p>
                     )}
 
-                    <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="pt-1 tm-actions">
                       <button
                         type="button"
                         onClick={() => handleApplyAISuggestion(true)}
-                        className="inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-4 py-2 rounded-xl text-xs shadow-2xs transition active:scale-95 cursor-pointer"
+                        className="tm-btn tm-btn-secondary tm-btn-sm"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Auto-fill details &amp; rooms</span>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Use details and rooms</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleApplyAISuggestion(false)}
-                        className="inline-flex items-center justify-center gap-1 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 font-medium px-3.5 py-2 rounded-xl text-xs shadow-2xs transition active:scale-95 cursor-pointer"
+                        className="tm-btn tm-btn-quiet tm-btn-sm"
                       >
-                        <span>Name &amp; Location only</span>
+                        <span>Name and location only</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setAiPropertySuggestion(null)}
-                        className="text-xs text-stone-400 hover:text-stone-700 px-2 py-1 font-medium cursor-pointer text-center sm:text-left"
+                        className="tm-btn tm-btn-quiet tm-btn-sm"
                       >
-                        Keep manual
+                        I'll type it myself
                       </button>
                     </div>
                   </div>
@@ -1970,8 +1947,7 @@ export default function ListProperty() {
               {/* Stay Type: Room-by-Room vs Whole House / Entire Place */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={labelClass}>How is this stay booked by guests?</span>
-                  <span className="text-[11px] text-stone-500">Adapts pricing &amp; room setup</span>
+                  <span className={labelClass}>How do guests book?</span>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1981,21 +1957,21 @@ export default function ListProperty() {
                     onClick={() => set('stayType', 'rooms')}
                     className={`relative rounded-xl border p-4 text-left transition cursor-pointer ${
                       draft.stayType !== 'entire_place'
-                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900 shadow-xs'
-                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-700'
+                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900'
+                        : 'border-stone-200 bg-white hover:bg-stone-50 text-stone-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <BedDouble className={`h-4 w-4 ${draft.stayType !== 'entire_place' ? 'text-stone-900' : 'text-stone-500'}`} />
-                        <span className="block text-sm font-semibold">Room-by-Room Stay</span>
+                        <span className="block text-sm font-semibold">By the room</span>
                       </div>
                       {draft.stayType !== 'entire_place' && (
                         <Check className="h-4 w-4 text-stone-900" />
                       )}
                     </div>
                     <span className="mt-1.5 block text-xs leading-relaxed text-stone-500">
-                      Guests book individual rooms, suites, chalets, or safari tents (hotels, lodges, B&amp;Bs).
+                      Guests book a room, chalet or tent. For hotels, lodges and B&amp;Bs.
                     </span>
                   </button>
 
@@ -2018,21 +1994,21 @@ export default function ListProperty() {
                     }}
                     className={`relative rounded-xl border p-4 text-left transition cursor-pointer ${
                       draft.stayType === 'entire_place'
-                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900 shadow-xs'
-                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-700'
+                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900'
+                        : 'border-stone-200 bg-white hover:bg-stone-50 text-stone-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Home className={`h-4 w-4 ${draft.stayType === 'entire_place' ? 'text-stone-900' : 'text-stone-500'}`} />
-                        <span className="block text-sm font-semibold">Whole House / Entire Place</span>
+                        <span className="block text-sm font-semibold">The whole place</span>
                       </div>
                       {draft.stayType === 'entire_place' && (
                         <Check className="h-4 w-4 text-stone-900" />
                       )}
                     </div>
                     <span className="mt-1.5 block text-xs leading-relaxed text-stone-500">
-                      Guests book the entire private cottage, villa, or home exclusively.
+                      Guests have the whole cottage, villa or house to themselves.
                     </span>
                   </button>
                 </div>
@@ -2041,21 +2017,13 @@ export default function ListProperty() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={labelClass}>Which category fits best?</span>
-                  <span className="text-[11px] text-stone-500">Select one</span>
+                  <span className="text-[11px] text-stone-500">Pick one</span>
                 </div>
 
                 {aiCategorized && draft.category && (
-                  <div className="mb-3.5 p-3 rounded-xl bg-stone-100/90 border border-stone-200 text-stone-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
-                    <div className="flex items-center gap-2">
-                      <BadgeCheck className="w-4 h-4 text-stone-700 shrink-0" />
-                      <span>
-                        Categorized as <span className="font-bold underline decoration-stone-400 underline-offset-2">{draft.category}</span>.
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-medium text-stone-500">
-                      Tap below to change
-                    </span>
-                  </div>
+                  <p className="mb-3 text-xs text-stone-600 animate-in fade-in">
+                    We picked <span className="font-semibold text-stone-900">{draft.category}</span>. Tap another to change it.
+                  </p>
                 )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -2072,7 +2040,7 @@ export default function ListProperty() {
                         }}
                         className={`h-11 sm:h-12 px-2.5 rounded-xl border text-xs font-semibold transition flex items-center justify-center text-center cursor-pointer active:scale-98 ${
                           selected
-                            ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
+                            ? 'border-stone-900 bg-stone-900 text-white'
                             : 'border-stone-200 bg-white hover:bg-stone-50 text-stone-700'
                         }`}
                       >
@@ -2110,7 +2078,7 @@ export default function ListProperty() {
                       if (gmaps.name && !draft.name) {
                         set('name', gmaps.name);
                       }
-                      toast.success('Extracted GPS coordinates and location from Google Maps link!', { icon: '📍' });
+                      toast.success('Got the map pin and area from Google Maps');
                       return;
                     }
                     set('location', val);
@@ -2125,7 +2093,7 @@ export default function ListProperty() {
               </div>
 
               <div>
-                <label className={labelClass} htmlFor="listing-notes">Finding the place <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span></label>
+                <label className={labelClass} htmlFor="listing-notes">Directions <span className="font-normal text-stone-400">(optional)</span></label>
                 <textarea
                   id="listing-notes"
                   rows={2}
@@ -2135,7 +2103,7 @@ export default function ListProperty() {
                   className={fieldClass}
                 />
                 <p className="text-xs text-stone-400 mt-1">
-                  Arrival advice, landmarks, or road conditions. Formatting, line breaks, and dashes are preserved.
+                  Landmarks, turn-offs or road conditions.
                 </p>
               </div>
 
@@ -2148,7 +2116,7 @@ export default function ListProperty() {
                       reverseGeocodeCoordinates(coords).then(res => {
                         if (res.location) {
                           set('location', res.location);
-                          toast.success(`Updated area to "${res.location}" from map pin!`, { icon: '📍' });
+                          toast.success(`Area set to "${res.location}" from the map pin`);
                         }
                         if (res.locationNotes && !draft.locationNotes) {
                           set('locationNotes', res.locationNotes);
@@ -2157,7 +2125,7 @@ export default function ListProperty() {
                     }
                   }}
                   locationText={draft.location || draft.name}
-                  label="Search & Pin Exact Location"
+                  label="Pin the exact location"
                   onLocationSelect={info => {
                     if (info.location) {
                       set('location', info.location);
@@ -2185,14 +2153,14 @@ export default function ListProperty() {
                         type="button"
                         onClick={handleDraftStarter}
                         disabled={draftingStarter}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition border border-stone-200 cursor-pointer disabled:opacity-50"
+                        className="tm-btn tm-btn-secondary tm-btn-sm"
                       >
                         {draftingStarter ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
                         ) : (
                           <FileText className="w-3.5 h-3.5 text-stone-500" />
                         )}
-                        <span>Auto-draft starter</span>
+                        <span>Write a first draft</span>
                       </button>
                     )}
                     <AIAssistantButton
@@ -2217,7 +2185,7 @@ export default function ListProperty() {
                   maxLength={DESCRIPTION_MAX}
                   value={draft.description}
                   onChange={e => set('description', e.target.value)}
-                  placeholder="Tell travelers what makes your stay special — the setting, atmosphere, views, and hospitality."
+                  placeholder="What is it like to stay here? The setting, the views, the food, the people."
                   className={textareaClass}
                 />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -2226,15 +2194,15 @@ export default function ListProperty() {
                       type="button"
                       onClick={handleLinkDescription}
                       disabled={linkingDescription}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 border border-stone-200/80 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer disabled:opacity-50"
-                      title="Automatically link matching common amenities and property category"
+                      className="tm-btn tm-btn-quiet tm-btn-sm -ml-3"
+                      title="Pick amenities and category from your description"
                     >
                       {linkingDescription ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
                       ) : (
                         <Tag className="w-3.5 h-3.5 text-stone-600" />
                       )}
-                      <span>Auto-link Amenities &amp; Category</span>
+                      <span>Pick amenities from description</span>
                     </button>
                   ) : <div />}
                   <span className={draft.description.trim().length < DESCRIPTION_MIN ? 'text-stone-400' : 'text-stone-700 font-medium'}>
@@ -2246,13 +2214,13 @@ export default function ListProperty() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={labelClass}>Amenities &amp; Features</span>
+                  <span className={labelClass}>Amenities</span>
                   {aiStatus.enabled && aiStatus.available && (
                     <button
                       type="button"
                       onClick={handleSuggestAmenities}
                       disabled={suggestingAmenities}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg border border-stone-200 transition disabled:opacity-50"
+                      className="tm-btn tm-btn-secondary tm-btn-sm"
                     >
                       {suggestingAmenities ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
@@ -2266,7 +2234,7 @@ export default function ListProperty() {
 
                 {/* Optional Suggested Amenities Tray */}
                 {suggestedAmenities.length > 0 && (
-                  <div className="mb-3.5 p-3.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-2 animate-in fade-in">
+                  <div className="mb-3.5 p-3.5 bg-stone-50 rounded-xl space-y-2 animate-in fade-in">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-stone-800 flex items-center gap-1.5">
                         <Check className="w-3.5 h-3.5 text-stone-500" />
@@ -2276,7 +2244,7 @@ export default function ListProperty() {
                         <button
                           type="button"
                           onClick={addAllSuggestedAmenities}
-                          className="text-[11px] font-bold text-stone-900 hover:underline"
+                          className="tm-link text-[11px]"
                         >
                           Add all
                         </button>
@@ -2322,9 +2290,9 @@ export default function ListProperty() {
                         type="button"
                         aria-pressed={selected}
                         onClick={() => toggleAmenity(amenity)}
-                        className={`h-8 px-3 rounded-xl border text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
+                        className={`h-8 px-3 rounded-lg border text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
                           selected
-                            ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
+                            ? 'border-stone-900 bg-stone-900 text-white'
                             : 'border-stone-200 bg-white text-stone-700 hover:border-stone-400'
                         }`}
                       >
@@ -2346,13 +2314,13 @@ export default function ListProperty() {
                         addTypedAmenity();
                       }
                     }}
-                    placeholder="Custom amenity (e.g. Firepit, Inverter, Lake view...)"
-                    className={`${fieldClass} text-xs py-2`}
+                    placeholder="Add your own (e.g. Firepit, Inverter)"
+                    className={fieldClass}
                   />
                   <button
                     type="button"
                     onClick={addTypedAmenity}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800"
+                    className="tm-btn tm-btn-secondary shrink-0"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add
                   </button>
@@ -2363,7 +2331,7 @@ export default function ListProperty() {
                     {draft.amenities.map((amenity, aIdx) => (
                       <span
                         key={`${amenity}-${aIdx}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-800 border border-stone-200"
+                        className="tm-tag"
                       >
                         {amenity}
                         <button
@@ -2385,8 +2353,8 @@ export default function ListProperty() {
           {step === 2 && (
             <div className="space-y-6 sm:space-y-8">
               <ImageUpload
-                label="Cover Photo"
-                hint="Main photo displayed on search and listing header."
+                label="Cover photo"
+                hint="The first photo guests see."
                 value={draft.imageUrl}
                 onChange={url => set('imageUrl', url)}
                 folder={`hotels/${draft.id}`}
@@ -2395,8 +2363,8 @@ export default function ListProperty() {
 
               <div className="border-t border-stone-100 pt-6">
                 <GalleryUpload
-                  label="Property Gallery"
-                  hint="Add photos of rooms, views, and amenities (4+ recommended)."
+                  label="More photos"
+                  hint="Rooms, views and amenities. Four or more works best."
                   value={draft.galleryUrls}
                   onChange={urls => set('galleryUrls', urls)}
                   folder={`hotels/${draft.id}/gallery`}
@@ -2407,30 +2375,11 @@ export default function ListProperty() {
 
           {step === 3 && draft.stayType === 'entire_place' && (
             <div className="space-y-8">
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 text-xs font-semibold px-3 py-1 rounded-full mb-2 shadow-2xs">
-                        <Home className="w-3.5 h-3.5 text-stone-700" />
-                        <span>Whole Space / Entire Property Setup</span>
-                      </div>
-                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity &amp; Nightly Rate</h3>
-                      <p className="text-sm text-stone-600 mt-0.5">
-                        Guests book the whole place as a single exclusive reservation. Set the property specifications and whole-property rate.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
-                      <Coins className="w-3.5 h-3.5 text-stone-500" />
-                      <span>Set each currency's rate yourself</span>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="space-y-8">
                 {/* Property Type / Style */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
-                    Property Style / Type
+                  <label className={labelClass}>
+                    What kind of place is it?
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                     {['Cottage', 'Villa', 'Whole Guest House', 'Entire B&B', 'Chalet', 'Holiday Home'].map((type) => {
@@ -2445,9 +2394,9 @@ export default function ListProperty() {
                               propertyType: type,
                             });
                           }}
-                          className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition text-center cursor-pointer ${
+                          className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition text-center cursor-pointer ${
                             selected
-                              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
+                              ? 'bg-stone-900 text-white border-stone-900'
                               : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
                           }`}
                         >
@@ -2459,9 +2408,9 @@ export default function ListProperty() {
                 </div>
 
                 {/* Capacity & Space Specs */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-stone-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-stone-600 mb-1">Bedrooms</label>
+                    <label className={labelClass}>Bedrooms</label>
                     <input
                       type="number"
                       min={1}
@@ -2477,7 +2426,7 @@ export default function ListProperty() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-600 mb-1">Bathrooms</label>
+                    <label className={labelClass}>Bathrooms</label>
                     <input
                       type="number"
                       min={1}
@@ -2493,7 +2442,7 @@ export default function ListProperty() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-600 mb-1">Total Beds</label>
+                    <label className={labelClass}>Beds</label>
                     <input
                       type="number"
                       min={1}
@@ -2509,7 +2458,7 @@ export default function ListProperty() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-600 mb-1">Max Guests</label>
+                    <label className={labelClass}>Most guests</label>
                     <input
                       type="number"
                       min={1}
@@ -2527,16 +2476,16 @@ export default function ListProperty() {
                 </div>
 
                 {/* Nightly Rates for the Whole Property */}
-                <div className="bg-white p-5 rounded-xl border border-stone-200 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-stone-900">Whole Property Nightly Rate</h4>
-                    <span className="text-xs text-stone-500">Dual currency support</span>
+                <div className="space-y-3 border-t border-stone-100 pt-6">
+                  <div>
+                    <h4 className="text-sm font-semibold text-stone-900">Nightly rate for the whole place</h4>
+                    <p className="text-xs text-stone-500 mt-0.5">Fill in one or both currencies. Each is set by you.</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Rate in USD ($) / night</label>
+                      <label className={labelClass}>USD per night</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-3 text-stone-400 font-bold">$</span>
+                        <span className="absolute left-3 top-2 text-sm text-stone-400">$</span>
                         <input
                           type="number"
                           min={0}
@@ -2555,9 +2504,9 @@ export default function ListProperty() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Rate in Malawi Kwacha (MK) / night</label>
+                      <label className={labelClass}>MK per night</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-3 text-stone-400 font-bold text-xs">MK</span>
+                        <span className="absolute left-3 top-2.5 text-stone-400 text-xs">MK</span>
                         <input
                           type="number"
                           min={0}
@@ -2580,16 +2529,16 @@ export default function ListProperty() {
 
                 {/* Exclusive Inclusions */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
-                    Key Whole-Space Inclusions
+                  <label className={labelClass}>
+                    What is included
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {[
-                      { key: 'hasPrivateKitchen', label: 'Fully Equipped Kitchen' },
-                      { key: 'hasDedicatedHost', label: 'Dedicated Caretaker / Cook' },
-                      { key: 'hasPrivatePool', label: 'Private Swimming Pool' },
-                      { key: 'hasLakeAccess', label: 'Direct Lake / Beach Access' },
-                      { key: 'hasGarden', label: 'Private Lawn / Garden' },
+                      { key: 'hasPrivateKitchen', label: 'Full kitchen' },
+                      { key: 'hasDedicatedHost', label: 'Caretaker or cook' },
+                      { key: 'hasPrivatePool', label: 'Private pool' },
+                      { key: 'hasLakeAccess', label: 'Lake or beach access' },
+                      { key: 'hasGarden', label: 'Private garden' },
                     ].map((inc) => {
                       const checked = Boolean((draft.entirePlaceDetails as any)?.[inc.key]);
                       return (
@@ -2602,9 +2551,9 @@ export default function ListProperty() {
                               [inc.key]: !checked,
                             });
                           }}
-                          className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                          className={`p-3 rounded-lg border text-left text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                             checked
-                              ? 'bg-stone-900 border-stone-900 text-white shadow-2xs'
+                              ? 'bg-stone-900 border-stone-900 text-white'
                               : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
                           }`}
                         >
@@ -2620,8 +2569,8 @@ export default function ListProperty() {
 
                 {/* Whole House Description Note */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Whole House Guest Notes & Arrangement <span className="font-normal text-stone-400">(optional)</span>
+                  <label className={labelClass}>
+                    Notes for guests <span className="font-normal text-stone-400">(optional)</span>
                   </label>
                   <textarea
                     rows={2}
@@ -2642,31 +2591,20 @@ export default function ListProperty() {
 
           {step === 3 && draft.stayType !== 'entire_place' && (
             <div className="space-y-8">
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-serif font-bold text-stone-900">Room Types & Multi-Currency Pricing</h3>
-                      <p className="text-sm text-stone-600 mt-0.5">
-                        Set rates in US Dollars (USD) for international travelers, Malawi Kwacha (MK) for domestic guests, or both.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
-                      <Coins className="w-3.5 h-3.5 text-stone-500" />
-                      <span>Set each currency's rate yourself</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-6">
+                <p className="tm-muted">
+                  Add each room type with its rate in USD, MK or both. You set each currency yourself.
+                </p>
 
                 {/* Current Rooms Overview List */}
                 {(draft.rooms || []).length > 0 && (
                   <div className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                      Configured Rooms ({(draft.rooms || []).length})
+                    <p className="text-sm font-semibold text-stone-900">
+                      Your rooms ({(draft.rooms || []).length})
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(draft.rooms || []).map((room, idx) => (
-                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
+                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between min-w-0">
                           <div className="flex items-center gap-3 min-w-0">
                             {room.imageUrl ? (
                               <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -2676,22 +2614,22 @@ export default function ListProperty() {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <h4 className="font-bold text-sm text-stone-900 truncate">
-                                {room.name || `Room ${idx + 1} (Unnamed)`}
+                              <h4 className="font-semibold text-sm text-stone-900 truncate">
+                                {room.name || `Room ${idx + 1} (no name yet)`}
                               </h4>
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs text-stone-600">
                                 {room.prices?.USD ? (
-                                  <span className="font-semibold text-stone-900 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
+                                  <span className="font-semibold text-stone-900">
                                     ${room.prices.USD} USD
                                   </span>
                                 ) : null}
                                 {room.prices?.MWK ? (
-                                  <span className="font-semibold text-stone-900 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
+                                  <span className="font-semibold text-stone-900">
                                     MK {Number(room.prices.MWK).toLocaleString()}
                                   </span>
                                 ) : null}
                                 {(!room.prices?.USD && !room.prices?.MWK) && (
-                                  <span className="text-stone-500 font-medium">Rate unconfigured</span>
+                                  <span className="text-amber-800 font-medium">No rate yet</span>
                                 )}
                                 <span className="text-stone-400">·</span>
                                 <span className="text-stone-500">Sleeps {room.maxGuests || 2}</span>
@@ -2734,10 +2672,10 @@ export default function ListProperty() {
                         galleryUrls: [],
                       }]);
                     }}
-                    className="w-full sm:flex-1 py-3.5 border-2 border-dashed border-stone-300 rounded-xl text-stone-700 font-semibold hover:border-stone-400 hover:bg-white transition text-xs flex items-center justify-center gap-2 bg-stone-100/50"
+                    className="w-full sm:flex-1 py-3.5 border-2 border-dashed border-stone-300 rounded-xl text-stone-700 font-semibold hover:border-stone-400 hover:bg-stone-50 transition text-sm flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add room type manually (Dual USD / MK)</span>
+                    <span>Add a room type</span>
                   </button>
 
                   {aiStatus.enabled && aiStatus.available && (
@@ -2745,17 +2683,17 @@ export default function ListProperty() {
                       type="button"
                       onClick={handleSuggestRoomTypes}
                       disabled={suggestingRooms}
-                      className="w-full sm:w-auto py-3.5 px-5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 border border-stone-900 disabled:opacity-50 shadow-2xs"
+                      className="tm-btn tm-btn-secondary w-full sm:w-auto"
                     >
                       {suggestingRooms ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-300" />
-                          <span>Crafting room configurations...</span>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                          <span>Suggesting rooms…</span>
                         </>
                       ) : (
                         <>
-                          <Building2 className="w-3.5 h-3.5 text-stone-300" />
-                          <span>Suggest Rooms for {draft.category || 'stay'}</span>
+                          <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                          <span>Suggest room types</span>
                         </>
                       )}
                     </button>
@@ -2764,22 +2702,21 @@ export default function ListProperty() {
 
                 {/* Interactive Room Types Customizer Tray */}
                 {suggestedRooms.length > 0 && (
-                  <div className="p-5 bg-white border border-stone-300 rounded-2xl space-y-4 shadow-sm animate-in fade-in">
+                  <div className="p-4 sm:p-5 bg-stone-50 rounded-xl space-y-4 animate-in fade-in">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
                       <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
-                          <Building2 className="w-4 h-4 text-stone-700" />
-                          Suggested Room Setups for {draft.name || draft.location || 'Your Property'}
+                        <h4 className="text-sm font-semibold text-stone-900">
+                          Suggested room types
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
-                          Tweak room names, edit descriptions, adjust USD / MK rates, or add directly to your listing.
+                          Edit anything, set your rates, then add the ones you want.
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={addAllSuggestedRooms}
-                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                          className="tm-btn tm-btn-secondary tm-btn-sm"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Add all ({suggestedRooms.length})</span>
@@ -2797,23 +2734,20 @@ export default function ListProperty() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {suggestedRooms.map((roomItem, rIdx) => (
-                        <div key={`suggested-room-${rIdx}`} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
+                        <div key={`suggested-room-${rIdx}`} className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 min-w-0">
                           <div className="space-y-2.5">
                             {/* Room Name Input */}
                             <div>
                               <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                                  Room Name
+                                <label className="text-xs font-medium text-stone-700">
+                                  Room name
                                 </label>
-                                <span className="text-[10px] font-medium text-stone-400">
-                                  Editable
-                                </span>
                               </div>
                               <input
                                 type="text"
                                 value={roomItem.name}
                                 onChange={e => updateSuggestedRoom(rIdx, { name: e.target.value })}
-                                className="w-full mt-1 px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-900 focus:ring-1 focus:ring-stone-400"
+                                className="tm-input mt-1 font-semibold"
                                 placeholder="e.g. Deluxe Lake Chalet"
                               />
                             </div>
@@ -2821,7 +2755,7 @@ export default function ListProperty() {
                             {/* Room Description & AI Polish */}
                             <div>
                               <div className="flex items-center justify-between mb-1">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                                <label className="text-xs font-medium text-stone-700">
                                   Description
                                 </label>
                                 <button
@@ -2842,16 +2776,16 @@ export default function ListProperty() {
                                 value={roomItem.description}
                                 onChange={e => updateSuggestedRoom(rIdx, { description: e.target.value })}
                                 rows={2}
-                                className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-700 focus:ring-1 focus:ring-stone-400"
-                                placeholder="Describe the atmosphere, views, and features..."
+                                className="tm-input"
+                                placeholder="The bed, the view, what is in the room."
                               />
                             </div>
 
                             {/* Currency & Dual Pricing Controls */}
-                            <div className="pt-2 border-t border-stone-200/70 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                                  Currencies & Rates
+                            <div className="pt-2 border-t border-stone-100 space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs font-medium text-stone-700">
+                                  Nightly rate
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <label className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-700 cursor-pointer">
@@ -2887,9 +2821,9 @@ export default function ListProperty() {
 
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {roomItem.currencies.includes('USD') && (
-                                  <div className="bg-white p-2 rounded-lg border border-stone-200">
+                                  <div className="bg-stone-50 p-2 rounded-lg">
                                     <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
-                                      <span className="font-semibold text-emerald-800">USD Rate</span>
+                                      <span className="font-semibold text-stone-700">USD</span>
                                       <div className="flex items-center gap-1">
                                         <button
                                           type="button"
@@ -2925,9 +2859,9 @@ export default function ListProperty() {
                                 )}
 
                                 {roomItem.currencies.includes('MWK') && (
-                                  <div className="bg-white p-2 rounded-lg border border-stone-200">
+                                  <div className="bg-stone-50 p-2 rounded-lg">
                                     <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
-                                      <span className="font-semibold text-stone-700">MK Rate</span>
+                                      <span className="font-semibold text-stone-700">MK</span>
                                       <div className="flex items-center gap-1">
                                         <button
                                           type="button"
@@ -2965,7 +2899,7 @@ export default function ListProperty() {
 
                               {/* Capacity */}
                               <div className="flex items-center justify-between pt-1">
-                                <span className="text-[11px] text-stone-600">Max Guests:</span>
+                                <span className="text-[11px] text-stone-600">Most guests</span>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
@@ -2991,10 +2925,10 @@ export default function ListProperty() {
                           <button
                             type="button"
                             onClick={() => addSuggestedRoom(rIdx)}
-                            className="w-full py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                            className="tm-btn tm-btn-secondary tm-btn-sm w-full"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Add this room to listing</span>
+                            <span>Add this room</span>
                           </button>
                         </div>
                       ))}
@@ -3012,14 +2946,14 @@ export default function ListProperty() {
                 const hasMwk = roomCurrencies.includes('MWK');
 
                 return (
-                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
-                    <div className="flex items-center justify-between border-b border-stone-100 pb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-stone-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-xl p-4 sm:p-6 relative space-y-6 min-w-0">
+                    <div className="flex items-center justify-between gap-2 border-b border-stone-100 pb-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="tm-tag shrink-0">
                           Room {idx + 1}
                         </span>
-                        <h4 className="font-serif font-bold text-base text-stone-900">
-                          {room.name || 'Untitled Room Type'}
+                        <h4 className="font-serif text-base sm:text-lg font-semibold text-stone-900 truncate">
+                          {room.name || 'New room type'}
                         </h4>
                       </div>
                       <button
@@ -3030,16 +2964,16 @@ export default function ListProperty() {
                           set('rooms', updated);
                           toast.success('Room removed');
                         }}
-                        className="text-stone-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition flex items-center gap-1 text-xs font-semibold"
+                        className="tm-btn tm-btn-quiet tm-btn-sm hover:text-red-700 shrink-0"
                       >
                         <Trash2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Remove Room</span>
+                        <span className="hidden sm:inline">Remove</span>
                       </button>
                     </div>
 
                     {/* Room Name */}
                     <div>
-                      <label className={labelClass}>Room Name</label>
+                      <label className={labelClass}>Room name</label>
                       <input
                         type="text"
                         value={room.name || ''}
@@ -3082,19 +3016,19 @@ export default function ListProperty() {
                         }}
                         className={fieldClass}
                         rows={2}
-                        placeholder="What makes this room special? e.g. Private balcony overlooking Lake Malawi, en-suite bathroom with solar hot water..."
+                        placeholder="e.g. Balcony over the lake, en-suite bathroom, solar hot water"
                       />
                     </div>
 
                     {/* Currency & Nightly Rate Management */}
-                    <div className="p-5 bg-stone-50/80 border border-stone-200 rounded-xl space-y-4">
+                    <div className="space-y-4 border-t border-stone-100 pt-5">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <label className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                            Accepted Currencies & Nightly Rates
+                          <label className="text-sm font-semibold text-stone-900">
+                            Nightly rate
                           </label>
                           <p className="text-[11px] text-stone-500">
-                            Enable US Dollars ($), Malawi Kwacha (MK), or both for this room.
+                            Tick the currencies you take, then type each rate.
                           </p>
                         </div>
 
@@ -3104,17 +3038,17 @@ export default function ListProperty() {
                             type="button"
                             onClick={() => handleOpenAIRateAdvisor(idx)}
                             disabled={aiRateLoading && aiRateRoomIdx === idx}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-semibold rounded-lg border border-stone-200 transition shadow-2xs self-start sm:self-auto disabled:opacity-50"
+                            className="tm-btn tm-btn-secondary tm-btn-sm self-start sm:self-auto"
                           >
                             {aiRateLoading && aiRateRoomIdx === idx ? (
                               <>
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
-                                <span>Evaluating Malawi rates...</span>
+                                <span>Checking rates…</span>
                               </>
                             ) : (
                               <>
                                 <DollarSign className="w-3.5 h-3.5 text-stone-600" />
-                                <span>Rate Advisor</span>
+                                <span>Suggest a rate</span>
                               </>
                             )}
                           </button>
@@ -3123,8 +3057,8 @@ export default function ListProperty() {
 
                       {/* Currency Checkboxes */}
                       <div className="flex flex-wrap items-center gap-3">
-                        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition ${
-                          hasUsd ? 'bg-white border-stone-900 text-stone-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                          hasUsd ? 'bg-white border-stone-900 text-stone-900' : 'bg-white border-stone-200 text-stone-500'
                         }`}>
                           <input
                             type="checkbox"
@@ -3148,11 +3082,11 @@ export default function ListProperty() {
                             }}
                             className="rounded text-stone-900 focus:ring-stone-900 w-4 h-4"
                           />
-                          <span>US Dollar ($ USD)</span>
+                          <span>US dollars</span>
                         </label>
 
-                        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition ${
-                          hasMwk ? 'bg-white border-stone-900 text-stone-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                          hasMwk ? 'bg-white border-stone-900 text-stone-900' : 'bg-white border-stone-200 text-stone-500'
                         }`}>
                           <input
                             type="checkbox"
@@ -3175,7 +3109,7 @@ export default function ListProperty() {
                             }}
                             className="rounded text-stone-900 focus:ring-stone-900 w-4 h-4"
                           />
-                          <span>Malawi Kwacha (MK MWK)</span>
+                          <span>Malawi kwacha</span>
                         </label>
                       </div>
 
@@ -3183,8 +3117,8 @@ export default function ListProperty() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                         {hasUsd && (
                           <div>
-                            <label className="block text-xs font-semibold text-stone-700 mb-1">
-                              Nightly Price (USD)
+                            <label className={labelClass}>
+                              USD per night
                             </label>
                             <div className="relative">
                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">$</span>
@@ -3206,8 +3140,8 @@ export default function ListProperty() {
 
                         {hasMwk && (
                           <div>
-                            <label className="block text-xs font-semibold text-stone-700 mb-1">
-                              Nightly Price (MK / Malawi Kwacha)
+                            <label className={labelClass}>
+                              MK per night
                             </label>
                             <div className="relative">
                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">MK</span>
@@ -3230,12 +3164,12 @@ export default function ListProperty() {
 
                       {/* Rate Advisor Inline Card */}
                       {aiRateRoomIdx === idx && aiRateData && (
-                        <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3 animate-in fade-in">
+                        <div className="p-4 bg-stone-50 rounded-xl space-y-3 animate-in fade-in">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <DollarSign className="w-4 h-4 text-stone-600 shrink-0" />
-                              <h5 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
-                                Market Rate Recommendation
+                              <h5 className="font-semibold text-sm text-stone-900">
+                                Suggested rate
                               </h5>
                             </div>
                             <button
@@ -3250,13 +3184,13 @@ export default function ListProperty() {
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-lg border border-stone-200">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Suggested USD</span>
+                              <span className="text-[11px] text-stone-500">USD</span>
                               <p className="text-lg font-bold text-stone-900">{aiRateData.usd > 0 ? `$${aiRateData.usd}` : '—'} <span className="text-xs font-normal text-stone-500">/nt</span></p>
                             </div>
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Suggested MK</span>
+                              <span className="text-[11px] text-stone-500">MK</span>
                               <p className="text-lg font-bold text-stone-900">{aiRateData.mwk > 0 ? `MK ${aiRateData.mwk.toLocaleString()}` : '—'} <span className="text-xs font-normal text-stone-500">/nt</span></p>
                             </div>
                           </div>
@@ -3269,10 +3203,10 @@ export default function ListProperty() {
                             <button
                               type="button"
                               onClick={() => handleApplyAIRates(idx)}
-                              className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                              className="tm-btn tm-btn-secondary tm-btn-sm"
                             >
                               <Check className="w-3.5 h-3.5" />
-                              <span>Apply These Rates</span>
+                              <span>Use this rate</span>
                             </button>
                             <button
                               type="button"
@@ -3280,7 +3214,7 @@ export default function ListProperty() {
                                 setAiRateRoomIdx(null);
                                 setAiRateData(null);
                               }}
-                              className="px-3 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 transition"
+                              className="tm-btn tm-btn-quiet tm-btn-sm"
                             >
                               Dismiss
                             </button>
@@ -3292,7 +3226,7 @@ export default function ListProperty() {
                     {/* Capacity & Inventory */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className={labelClass}>Quantity (Available Rooms of this Type)</label>
+                        <label className={labelClass}>How many of these rooms?</label>
                         <input
                           type="number"
                           value={room.quantity || ''}
@@ -3307,7 +3241,7 @@ export default function ListProperty() {
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Max Guests (Sleeps)</label>
+                        <label className={labelClass}>Sleeps up to</label>
                         <input
                           type="number"
                           value={room.maxGuests || ''}
@@ -3329,21 +3263,20 @@ export default function ListProperty() {
                       </div>
                     </div>
 
-                    {/* Extra Guest Fees (Optional) */}
-                    <div className="pt-4 border-t border-stone-100 space-y-3">
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                          Extra Guest Fees &amp; Base Occupancy (Optional)
-                        </label>
-                        <p className="text-[11px] text-stone-500">
-                          Set guests included in standard rate and optional charges for additional guests.
-                        </p>
-                      </div>
+                    {/* Extra Guest Fees (Optional) — collapsed */}
+                    <details className="pt-4 border-t border-stone-100" open={Boolean(room.extraGuestFees?.USD || room.extraGuestFees?.MWK)}>
+                      <summary className="cursor-pointer text-sm font-medium text-stone-700">
+                        Extra guest fees <span className="font-normal text-stone-400">(optional)</span>
+                      </summary>
+                    <div className="mt-3 space-y-3">
+                      <p className="text-[11px] text-stone-500">
+                        Guests included in the rate, and what each extra guest pays.
+                      </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-stone-600 mb-1">
-                            Base Guests Included
+                          <label className={labelClass}>
+                            Guests included
                           </label>
                           <input
                             type="number"
@@ -3367,8 +3300,8 @@ export default function ListProperty() {
 
                         {hasUsd && (
                           <div>
-                            <label className="block text-xs font-medium text-stone-600 mb-1">
-                              Extra Guest Fee (USD)
+                            <label className={labelClass}>
+                              Extra guest (USD)
                             </label>
                             <div className="relative">
                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">$</span>
@@ -3392,8 +3325,8 @@ export default function ListProperty() {
                         )}
                         {hasMwk && (
                           <div>
-                            <label className="block text-xs font-medium text-stone-600 mb-1">
-                              Extra Guest Fee (MK)
+                            <label className={labelClass}>
+                              Extra guest (MK)
                             </label>
                             <div className="relative">
                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">MK</span>
@@ -3417,20 +3350,21 @@ export default function ListProperty() {
                         )}
                       </div>
                     </div>
+                    </details>
 
                     {/* Room Photos */}
                     <div className="pt-4 border-t border-stone-100 space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                          Room Photography <span className="text-red-500">* (Mandatory)</span>
+                        <span className="text-sm font-semibold text-stone-900">
+                          Room photos
                         </span>
-                        <span className="text-[11px] font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
-                          At least 1 photo required
+                        <span className="text-[11px] text-stone-500">
+                          At least one needed
                         </span>
                       </div>
                       <ImageUpload
-                        label="Room Cover Photo"
-                        hint="Make it a well-lit, wide shot of the bed and room. Drag photo from gallery here."
+                        label="Room cover photo"
+                        hint="A bright, wide shot of the bed and room."
                         tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
                         value={room.imageUrl || ''}
                         onChange={url => {
@@ -3448,8 +3382,8 @@ export default function ListProperty() {
                       />
 
                       <GalleryUpload
-                        label="Room Gallery"
-                        hint="Add photos of the en-suite bathroom, view, and room amenities. Click star or drag onto Cover."
+                        label="More room photos"
+                        hint="Bathroom, view and extras. Tap the star to make one the cover."
                         tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
                         value={room.galleryUrls || []}
                         onChange={urls => {
@@ -3467,7 +3401,7 @@ export default function ListProperty() {
                           updated[idx].imageUrl = url;
                           updated[idx].galleryUrls = remaining;
                           set('rooms', updated);
-                          toast.success('Promoted to room cover photo');
+                          toast.success('Set as room cover photo');
                         }}
                       />
                     </div>
@@ -3482,22 +3416,11 @@ export default function ListProperty() {
           {step === 4 && (
             <div className="space-y-6">
               {/* Host & Booking Contacts */}
-              <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-7 space-y-6 shadow-xs">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-stone-900 p-2.5 text-white shadow-2xs">
-                    <UserCheck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-stone-900 text-base">Host &amp; Booking Contacts</h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      Direct contact details for traveler bookings and arrival coordination.
-                    </p>
-                  </div>
-                </div>
+              <div className="space-y-6">
 
                 <div>
                   <label className={labelClass} htmlFor="listing-manager-name">
-                    Host / Manager Full Name <span className="text-red-500">*</span>
+                    Your full name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3516,7 +3439,7 @@ export default function ListProperty() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelClass} htmlFor="listing-email">
-                      Booking Email <span className="text-red-500">*</span>
+                      Booking email <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3535,7 +3458,7 @@ export default function ListProperty() {
 
                   <div>
                     <label className={labelClass} htmlFor="listing-phone">
-                      Booking Phone <span className="text-red-500">*</span>
+                      Booking phone <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3558,7 +3481,7 @@ export default function ListProperty() {
                   {whatsappEnabled && (
                     <div>
                       <label className={labelClass} htmlFor="listing-whatsapp">
-                        WhatsApp Number <span className="font-normal text-stone-400 lowercase">(optional)</span>
+                        WhatsApp number <span className="font-normal text-stone-400">(optional)</span>
                       </label>
                       <div className="relative">
                         <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3577,7 +3500,7 @@ export default function ListProperty() {
 
                   <div>
                     <label className={labelClass} htmlFor="listing-manager-phone">
-                      Manager Direct Phone <span className="font-normal text-stone-400 lowercase">(optional)</span>
+                      Other phone <span className="font-normal text-stone-400">(optional)</span>
                     </label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3586,7 +3509,7 @@ export default function ListProperty() {
                         type="tel"
                         value={draft.managerPhone}
                         onChange={e => set('managerPhone', e.target.value)}
-                        placeholder="Alternative direct phone"
+                        placeholder="Another number guests can try"
                         className={`${fieldClass} pl-11`}
                       />
                     </div>
@@ -3628,22 +3551,24 @@ export default function ListProperty() {
               </div>
 
               {/* Property Ownership & Alternate Contacts (Optional) */}
-              <div className="rounded-2xl border border-stone-200/80 bg-stone-50/70 p-5 sm:p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-stone-200/80 p-2 text-stone-700">
-                    <Building className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-stone-900 text-sm">Property Ownership &amp; Operating Entity <span className="text-xs text-stone-500 font-normal">(Optional)</span></h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      Fill only if ownership or billing entity differs from the host above.
-                    </p>
-                  </div>
-                </div>
+              <details
+                className="border-t border-stone-100 pt-6"
+                open={Boolean(
+                  draft.ownerName || draft.ownerEmail || draft.ownerPhone || draft.managerEmail ||
+                  visible.ownerName || visible.ownerEmail || visible.ownerPhone || visible.managerEmail
+                )}
+              >
+                <summary className="cursor-pointer text-sm font-medium text-stone-700">
+                  Owner details <span className="font-normal text-stone-400">(optional)</span>
+                </summary>
+              <div className="mt-4 space-y-4">
+                <p className="text-xs text-stone-500">
+                  Only if the owner or billing company is not you.
+                </p>
 
                 <div>
                   <label className={labelClass} htmlFor="listing-owner-name">
-                    Owner or Company Name
+                    Owner or company name
                   </label>
                   <div className="relative">
                     <Building className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3662,7 +3587,7 @@ export default function ListProperty() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelClass} htmlFor="listing-owner-email">
-                      Owner Email
+                      Owner email
                     </label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3679,7 +3604,7 @@ export default function ListProperty() {
                   </div>
                   <div>
                     <label className={labelClass} htmlFor="listing-owner-phone">
-                      Owner Phone
+                      Owner phone
                     </label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3698,7 +3623,7 @@ export default function ListProperty() {
 
                 <div>
                   <label className={labelClass} htmlFor="listing-manager-email">
-                    Manager Direct Email <span className="text-stone-400 font-normal lowercase">(optional direct)</span>
+                    Manager email <span className="text-stone-400 font-normal">(optional)</span>
                   </label>
                   <div className="relative">
                     <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3714,6 +3639,7 @@ export default function ListProperty() {
                   <FieldError message={visible.managerEmail} />
                 </div>
               </div>
+              </details>
             </div>
           )}
 
@@ -3724,30 +3650,26 @@ export default function ListProperty() {
                   <Loader2 className="h-8 w-8 animate-spin text-stone-300" />
                 </div>
               ) : premiumEnabled ? (
-                <div className="rounded-2xl border border-stone-200 p-8 text-center bg-white shadow-sm">
-                  <Award className="mx-auto h-12 w-12 text-stone-700 mb-4" />
-                  <h3 className="font-serif text-2xl text-stone-900 mb-2">Choose a Premium Plan</h3>
-                  <p className="text-stone-600 mb-6">Unlock powerful features to get more bookings.</p>
+                <div className="text-center">
+                  <h3 className="tm-h2 mb-1">Choose a plan</h3>
+                  <p className="tm-muted mb-6">You can change it later.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                     <div className="rounded-xl border border-stone-200 p-6">
-                      <h4 className="font-bold text-stone-900">Basic</h4>
-                      <p className="text-sm text-stone-500 mt-1 mb-4">Perfect for getting started.</p>
-                      <p className="text-2xl font-bold text-stone-900 mb-6">Free</p>
-                      <div className="w-full rounded-full bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white">
-                        Selected
-                      </div>
+                      <h4 className="font-semibold text-stone-900">Basic</h4>
+                      <p className="text-sm text-stone-500 mt-1 mb-4">Everything you need to take bookings.</p>
+                      <p className="text-2xl font-semibold text-stone-900 mb-6">Free</p>
+                      <span className="tm-tag tm-tag-good">
+                        <Check className="h-3.5 w-3.5" /> Selected
+                      </span>
                     </div>
-                    <div className="rounded-xl border-2 border-stone-900 bg-stone-50/60 p-6 relative">
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                        Recommended
-                      </div>
-                      <h4 className="font-bold text-stone-900">Premium</h4>
-                      <p className="text-sm text-stone-500 mt-1 mb-4">Maximum visibility and tools.</p>
-                      <p className="text-2xl font-bold text-stone-900 mb-6">$49<span className="text-sm text-stone-500 font-normal">/mo</span></p>
+                    <div className="rounded-xl border border-stone-200 p-6">
+                      <h4 className="font-semibold text-stone-900">Premium</h4>
+                      <p className="text-sm text-stone-500 mt-1 mb-4">More visibility and extra tools.</p>
+                      <p className="text-2xl font-semibold text-stone-900 mb-6">$49<span className="text-sm text-stone-500 font-normal">/mo</span></p>
                       {/* No in-app checkout exists yet; upgrades are arranged with the team. */}
                       <a
                         href={`mailto:${DEFAULT_PLATFORM_EMAIL}?subject=${encodeURIComponent('Premium listing upgrade')}`}
-                        className="block w-full rounded-full bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-stone-800"
+                        className="tm-btn tm-btn-secondary w-full"
                       >
                         Ask about Premium
                       </a>
@@ -3755,13 +3677,11 @@ export default function ListProperty() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-xs">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-900 mb-4 border border-stone-200">
-                    <BadgeCheck className="h-7 w-7 text-stone-800" />
-                  </div>
-                  <h3 className="font-serif text-2xl text-stone-900 mb-2 font-bold">0% Commission · Free Host Listing</h3>
-                  <p className="text-stone-600 max-w-md mx-auto text-xs sm:text-sm leading-relaxed">
-                    Listing your property on Travel Malawi is completely free. We take 0% commission on direct bookings. Guests settle payments directly with you.
+                <div className="py-6 text-center">
+                  <BadgeCheck className="mx-auto h-8 w-8 text-stone-700 mb-3" />
+                  <h3 className="tm-h2 mb-2">Free listing, no commission</h3>
+                  <p className="tm-lead mx-auto">
+                    Listing on Travel Malawi is free. Guests pay you directly.
                   </p>
                 </div>
               )}
@@ -3770,26 +3690,26 @@ export default function ListProperty() {
 
           {step === 6 && (
             <div className="space-y-8">
-              <div className="overflow-hidden rounded-2xl border border-stone-200">
+              <div className="overflow-hidden rounded-xl border border-stone-200">
                 <div className="relative h-64 bg-stone-100">
                   <SmartImage
                     src={getHotelImage({ name: draft.name, imageUrl: draft.imageUrl, galleryUrls: draft.galleryUrls })}
                     alt={draft.name || 'Your property'}
                     className="h-full w-full object-cover"
                   />
-                  <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-stone-900">
-                    {draft.category || 'Uncategorised'}
+                  <span className="absolute left-4 top-4 rounded-md bg-white/95 px-2.5 py-1 text-xs font-medium text-stone-900">
+                    {draft.category || 'No category yet'}
                   </span>
                 </div>
                 <div className="p-6">
-                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-stone-500">{draft.location}</p>
-                  <h2 className="mt-1 font-serif text-3xl text-stone-900">{draft.name}</h2>
+                  <p className="tm-muted">{draft.location}</p>
+                  <h2 className="mt-1 tm-h1 break-words">{draft.name}</h2>
                   <p className="mt-4 whitespace-pre-line text-stone-600">{draft.description}</p>
 
                   {draft.amenities.length > 0 && (
                     <div className="mt-6 flex flex-wrap gap-2">
                       {draft.amenities.map((amenity, aIdx) => (
-                        <span key={`${amenity}-${aIdx}`} className="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
+                        <span key={`${amenity}-${aIdx}`} className="tm-tag">
                           {amenity}
                         </span>
                       ))}
@@ -3806,18 +3726,18 @@ export default function ListProperty() {
                       <dd className="text-stone-900">Until {draft.checkOutTime}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-stone-400">Photographs</dt>
+                      <dt className="font-semibold text-stone-400">Photos</dt>
                       <dd className="text-stone-900">{1 + draft.galleryUrls.length}</dd>
                     </div>
                   </dl>
 
                   <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-3">
                     <div className="min-w-0">
-                      <dt className="font-semibold text-stone-400">Public Email</dt>
+                      <dt className="font-semibold text-stone-400">Booking email</dt>
                       <dd className="truncate text-stone-900">{draft.contactEmail}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-stone-400">Public Phone</dt>
+                      <dt className="font-semibold text-stone-400">Booking phone</dt>
                       <dd className="text-stone-900">{draft.contactPhone}</dd>
                     </div>
                     <div>
@@ -3830,11 +3750,8 @@ export default function ListProperty() {
 
                   <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="font-semibold text-stone-400 flex items-center gap-1.5">
-                        <UserCheck className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Designated Property Manager</span>
-                      </dt>
-                      <dd className="text-stone-900 font-medium mt-0.5">{draft.managerName || 'Assigned Host'}</dd>
+                      <dt className="font-semibold text-stone-400">Host</dt>
+                      <dd className="text-stone-900 font-medium mt-0.5 break-words">{draft.managerName || 'Not given yet'}</dd>
                       {(draft.managerEmail || draft.managerPhone) && (
                         <dd className="text-stone-500 text-xs mt-0.5">
                           {[draft.managerEmail, draft.managerPhone].filter(Boolean).join(' · ')}
@@ -3843,11 +3760,8 @@ export default function ListProperty() {
                     </div>
                     {draft.ownerName ? (
                       <div>
-                        <dt className="font-semibold text-stone-400 flex items-center gap-1.5">
-                          <Building className="w-3.5 h-3.5 text-stone-500" />
-                          <span>Property Owner / Entity</span>
-                        </dt>
-                        <dd className="text-stone-900 font-medium mt-0.5">{draft.ownerName}</dd>
+                        <dt className="font-semibold text-stone-400">Owner</dt>
+                        <dd className="text-stone-900 font-medium mt-0.5 break-words">{draft.ownerName}</dd>
                         {(draft.ownerEmail || draft.ownerPhone) && (
                           <dd className="text-stone-500 text-xs mt-0.5">
                             {[draft.ownerEmail, draft.ownerPhone].filter(Boolean).join(' · ')}
@@ -3856,8 +3770,8 @@ export default function ListProperty() {
                       </div>
                     ) : (
                       <div>
-                        <dt className="font-semibold text-stone-400">Ownership & Management</dt>
-                        <dd className="text-stone-500 text-xs mt-0.5">Managed directly by host on-site</dd>
+                        <dt className="font-semibold text-stone-400">Owner</dt>
+                        <dd className="text-stone-500 text-xs mt-0.5">Same as host</dd>
                       </div>
                     )}
                   </dl>
@@ -3867,36 +3781,31 @@ export default function ListProperty() {
                     {draft.stayType === 'entire_place' ? (
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-stone-200">
-                              <Home className="w-3 h-3 text-stone-700" /> Entire Place
-                            </span>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                              Whole Property Setup & Nightly Rate
-                            </h4>
-                          </div>
+                          <h4 className="text-sm font-semibold text-stone-900">
+                            The whole place
+                          </h4>
                           <button
                             type="button"
                             onClick={() => setStep(3)}
-                            className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline cursor-pointer"
+                            className="tm-link text-xs cursor-pointer"
                           >
-                            Edit Whole Space →
+                            Edit
                           </button>
                         </div>
 
-                        <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2">
+                        <div className="bg-stone-50 p-4 rounded-xl space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="font-serif font-bold text-base text-stone-900">
-                              Entire {draft.entirePlaceDetails?.propertyType || 'Place'}
+                            <span className="font-serif font-semibold text-base text-stone-900">
+                              Entire {draft.entirePlaceDetails?.propertyType || 'place'}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               {draft.entirePlaceDetails?.ratePerNightUsd ? (
-                                <span className="text-stone-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-xs shadow-2xs">
+                                <span className="text-stone-900 font-semibold text-xs">
                                   ${draft.entirePlaceDetails.ratePerNightUsd} USD / night
                                 </span>
                               ) : null}
                               {draft.entirePlaceDetails?.ratePerNightMwk ? (
-                                <span className="text-stone-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-xs shadow-2xs">
+                                <span className="text-stone-900 font-semibold text-xs">
                                   MK {Number(draft.entirePlaceDetails.ratePerNightMwk).toLocaleString()} / night
                                 </span>
                               ) : null}
@@ -3904,13 +3813,13 @@ export default function ListProperty() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 text-xs text-stone-700 pt-1">
-                            <span>{draft.entirePlaceDetails?.bedrooms || 2} Bedrooms</span>
+                            <span>{draft.entirePlaceDetails?.bedrooms || 2} bedrooms</span>
                             <span>·</span>
-                            <span>{draft.entirePlaceDetails?.bathrooms || 2} Bathrooms</span>
+                            <span>{draft.entirePlaceDetails?.bathrooms || 2} bathrooms</span>
                             <span>·</span>
-                            <span>{draft.entirePlaceDetails?.beds || 3} Beds</span>
+                            <span>{draft.entirePlaceDetails?.beds || 3} beds</span>
                             <span>·</span>
-                            <span>Up to {draft.entirePlaceDetails?.maxGuests || 6} Guests</span>
+                            <span>Up to {draft.entirePlaceDetails?.maxGuests || 6} guests</span>
                           </div>
 
                           {draft.entirePlaceDetails?.wholeHouseDescription && (
@@ -3923,41 +3832,41 @@ export default function ListProperty() {
                     ) : (
                       <>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                            Configured Room Types & Rates ({(draft.rooms || []).length})
+                          <h4 className="text-sm font-semibold text-stone-900">
+                            Rooms ({(draft.rooms || []).length})
                           </h4>
                           <button
                             type="button"
                             onClick={() => setStep(3)}
-                            className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline"
+                            className="tm-link text-xs cursor-pointer"
                           >
-                            Edit Rooms →
+                            Edit
                           </button>
                         </div>
 
                         {(draft.rooms || []).length === 0 ? (
-                          <p className="text-xs text-stone-700 bg-stone-100 p-3 rounded-xl border border-stone-200">
-                            No room types added yet. Please add at least one room in Step 3 before publishing.
+                          <p className="text-xs text-amber-900 bg-amber-50 p-3 rounded-lg">
+                            No rooms yet. Add at least one on the Rooms step before you submit.
                           </p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {(draft.rooms || []).map((room, rIdx) => (
-                              <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
+                              <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl text-xs space-y-1.5 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
-                                  <span className="font-bold text-stone-900 text-sm">{room.name || `Room ${rIdx + 1}`}</span>
-                                  <span className="text-[10px] font-semibold text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
+                                  <span className="font-semibold text-stone-900 text-sm break-words min-w-0">{room.name || `Room ${rIdx + 1}`}</span>
+                                  <span className="text-[11px] text-stone-500 shrink-0">
                                     {room.quantity || 1} available
                                   </span>
                                 </div>
                                 <p className="text-stone-600 line-clamp-1">{room.description || 'No description provided'}</p>
                                 <div className="flex flex-wrap items-center gap-2 pt-1 font-semibold">
                                   {room.prices?.USD ? (
-                                    <span className="text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                                    <span className="text-stone-900">
                                       ${room.prices.USD} USD / night
                                     </span>
                                   ) : null}
                                   {room.prices?.MWK ? (
-                                    <span className="text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                                    <span className="text-stone-900">
                                       MK {Number(room.prices.MWK).toLocaleString()} / night
                                     </span>
                                   ) : null}
@@ -3975,16 +3884,15 @@ export default function ListProperty() {
 
               {/* Optional AI Appeal & Guest Clarity Check */}
               {aiStatus.enabled && aiStatus.available && (
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 space-y-3">
+                <div className="rounded-xl bg-stone-50 p-5 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-stone-600 shrink-0" />
                       <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                          Listing Readiness & Appeal Check
+                        <h4 className="text-sm font-semibold text-stone-900">
+                          Want a second opinion?
                         </h4>
                         <p className="text-[11px] text-stone-500">
-                          Get quick, private feedback on how attractive and clear your listing is for travelers.
+                          Ulendo reads your listing and says what a guest might miss. Only you see it.
                         </p>
                       </div>
                     </div>
@@ -3993,17 +3901,17 @@ export default function ListProperty() {
                         type="button"
                         onClick={handleReviewListing}
                         disabled={reviewingListing}
-                        className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-900 bg-white hover:bg-stone-100 rounded-xl border border-stone-200 transition shadow-2xs disabled:opacity-50"
+                        className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                       >
                         {reviewingListing ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
-                            <span>Reviewing draft...</span>
+                            <span>Reading…</span>
                           </>
                         ) : (
                           <>
                             <CheckCircle2 className="w-3.5 h-3.5 text-stone-600" />
-                            <span>Run Quick Check</span>
+                            <span>Check my listing</span>
                           </>
                         )}
                       </button>
@@ -4012,24 +3920,23 @@ export default function ListProperty() {
 
                   {listingReview && (
                     <div className="space-y-3 pt-3 border-t border-stone-200/70 animate-in fade-in">
-                      <div className="p-4 bg-white rounded-xl border border-stone-200 text-xs leading-relaxed text-stone-700 whitespace-pre-line">
+                      <div className="text-xs leading-relaxed text-stone-700 whitespace-pre-line break-words">
                         {listingReview}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setListingReview(null)}
-                          className="text-xs text-stone-400 hover:text-stone-600 transition"
+                          className="tm-btn tm-btn-quiet tm-btn-sm"
                         >
-                          Dismiss feedback
+                          Dismiss
                         </button>
                         <button
                           type="button"
                           onClick={() => setStep(1)}
-                          className="text-xs font-semibold text-stone-800 hover:underline inline-flex items-center gap-1"
+                          className="tm-link text-xs"
                         >
-                          <span>Edit description or amenities</span>
-                          <span>→</span>
+                          Edit description or amenities
                         </button>
                       </div>
                     </div>
@@ -4037,20 +3944,20 @@ export default function ListProperty() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
-                <p className="flex items-center gap-2 font-bold text-stone-900 text-sm">
-                  <Clock className="h-4 w-4 text-stone-600" /> What happens next
+              <div className="border-t border-stone-100 pt-6">
+                <p className="font-semibold text-stone-900 text-sm">
+                  What happens next
                 </p>
                 <ol className="mt-2.5 space-y-1.5 text-xs sm:text-sm text-stone-600">
-                  <li>1. Our local team reviews and verifies your listing (usually within 24 hours).</li>
-                  <li>2. Your property goes live in search across Malawi with 0% host commission.</li>
-                  <li>3. Direct booking inquiries and reservations arrive in your dashboard &amp; WhatsApp.</li>
+                  <li>1. Our team checks your listing, usually within a day.</li>
+                  <li>2. You will hear from us when it is live.</li>
+                  <li>3. Booking requests arrive in your dashboard.</li>
                 </ol>
               </div>
 
               {Object.keys(allErrors).length > 0 && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-                  <p className="font-bold">Not quite ready to send:</p>
+                <div className="rounded-xl bg-red-50 p-5 text-sm text-red-700">
+                  <p className="font-semibold">A few things to fix before sending:</p>
                   <ul className="mt-2 list-inside list-disc space-y-1">
                     {Object.entries(allErrors).map(([field, message]) => (
                       <li key={`${field}-${message}`}>{message}</li>
@@ -4063,12 +3970,12 @@ export default function ListProperty() {
         </div>
 
         {/* Navigation */}
-        <div className="mt-8 flex items-center justify-between gap-4">
+        <div className="mt-6 sm:mt-8 flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={goBack}
             disabled={step === 0}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-stone-600 transition hover:text-stone-900 hover:bg-stone-100 disabled:opacity-0 cursor-pointer"
+            className="tm-btn tm-btn-quiet disabled:opacity-0"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
@@ -4077,7 +3984,7 @@ export default function ListProperty() {
             <button
               type="button"
               onClick={goNext}
-              className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-6 sm:px-8 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 cursor-pointer shadow-2xs"
+              className="tm-btn tm-btn-primary"
             >
               <span>Continue</span>
               <ArrowRight className="h-4 w-4" />
@@ -4087,7 +3994,7 @@ export default function ListProperty() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-6 sm:px-8 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60 cursor-pointer shadow-xs"
+              className="tm-btn tm-btn-primary"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               <span>{submitting ? 'Sending…' : 'Submit for review'}</span>
@@ -4184,24 +4091,24 @@ function OnboardingWelcomeWalkthrough({
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 transition cursor-pointer"
+            className="tm-btn tm-btn-quiet tm-btn-sm -ml-3"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Explore Stays</span>
+            <span>Explore stays</span>
           </button>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="tm-actions">
             <Link
               to="/host-guide"
-              className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-900 font-medium px-2 py-1 transition"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               <BookOpen className="w-3.5 h-3.5 text-stone-400" />
-              <span className="hidden sm:inline">Host Guide</span>
+              <span className="hidden sm:inline">Host guide</span>
             </Link>
             <button
               type="button"
               onClick={onStart}
-              className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-900 font-medium px-2 py-1 transition cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               <span>Skip to form</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -4210,21 +4117,14 @@ function OnboardingWelcomeWalkthrough({
         </div>
 
         {/* Focused Card */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 p-6 sm:p-10 shadow-xs space-y-6 sm:space-y-8">
+        <div className="bg-white rounded-xl border border-stone-200 p-6 sm:p-10 space-y-6 sm:space-y-8">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-xs font-medium">
-              <span className="font-semibold text-stone-900">Takulandirani</span>
-              <span>·</span>
-              <span>0% Commission</span>
-              <span>·</span>
-              <span>Direct Bookings</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-stone-900 tracking-tight leading-tight">
-              List your stay in under 3 minutes
+            <p className="text-sm text-stone-500">Takulandirani.</p>
+            <h1 className="tm-h1">
+              List your stay in about 3 minutes
             </h1>
-            <p className="text-stone-600 text-sm sm:text-base leading-relaxed">
-              Connect directly with domestic and international travelers across Malawi. No foreign commission fees, direct guest WhatsApp communication, and your draft saves automatically in your browser as you type.
+            <p className="tm-lead">
+              Listing is free and guests book with you directly. Your draft saves as you type.
             </p>
           </div>
 
@@ -4233,9 +4133,9 @@ function OnboardingWelcomeWalkthrough({
             <button
               type="button"
               onClick={onStart}
-              className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-6 py-3 rounded-xl text-sm transition shadow-2xs cursor-pointer active:scale-98"
+              className="tm-btn tm-btn-primary"
             >
-              <span>Start Listing Setup</span>
+              <span>Start listing</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -4243,51 +4143,35 @@ function OnboardingWelcomeWalkthrough({
               <button
                 type="button"
                 onClick={onImportDocument}
-                className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 font-semibold px-5 py-3 rounded-xl text-sm transition shadow-2xs cursor-pointer"
+                className="tm-btn tm-btn-secondary"
               >
                 <FileText className="w-4 h-4 text-stone-600" />
-                <span>Import from Document</span>
+                <span>Import from a document</span>
               </button>
             )}
           </div>
 
           {/* Simple 3-Step Overview */}
-          <div className="pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-left">
-            <div className="p-4 rounded-xl border border-stone-200/80 bg-stone-50/70 space-y-1.5">
-              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider block">
-                01 / Basics
-              </span>
-              <h3 className="font-semibold text-stone-900 text-sm">Property &amp; Location</h3>
+          <ol className="pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+            <li className="space-y-1">
+              <h3 className="font-semibold text-stone-900 text-sm">1. Your property</h3>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Name your stay, pick its category, and choose its location in Malawi.
+                Name, category and where it is.
               </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-stone-200/80 bg-stone-50/70 space-y-1.5">
-              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider block">
-                02 / Rates &amp; Media
-              </span>
-              <h3 className="font-semibold text-stone-900 text-sm">Photos &amp; Pricing</h3>
+            </li>
+            <li className="space-y-1">
+              <h3 className="font-semibold text-stone-900 text-sm">2. Photos and rates</h3>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Add your cover photo and set rates in Malawian Kwacha (MWK), USD, or both.
+                A cover photo and nightly rates in MK, USD or both.
               </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-stone-200/80 bg-stone-50/70 space-y-1.5">
-              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider block">
-                03 / Contacts
-              </span>
-              <h3 className="font-semibold text-stone-900 text-sm">Host &amp; Inquiries</h3>
+            </li>
+            <li className="space-y-1">
+              <h3 className="font-semibold text-stone-900 text-sm">3. Contacts</h3>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Direct phone and WhatsApp for guests to contact you without intermediaries.
+                The phone and WhatsApp guests use to reach you.
               </p>
-            </div>
-          </div>
-
-          <div className="pt-2 text-xs text-stone-400 flex items-center justify-between border-t border-stone-100 flex-wrap gap-2">
-            <span>Travel Malawi · The Warm Heart of Africa</span>
-            <span className="font-mono text-[11px] text-stone-400">Takes ~2 to 3 minutes</span>
-          </div>
+            </li>
+          </ol>
         </div>
       </main>
     </div>

@@ -18,6 +18,7 @@ brief in `agents/leads/<lead>.md`, then do the task you were given. Nothing else
 7. Don't run `npm run build`; run `npx tsc --noEmit` once when done and only fix errors in your files
    (errors in other leads' files may be their in-progress edits — ignore them).
 8. Never commit or push. The orchestrator verifies and ships.
+9. Never spawn sub-agents: a lead does its own work (extra agents re-read the same files and double the cost).
 
 ## 2. Severity & what to fix
 | Sev | Meaning | Action |

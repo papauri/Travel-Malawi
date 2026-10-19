@@ -48,9 +48,9 @@ export default function Terms() {
         </div>
 
         {/* Paper Article */}
-        <article className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
+        <article className="bg-white rounded-xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8">
           <header className="border-b border-stone-200 pb-8">
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-500 mb-2.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 mb-2.5">
               <span>Travel Malawi</span>
               <span>·</span>
               <span>Platform Terms &amp; Conditions</span>
@@ -59,7 +59,7 @@ export default function Terms() {
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-900 shrink-0">
                 <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-stone-800" />
               </div>
               <div>
@@ -75,17 +75,17 @@ export default function Terms() {
             {/* Platform Commitments Strip */}
             <div className="mt-8 pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Marketplace Role</span>
+                <span className="text-stone-400 block font-semibold text-xs">Marketplace Role</span>
                 <span className="font-semibold text-stone-900 text-sm">Discovery &amp; Conduit Only</span>
                 <p className="text-[11px] text-stone-500 mt-1">We do not own, operate, or staff listed stays.</p>
               </div>
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Financial Settlement</span>
+                <span className="text-stone-400 block font-semibold text-xs">Financial Settlement</span>
                 <span className="font-semibold text-stone-900 text-sm">Direct Guest-to-Host</span>
                 <p className="text-[11px] text-stone-500 mt-1">Zero payments or deposits handled by platform.</p>
               </div>
               <div className="p-3.5 bg-stone-50/80 rounded-xl border border-stone-200/80">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Platform Liability</span>
+                <span className="text-stone-400 block font-semibold text-xs">Platform Liability</span>
                 <span className="font-semibold text-stone-900 text-sm">Zero Liability Disclaimed</span>
                 <p className="text-[11px] text-stone-500 mt-1">Disputes are strictly between user and stay.</p>
               </div>
@@ -99,7 +99,7 @@ export default function Terms() {
               <>
                 <section className="space-y-3">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">1</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">1</span>
                     <span>Platform Role: Information &amp; Direct Connection</span>
                   </h2>
                   <p>
@@ -112,10 +112,10 @@ export default function Terms() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">2</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">2</span>
                     <span>Zero Fund Handling: All Payments Are Direct</span>
                   </h2>
-                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
                     <p className="font-semibold text-stone-900">
                       We process zero online payments, collect no deposits, and hold no guest funds.
                     </p>
@@ -127,10 +127,10 @@ export default function Terms() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">3</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">3</span>
                     <span>Cancellations, Refunds &amp; Grievances are at the Stay&apos;s Sole Discretion</span>
                   </h2>
-                  <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-2 text-amber-950">
+                  <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200/80 space-y-2 text-amber-950">
                     <div className="flex items-center gap-2 font-bold text-amber-900">
                       <AlertCircle className="w-4 h-4 text-amber-800 shrink-0" />
                       <span>Strictly Between User and Stay</span>
@@ -146,7 +146,7 @@ export default function Terms() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">4</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">4</span>
                     <span>Complete Limitation of Liability &amp; Hold Harmless</span>
                   </h2>
                   <p>
@@ -167,7 +167,7 @@ export default function Terms() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">5</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">5</span>
                     <span>Host Obligations</span>
                   </h2>
                   <p>
@@ -183,7 +183,7 @@ export default function Terms() {
 
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-mono font-bold flex items-center justify-center shrink-0">6</span>
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">6</span>
                     <span>Questions &amp; Contact Desk</span>
                   </h2>
                   <p>
@@ -198,7 +198,7 @@ export default function Terms() {
             <div>
               Travel Malawi Platform Operations · The Warm Heart of Africa
             </div>
-            <div className="font-mono text-[11px] text-stone-500">
+            <div className="text-xs text-stone-500">
               Direct Marketplace · Zero Platform Liability
             </div>
           </footer>

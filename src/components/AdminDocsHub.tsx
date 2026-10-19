@@ -169,11 +169,11 @@ export default function AdminDocsHub() {
   );
 
   const secondaryBtn =
-    'inline-flex items-center gap-1.5 border border-stone-200 bg-white text-stone-800 rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-50 shadow-2xs transition cursor-pointer disabled:opacity-50';
+    'inline-flex items-center gap-1.5 border border-stone-200 bg-white text-stone-800 rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-50 transition cursor-pointer disabled:opacity-50';
   const primaryBtn =
-    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-800 shadow-2xs transition cursor-pointer';
+    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-800 transition cursor-pointer';
   const tabBtn = (active: boolean) => (active ? primaryBtn : secondaryBtn);
-  const th = 'bg-stone-50 text-left text-[11px] font-semibold uppercase tracking-wider text-stone-500 px-4 py-3';
+  const th = 'bg-stone-50 text-left text-[11px] font-semibold text-stone-500 px-4 py-3';
   const td = 'px-4 py-3 border-t border-stone-100 text-stone-700 align-top text-xs';
   const textLink = 'text-stone-900 underline underline-offset-2 decoration-stone-300 hover:decoration-stone-900';
 
@@ -204,7 +204,7 @@ export default function AdminDocsHub() {
     <div className="text-stone-700 font-sans">
       {/* Header */}
       <header className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Outreach &amp; Strategy Library</h2>
+        <h2 className="tm-h1">Outreach &amp; Strategy Library</h2>
         <p className="mt-1 text-xs sm:text-sm text-stone-500">
           Partner surveys, host leaflets, and operational guides. Download as text, HTML, or print to PDF.
         </p>
@@ -212,7 +212,7 @@ export default function AdminDocsHub() {
           <button 
             onClick={() => setActiveSection('library')} 
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeSection === 'library' ? 'bg-stone-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+              activeSection === 'library' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Documents
@@ -220,7 +220,7 @@ export default function AdminDocsHub() {
           <button 
             onClick={() => setActiveSection('surveys')} 
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeSection === 'surveys' ? 'bg-stone-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+              activeSection === 'surveys' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Survey responses ({surveys.length})
@@ -311,7 +311,7 @@ export default function AdminDocsHub() {
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 pt-2">
                 <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono">{(surveyPage - 1) * surveysPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(surveyPage * surveysPerPage, surveys.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{surveys.length}</span> responses
+                  Showing <span className="font-semibold text-stone-900 tabular-nums">{(surveyPage - 1) * surveysPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(surveyPage * surveysPerPage, surveys.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{surveys.length}</span> responses
                 </div>
                 {surveys.length > surveysPerPage && (
                   <Pagination
@@ -338,11 +338,11 @@ export default function AdminDocsHub() {
                 placeholder="Search documents…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full sm:w-64 bg-white border border-stone-200 rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder-stone-400 shadow-2xs focus:outline-none focus:border-stone-900"
+                className="w-full sm:w-64 bg-white border border-stone-200 rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900"
               />
             </div>
 
-            <div className="mt-4 overflow-x-auto bg-white border border-stone-200 rounded-2xl shadow-2xs">
+            <div className="mt-4 overflow-x-auto bg-white border border-stone-200 rounded-xl">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-stone-200">
@@ -381,7 +381,7 @@ export default function AdminDocsHub() {
                             </span>
                             {doc.isCustomized && <span className="block text-[10px] text-emerald-700 font-semibold mt-0.5">Customised</span>}
                           </td>
-                          <td className={`${td} whitespace-nowrap text-stone-500 font-mono text-[11px]`}>{formatEdited(doc)}</td>
+                          <td className={`${td} whitespace-nowrap text-stone-500 text-[11px] tabular-nums`}>{formatEdited(doc)}</td>
                           <td className={`${td} whitespace-nowrap text-right`}>
                             <div className="inline-flex items-center gap-3 font-medium">
                               <button
@@ -424,13 +424,13 @@ export default function AdminDocsHub() {
 
           {/* Document viewer */}
           <section className="mt-8">
-            <div className="bg-white border border-stone-200 rounded-2xl shadow-2xs overflow-hidden">
+            <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
               {/* Viewer toolbar */}
               <div className="px-5 py-4 border-b border-stone-200 bg-stone-50/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium text-stone-500">
                     {currentDoc?.category || 'Document'}
-                    {currentDoc?.filename && <> &middot; <span className="font-mono">{currentDoc.filename}</span></>}
+                    {currentDoc?.filename && <> &middot; <span>{currentDoc.filename}</span></>}
                   </p>
                   <h3 className="mt-0.5 text-base font-serif font-bold text-stone-900">{currentDoc?.title}</h3>
                 </div>
@@ -486,7 +486,7 @@ export default function AdminDocsHub() {
                     <p className="text-sm text-stone-500 mb-3">
                       {currentDoc?.filename.replace(/\.md$/, '.txt')} &middot; {currentDoc?.wordCount.toLocaleString()} words
                     </p>
-                    <pre className="font-mono text-[13px] leading-relaxed text-stone-800 whitespace-pre-wrap select-text bg-stone-50 border border-stone-200 rounded-md p-4 overflow-x-auto">
+                    <pre className="font-sans text-sm leading-relaxed text-stone-800 whitespace-pre-wrap select-text bg-stone-50 border border-stone-200 rounded-md p-4 overflow-x-auto">
                       {currentContent.plainText}
                     </pre>
                   </>
@@ -525,7 +525,7 @@ export default function AdminDocsHub() {
                     <p className="text-sm text-stone-500 mb-3">
                       {currentDoc?.filename} &middot; {currentDoc?.sizeBytes} bytes
                     </p>
-                    <pre className="font-mono text-[13px] leading-relaxed text-stone-800 whitespace-pre-wrap select-text bg-stone-50 border border-stone-200 rounded-md p-4 overflow-x-auto">
+                    <pre className="font-sans text-sm leading-relaxed text-stone-800 whitespace-pre-wrap select-text bg-stone-50 border border-stone-200 rounded-md p-4 overflow-x-auto">
                       {currentContent.rawMd}
                     </pre>
                   </>

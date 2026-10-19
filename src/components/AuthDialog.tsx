@@ -11,19 +11,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  Mail,
-  Lock,
-  User as UserIcon,
-  Compass,
-  Building2,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  CheckCircle2,
-  Check,
-} from 'lucide-react';
-import Modal, { fieldClass, labelClass } from './Modal';
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import Modal from './Modal';
 import FieldError from './FieldError';
 import { emailProblem } from '../lib/contact';
 import { Role } from '../types';
@@ -147,17 +136,17 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
         err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password'
           ? 'Incorrect email or password.'
           : err?.code === 'auth/user-not-found'
-          ? 'No account found with that email address.'
+          ? 'No account uses that email. Check it or create an account.'
           : err?.code === 'auth/email-already-in-use'
-          ? 'An account with this email already exists. Please sign in instead.'
+          ? 'That email already has an account. Try signing in.'
           : err?.code === 'auth/weak-password'
-          ? 'Password must be at least 6 characters.'
+          ? 'Use at least 6 characters for your password.'
           : err?.code === 'auth/invalid-email'
-          ? 'Please enter a valid email address.'
+          ? 'That email address does not look right.'
           : err?.code === 'auth/network-request-failed'
-          ? 'Network connection failed. Please check your internet connection.'
+          ? 'No connection. Check your internet and try again.'
           : err?.code === 'auth/too-many-requests'
-          ? 'Too many attempts. Please wait a moment and try again.'
+          ? 'Too many attempts. Wait a minute, then try again.'
           : err?.message ?? 'Something went wrong. Please try again.';
       setError(msg);
     } finally {
@@ -176,14 +165,14 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
       onClose();
     } catch (err: any) {
       if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
-        setError('Browser popup was blocked. Redirecting you to Google Sign-In...');
+        setError('Your browser blocked the Google window. Allow pop-ups and try again.');
         return;
       }
       const msg =
         err?.code === 'auth/popup-closed-by-user'
           ? 'Google sign-in was cancelled.'
           : err?.code === 'auth/network-request-failed'
-          ? 'Network error during Google sign-in. Please try again.'
+          ? 'No connection. Check your internet and try again.'
           : err?.message ?? 'Google sign-in failed. Please try again.';
       setError(msg);
     } finally {
@@ -195,37 +184,42 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
     mode === 'reset'
       ? 'Reset your password'
       : mode === 'signup'
-        ? hosting ? 'Create Property Owner Account' : 'Create Guest Account'
-        : 'Welcome back';
+        ? hosting ? 'Create a host account' : 'Create an account'
+        : 'Sign in';
 
   const description =
     mode === 'reset'
-      ? "We'll email you a secure link to choose a new password."
+      ? "We'll email you a link to choose a new password."
       : mode === 'signup'
         ? hosting
-          ? 'Sign up to unlock the Host Starter Pack, Host Dashboard, and direct 0% fee listings.'
-          : 'Browse lodges, B&Bs, cottages & stays, chat with verified hosts on WhatsApp, and manage bookings.'
-        : 'Sign in to access your bookings and properties.';
+          ? 'List your property and manage bookings directly.'
+          : 'Save stays, message hosts and manage your bookings.'
+        : 'Welcome back. Sign in to see your bookings.';
+
+  const optionClass = (active: boolean) =>
+    `tm-btn tm-btn-secondary h-auto flex-col items-start gap-0.5 py-2.5 text-left ${
+      active ? 'border-stone-900 ring-1 ring-stone-900' : ''
+    }`;
 
   return (
     <Modal open={open} onClose={onClose} size="md" title={title} description={description}
       footer={
-        <div className="space-y-2 sm:space-y-2.5">
+        <div className="space-y-2">
           <button
             type="submit"
             form="auth-form"
             disabled={isSubmitting}
-            className="w-full bg-stone-900 text-white py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm hover:bg-stone-800 transition disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+            className="tm-btn tm-btn-primary w-full"
           >
             {isSubmitting
-              ? mode === 'signin' ? 'Signing in…' : mode === 'signup' ? (hosting ? 'Creating owner account…' : 'Creating guest account…') : 'Sending link…'
-              : mode === 'signin' ? 'Sign In' : mode === 'signup' ? (hosting ? 'Create Property Owner Account' : 'Create Guest Account') : 'Send reset link'}
+              ? mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating account…' : 'Sending link…'
+              : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
           </button>
           {mode === 'reset' && (
             <button
               type="button"
               onClick={() => { setMode('signin'); setError(''); setNotice(''); }}
-              className="w-full text-xs sm:text-sm font-semibold text-stone-500 hover:text-stone-900 transition py-1 cursor-pointer"
+              className="tm-btn tm-btn-quiet w-full"
             >
               Back to sign in
             </button>
@@ -235,103 +229,99 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
     >
       {/* Mode toggle — a reset is a detour, not a third tab. */}
       {mode !== 'reset' && (
-        <div className="flex bg-stone-100 rounded-xl p-1 mb-4 sm:mb-5 border border-stone-200/70">
-          {(['signin', 'signup'] as const).map((m, mIdx) => (
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-stone-100 p-1">
+          {(['signin', 'signup'] as const).map((m) => (
             <button
-              key={`${m}-${mIdx}`}
+              key={m}
               type="button"
               onClick={() => { setMode(m); setError(''); setNotice(''); setShowErrors(false); }}
-              className={`flex-1 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer ${
-                mode === m ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'
-              }`}
+              className={`tm-btn tm-btn-sm ${mode === m ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}
             >
-              {m === 'signin' ? 'Sign In' : 'Create Account'}
+              {m === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           ))}
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50/90 border border-red-200/80 text-red-700 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs mb-3.5 sm:mb-4 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-          <div className="flex-1 leading-relaxed font-medium">{error}</div>
+        <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1 break-words">{error}</div>
         </div>
       )}
 
       {notice && (
-        <div className="bg-emerald-50/90 border border-emerald-200/80 text-emerald-800 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs mb-3.5 sm:mb-4 flex items-start gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="flex-1 leading-relaxed font-medium">{notice}</div>
+        <div className="mb-4 flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1 break-words">{notice}</div>
         </div>
       )}
 
-      <form id="auth-form" onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5" noValidate>
+      <form id="auth-form" onSubmit={handleSubmit} className="space-y-3" noValidate>
         {mode === 'signup' && (
           <div>
-            <label className={labelClass}>Full name</label>
-            <div className="relative">
-              <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-400 pointer-events-none" />
-              <input
-                type="text"
-                required
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder="Your full name"
-                className={`${fieldClass} pl-9 sm:pl-10`}
-              />
-            </div>
+            <label className="tm-label" htmlFor="auth-name">Full name</label>
+            <input
+              id="auth-name"
+              type="text"
+              required
+              autoComplete="name"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              className="tm-input"
+            />
             <FieldError message={showErrors ? problems.displayName : ''} />
           </div>
         )}
 
         <div>
-          <label className={labelClass}>Email address</label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-400 pointer-events-none" />
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className={`${fieldClass} pl-9 sm:pl-10`}
-            />
-          </div>
+          <label className="tm-label" htmlFor="auth-email">Email</label>
+          <input
+            id="auth-email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="tm-input"
+          />
           <FieldError message={showErrors ? problems.email : ''} />
         </div>
 
         {mode !== 'reset' && (
           <div>
-            <div className="flex items-baseline justify-between mb-1 sm:mb-1.5">
-              <label className={labelClass}>Password</label>
+            <div className="flex items-baseline justify-between gap-2">
+              <label className="tm-label" htmlFor="auth-password">Password</label>
               {mode === 'signin' && (
                 <button
                   type="button"
                   onClick={() => { setMode('reset'); setError(''); setNotice(''); }}
-                  className="text-[11px] sm:text-xs font-semibold text-stone-500 hover:text-stone-900 transition cursor-pointer"
+                  className="tm-link text-xs"
                 >
                   Forgot password?
                 </button>
               )}
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-400 pointer-events-none" />
               <input
+                id="auth-password"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                className={`${fieldClass} pl-9 sm:pl-10 pr-9 sm:pr-10`}
+                placeholder={mode === 'signup' ? 'At least 6 characters' : ''}
+                className="tm-input pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
                 tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             <FieldError message={showErrors ? problems.password : ''} />
@@ -339,111 +329,45 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
         )}
 
         {mode === 'signup' && (
-          <div className="space-y-2 pt-0.5">
-            <label className={labelClass}>Choose Account Type</label>
-            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+          <fieldset>
+            <legend className="tm-label">I am a</legend>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                aria-pressed={!hosting}
                 onClick={() => setRoles(['traveller'])}
-                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                  !hosting
-                    ? 'border-stone-900 bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
-                    : 'border-stone-200 bg-stone-50 hover:bg-stone-100/80 text-stone-700'
-                }`}
+                className={optionClass(!hosting)}
               >
-                <div className="flex items-center justify-between w-full mb-1.5 sm:mb-2">
-                  <div className={`p-1 sm:p-1.5 rounded-lg ${!hosting ? 'bg-stone-800 text-white' : 'bg-stone-200/80 text-stone-700'}`}>
-                    <Compass className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </div>
-                  {!hosting && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-300" />}
-                </div>
-                <div>
-                  <div className="text-xs font-bold tracking-tight">Guest Account</div>
-                  <div className={`text-[10px] sm:text-[11px] leading-tight mt-0.5 ${!hosting ? 'text-stone-300' : 'text-stone-500'}`}>
-                    Traveler looking to book
-                  </div>
-                </div>
+                <span className="font-medium">Guest</span>
+                <span className="text-xs font-normal text-stone-500">Looking to book</span>
               </button>
-
               <button
                 type="button"
+                aria-pressed={hosting}
                 onClick={() => setRoles(['traveller', 'hotel_manager'])}
-                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                  hosting
-                    ? 'border-stone-900 bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
-                    : 'border-stone-200 bg-stone-50 hover:bg-stone-100/80 text-stone-700'
-                }`}
+                className={optionClass(hosting)}
               >
-                <div className="flex items-center justify-between w-full mb-1.5 sm:mb-2">
-                  <div className={`p-1 sm:p-1.5 rounded-lg ${hosting ? 'bg-stone-800 text-white' : 'bg-stone-200/80 text-stone-700'}`}>
-                    <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </div>
-                  {hosting && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-300" />}
-                </div>
-                <div>
-                  <div className="text-xs font-bold tracking-tight">Property Owner</div>
-                  <div className={`text-[10px] sm:text-[11px] leading-tight mt-0.5 ${hosting ? 'text-stone-300' : 'text-stone-500'}`}>
-                    Lodge, cottage, or guest house host
-                  </div>
-                </div>
+                <span className="font-medium">Property owner</span>
+                <span className="text-xs font-normal text-stone-500">Listing a stay</span>
               </button>
             </div>
-
-            {/* Explanatory breakdown of features available for each sign up option */}
-            <div className="p-2.5 sm:p-3 rounded-xl bg-stone-100/80 border border-stone-200 text-xs space-y-1">
-              <div className="flex items-center justify-between font-semibold text-stone-900 text-[10px] sm:text-[11px] uppercase tracking-wider">
-                <span>{hosting ? 'Owner Tools Included' : 'Guest Features Included'}</span>
-                <span className="font-normal text-[9px] sm:text-[10px] text-stone-500 lowercase">
-                  {hosting ? 'complete host suite' : 'booking & vouchers'}
-                </span>
-              </div>
-              <ul className="text-[10px] sm:text-[11px] text-stone-600 space-y-1 leading-snug">
-                {hosting ? (
-                  <>
-                    <li className="flex items-center gap-1.5 font-medium text-stone-900">
-                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span><strong>Host Starter Pack</strong>: Onboarding guide &amp; rate card</span>
-                    </li>
-                    <li className="flex items-center gap-1.5 font-medium text-stone-900">
-                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span><strong>Host Dashboard</strong>: Manage whole space, rooms &amp; pricing</span>
-                    </li>
-                    <li className="flex items-center gap-1.5 text-stone-700">
-                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span>0% commission on direct inquiries</span>
-                    </li>
-                  </>
-                ) : (
-                  <>
-                    <li className="flex items-center gap-1.5 text-stone-700">
-                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span>Direct WhatsApp chat with verified hosts</span>
-                    </li>
-                    <li className="flex items-center gap-1.5 text-stone-700">
-                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span>Saved properties, trip itineraries &amp; vouchers</span>
-                    </li>
-                  </>
-                )}
-              </ul>
-            </div>
-          </div>
+          </fieldset>
         )}
       </form>
 
       {mode !== 'reset' && (
         <>
-          <div className="flex items-center gap-3 my-3.5 sm:my-4">
-            <div className="flex-1 h-px bg-stone-200" />
-            <span className="text-[11px] sm:text-xs text-stone-400 font-medium">or continue with</span>
-            <div className="flex-1 h-px bg-stone-200" />
+          <div className="my-4 flex items-center gap-3">
+            <div className="tm-divider flex-1" />
+            <span className="tm-muted text-xs">or</span>
+            <div className="tm-divider flex-1" />
           </div>
 
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 sm:gap-2.5 border border-stone-200 bg-white py-2 sm:py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition disabled:opacity-50 active:scale-[0.99] shadow-xs cursor-pointer"
+            className="tm-btn tm-btn-secondary w-full"
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -451,14 +375,11 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            <span className="truncate">{mode === 'signup' ? (hosting ? 'Sign up as Property Owner with Google' : 'Sign up as Guest with Google') : 'Continue with Google'}</span>
+            <span className="truncate">Continue with Google</span>
           </button>
 
-          <p className="text-center text-[11px] sm:text-xs text-stone-400 mt-3.5 sm:mt-4 leading-relaxed">
-            By continuing, you agree to our{' '}
-            <span className="underline cursor-pointer hover:text-stone-600">Terms of Service</span>
-            {' '}and{' '}
-            <span className="underline cursor-pointer hover:text-stone-600">Privacy Policy</span>.
+          <p className="tm-muted mt-4 text-center text-xs">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
         </>
       )}

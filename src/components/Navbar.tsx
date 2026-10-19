@@ -115,7 +115,7 @@ export default function Navbar() {
   const hosting = isHotelManager(user) || hasProperties;
 
   return (
-    <nav className="sticky top-0 z-[100] w-full bg-white/95 backdrop-blur-md border-b border-stone-200/70 shadow-2xs transition-all">
+    <nav className="sticky top-0 z-[100] w-full bg-white border-b border-stone-200/70 shadow-2xs transition-all">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between h-14 sm:h-16 md:h-16 lg:h-18">
           {/* Logo & Network Status */}
@@ -237,11 +237,11 @@ export default function Navbar() {
 
                   {showUserMenu && (
                     <div
-                      className="absolute right-0 mt-2 w-52 sm:w-56 max-w-[calc(100vw-1.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl py-1.5 z-50 overflow-hidden"
+                      className="absolute right-0 mt-2 w-52 sm:w-56 max-w-[calc(100vw-1.5rem)] bg-white border border-stone-200 rounded-xl shadow-sm py-1.5 z-50 overflow-hidden"
                       onMouseLeave={() => setShowUserMenu(false)}
                     >
                       <div className="px-3.5 py-2.5 border-b border-stone-100">
-                        <p className="text-[10px] sm:text-xs text-stone-400 uppercase tracking-wider font-semibold mb-0.5">Signed in as</p>
+                        <p className="text-[10px] sm:text-xs text-stone-400 font-semibold mb-0.5">Signed in as</p>
                         <p className="text-xs sm:text-sm font-medium text-stone-900 truncate">{user.email}</p>
                         <p className="text-[11px] text-stone-500 mt-0.5">{describeRoles(user)}</p>
                       </div>

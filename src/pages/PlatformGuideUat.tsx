@@ -148,11 +148,18 @@ const UAT_TESTS: TestCase[] = [
   }
 ];
 
+const GUIDE_STEPS = [
+  'Open the Checklist tab.',
+  'Run each test on a phone and on a laptop.',
+  'Tick the test when it behaves as expected.',
+  'Report anything wrong using the form below.',
+];
+
 export default function PlatformGuideUat() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'platform-guide-uat',
-    'Platform Architecture & Quality Assurance Standards',
-    'An operational manual for engineering, field onboarding scouts, and marketing leads. Details verification checklists, zero-failure payment rails, and platform telemetry benchmarks across Malawi.'
+    'Platform test guide',
+    'Check the main flows before each release, tick them off, and report anything that breaks.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -210,7 +217,7 @@ export default function PlatformGuideUat() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
-    toast.success('Link copied to clipboard');
+    toast.success('Link copied');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -264,91 +271,53 @@ export default function PlatformGuideUat() {
 
       setSubmissionId(refId);
       setSubmitted(true);
-      toast.success('Zikomo! QA defect report logged.');
+      toast.success('Zikomo! Report sent.');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit report.');
+      toast.error(err?.message || 'Could not send the report. Try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputClass =
-    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
-  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
-
   return (
-    <div className="min-h-screen bg-white text-stone-700 font-sans">
-      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+    <div className="min-h-screen bg-white text-stone-700">
+      <main className="tm-page max-w-3xl py-8 sm:py-12 print:py-0">
+        <div className="tm-actions mb-6 print:hidden">
+          <Link to="/" className="tm-btn tm-btn-secondary tm-btn-sm">
+            <ArrowLeft size={14} /> Home
+          </Link>
+          <DocQuickEditButton docId="platform-guide-uat" onSaved={() => refreshDoc()} />
+          <button onClick={handleShareWhatsApp} className="tm-btn tm-btn-secondary tm-btn-sm">
+            <MessageSquare size={14} /> Share
+          </button>
+          <button onClick={handleCopyLink} className="tm-btn tm-btn-secondary tm-btn-sm">
+            {copiedLink ? <Check size={14} /> : <Copy size={14} />} {copiedLink ? 'Copied' : 'Copy link'}
+          </button>
+          <button onClick={handlePrint} className="tm-btn tm-btn-primary tm-btn-sm">
+            <Printer size={14} /> Print / PDF
+          </button>
+        </div>
 
-        {/* Header */}
-        <header className="border-b border-stone-200 pb-6 mb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <p className="text-sm text-stone-500">Platform &amp; QA &middot; Release v2.5.0</p>
-            <div className="flex items-center gap-2 flex-wrap print:hidden">
-              <Link
-                to="/"
-                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50"
-              >
-                <ArrowLeft size={16} className="text-stone-500" />
-                Home
-              </Link>
-              <DocQuickEditButton
-                docId="platform-guide-uat"
-                onSaved={() => refreshDoc()}
-              />
-              <button
-                onClick={handleShareWhatsApp}
-                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
-              >
-                <MessageSquare size={16} className="text-stone-500" />
-                Share
-              </button>
-              <button
-                onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
-                title="Copy link"
-              >
-                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
-                {copiedLink ? 'Copied' : 'Copy link'}
-              </button>
-              <button
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer"
-              >
-                <Printer size={16} />
-                Print / PDF
-              </button>
-            </div>
-          </div>
-
-          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
-          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+        <header className="mb-6">
+          <h1 className="tm-h1">{customTitle}</h1>
+          <p className="tm-lead mt-2">{customSubtitle}</p>
           {(isCustomized || lastEditedBy) && (
-            <p className="mt-2 text-sm text-stone-500">
+            <p className="tm-muted mt-2">
               {isCustomized && 'Customised edition'}
               {isCustomized && lastEditedBy && ' · '}
               {lastEditedBy && `Maintained by ${lastEditedBy}`}
             </p>
           )}
-
-          <div className="mt-6 flex items-center gap-2 print:hidden">
+          <div className="tm-actions mt-4 print:hidden">
             <button
               onClick={() => setActiveTab('guide')}
-              className={`rounded-md px-3 py-1.5 text-sm cursor-pointer ${
-                activeTab === 'guide'
-                  ? 'bg-stone-900 text-white hover:bg-stone-800'
-                  : 'border border-stone-300 text-stone-800 hover:bg-stone-50'
-              }`}
+              className={`tm-btn tm-btn-sm ${activeTab === 'guide' ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
             >
-              Guide
+              How to test
             </button>
             <button
               onClick={() => setActiveTab('checklist')}
-              className={`rounded-md px-3 py-1.5 text-sm cursor-pointer ${
-                activeTab === 'checklist'
-                  ? 'bg-stone-900 text-white hover:bg-stone-800'
-                  : 'border border-stone-300 text-stone-800 hover:bg-stone-50'
-              }`}
+              className={`tm-btn tm-btn-sm ${activeTab === 'checklist' ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
             >
               Checklist ({completedCount}/{UAT_TESTS.length})
             </button>
@@ -356,150 +325,106 @@ export default function PlatformGuideUat() {
         </header>
 
         {activeTab === 'checklist' ? (
-          <div className="text-[15px] leading-relaxed">
-            <div className="flex items-center justify-between gap-4 pb-4">
-              <p className="text-stone-700">
-                {completedCount} of {UAT_TESTS.length} verified ({progressPercent}%)
+          <div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="tm-muted">
+                {completedCount} of {UAT_TESTS.length} done ({progressPercent}%)
               </p>
-              <button
-                onClick={resetChecklist}
-                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
-              >
-                <RefreshCw size={16} className="text-stone-500" />
-                Reset
+              <button onClick={resetChecklist} className="tm-btn tm-btn-secondary tm-btn-sm">
+                <RefreshCw size={14} /> Reset
               </button>
             </div>
 
-            <ul className="border-t border-stone-200">
+            <ul className="tm-divider">
               {UAT_TESTS.map(t => {
                 const isChecked = !!completedTests[t.id];
                 return (
-                  <li key={t.id} className="border-b border-stone-200 py-4">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleTest(t.id)}
-                        className="mt-1 h-4 w-4 accent-stone-900"
-                      />
-                      <div>
-                        <h3 className={`text-base font-semibold ${isChecked ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
-                          {t.id}. {t.title}
-                        </h3>
-                        <p className="text-sm text-stone-500">{t.suite}</p>
-                        <ul className="mt-2 list-disc pl-5 text-stone-700">
-                          {t.steps.map((st, sIdx) => (
-                            <li key={sIdx}>{st}</li>
-                          ))}
-                        </ul>
-                        <p className="mt-2 text-stone-700">
-                          <span className="font-medium text-stone-900">Expected:</span> {t.expected}
-                        </p>
-                      </div>
-                    </label>
+                  <li key={t.id} className="flex items-start gap-3 border-b border-stone-200 py-3">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleTest(t.id)}
+                      aria-label={`${t.id}: ${t.title}`}
+                      className="mt-1 h-4 w-4 shrink-0 accent-stone-900"
+                    />
+                    <details className="min-w-0 flex-1">
+                      <summary className={`cursor-pointer break-words font-medium ${isChecked ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
+                        {t.id}. {t.title}
+                      </summary>
+                      <p className="tm-muted mt-1">{t.suite}</p>
+                      <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
+                        {t.steps.map((st, sIdx) => (
+                          <li key={sIdx}>{st}</li>
+                        ))}
+                      </ol>
+                      <p className="mt-2 text-sm">
+                        <span className="font-medium text-stone-900">Expect:</span> {t.expected}
+                      </p>
+                    </details>
                   </li>
                 );
               })}
             </ul>
           </div>
         ) : (
-          <div className="text-[15px] leading-relaxed">
-            <section>
-              <h2 className="text-xl font-semibold text-stone-900">1. Core architectural pillars</h2>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">0% commission direct bookings</h3>
-                  <p className="text-stone-700">
-                    Eliminates the 15%–25% commission tax imposed by foreign OTAs. Direct guest communication and reservation requests via WhatsApp and in-app vouchers.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">Native dual currency (MWK / USD)</h3>
-                  <p className="text-stone-700">
-                    Dual currency engine allowing travelers to browse and book natively in clean Kwacha (rounded to nearest 1,000) or USD with zero forex spread penalty.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">Offline satellite GPS navigation</h3>
-                  <p className="text-stone-700">
-                    Multi-tier map tile caching enabling vehicle drivers to locate remote bush chalets and lake gates even with zero cellular reception.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">Local payment rail support</h3>
-                  <p className="text-stone-700">
-                    Full compatibility with Airtel Money, TNM Mpamba, National Bank of Malawi, Standard Bank, and FDH Bank transfers.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">2-Way iCal synchronization &amp; live diagnostics</h3>
-                  <p className="text-stone-700">
-                    Native RFC 5545 feed sync with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar. Features on-demand connection testing with latency benchmarking and reservation previews.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-stone-900">Staff &amp; concierge support shadow mode</h3>
-                  <p className="text-stone-700">
-                    Secure role-based dashboard shadowing for Admin and Marketing staff to assist hosts with setup, test channel feeds, and configure rates without sharing passwords.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Verification protocols &amp; standard test suites</h2>
-              <p className="mt-3 text-stone-700">
-                Prior to approving any release or production update, the core test suites in the checklist must be validated across both desktop and mobile viewports (iOS Safari and Android Chrome).
+          <section>
+            <h2 className="tm-h2">How to test</h2>
+            <ol className="mt-3 list-decimal space-y-2 pl-5">
+              {GUIDE_STEPS.map(step => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+            <details className="mt-4">
+              <summary className="cursor-pointer font-medium text-stone-900">Details</summary>
+              <p className="tm-muted mt-1">
+                Use iOS Safari and Android Chrome. Prices show in MWK (rounded to 1,000) or USD. Payment rails are Airtel Money, TNM Mpamba and bank transfer.
               </p>
-            </section>
-          </div>
+            </details>
+          </section>
         )}
 
-        {/* QA / defect report form */}
-        <section id="qa-report-form" className="mt-12 pt-8 border-t border-stone-200 text-[15px] leading-relaxed">
-          <h2 className="text-xl font-semibold text-stone-900">Submit a verification finding or defect report</h2>
-          <p className="mt-2 text-stone-500">
-            Encountered an issue during testing or have operational feedback? Submit the details directly to our engineering and operations team.
-          </p>
+        <section id="qa-report-form" className="tm-divider mt-10 pt-8">
+          <h2 className="tm-h2">Report a problem</h2>
 
           {submitted ? (
-            <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
-              <p className="font-medium text-stone-900">Verification report logged</p>
-              <p className="text-stone-700">
-                Reference: <span className="font-mono">{submissionId}</span>. The finding is now tracked in the Admin Hub for review.
+            <div className="tm-panel mt-4">
+              <p className="font-medium text-stone-900">Report sent</p>
+              <p className="tm-muted mt-1">
+                Reference: <span className="font-mono">{submissionId}</span>. The Admin Hub will show it for review.
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Tester / reporter name</label>
+                  <label htmlFor="qa-name" className="tm-label">Your name</label>
                   <input
+                    id="qa-name"
                     type="text"
                     placeholder="Your name"
                     value={formData.testerName}
                     onChange={e => setFormData({ ...formData, testerName: e.target.value })}
-                    className={inputClass}
+                    className="tm-input"
                   />
                 </div>
-
                 <div>
-                  <label className={labelClass}>WhatsApp / phone / email</label>
+                  <label htmlFor="qa-contact" className="tm-label">Phone or email</label>
                   <input
+                    id="qa-contact"
                     type="text"
-                    placeholder="Phone number or email"
+                    placeholder="WhatsApp number or email"
                     value={formData.testerContact}
                     onChange={e => setFormData({ ...formData, testerContact: e.target.value })}
-                    className={inputClass}
+                    className="tm-input"
                   />
                 </div>
-
                 <div>
-                  <label className={labelClass}>Target area / test suite</label>
+                  <label htmlFor="qa-suite" className="tm-label">Area</label>
                   <select
+                    id="qa-suite"
                     value={formData.testSuite}
                     onChange={e => setFormData({ ...formData, testSuite: e.target.value })}
-                    className={inputClass}
+                    className="tm-input"
                   >
                     <option value="Discovery & Search">Discovery &amp; Search</option>
                     <option value="Pricing & Currency">Pricing &amp; Currency (MWK / USD)</option>
@@ -510,42 +435,38 @@ export default function PlatformGuideUat() {
                     <option value="General Observation">General Observation</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className={labelClass}>Severity level</label>
+                  <label htmlFor="qa-sev" className="tm-label">How serious</label>
                   <select
+                    id="qa-sev"
                     value={formData.severity}
                     onChange={e => setFormData({ ...formData, severity: e.target.value })}
-                    className={inputClass}
+                    className="tm-input"
                   >
-                    <option value="Low">Low (Cosmetic / Text)</option>
-                    <option value="Medium">Medium (Functional Quirk)</option>
-                    <option value="High">High (Blocking Flow)</option>
+                    <option value="Low">Low (cosmetic or text)</option>
+                    <option value="Medium">Medium (works, but odd)</option>
+                    <option value="High">High (blocks a flow)</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className={labelClass}>Defect description &amp; reproduction steps *</label>
+                <label htmlFor="qa-desc" className="tm-label">What happened, and how can we repeat it?</label>
                 <textarea
+                  id="qa-desc"
                   rows={3}
                   required
-                  placeholder="e.g. Switched to MWK on mobile Safari; prices displayed properly but booking modal showed USD symbol initially."
+                  placeholder="e.g. Switched to MWK on mobile Safari; the booking modal still showed a USD symbol."
                   value={formData.defectSummary}
                   onChange={e => setFormData({ ...formData, defectSummary: e.target.value })}
-                  className={inputClass}
+                  className="tm-input"
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <span className="text-sm text-stone-500">Sent directly to the Admin Hub.</span>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50"
-                >
-                  <Send size={16} />
-                  {submitting ? 'Submitting…' : 'Submit finding'}
+              <div className="tm-actions">
+                <button type="submit" disabled={submitting} className="tm-btn tm-btn-primary">
+                  <Send size={14} />
+                  {submitting ? 'Sending…' : 'Send report'}
                 </button>
               </div>
             </form>
@@ -555,9 +476,9 @@ export default function PlatformGuideUat() {
 
       <ConfirmDialog
         isOpen={showResetConfirm}
-        title="Reset Verification Checklist"
-        message="Reset all verification checklist progress? This will uncheck all items."
-        confirmText="Reset Checklist"
+        title="Reset checklist"
+        message="Untick every test? This cannot be undone."
+        confirmText="Reset"
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={confirmResetChecklist}

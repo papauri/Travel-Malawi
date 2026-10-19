@@ -38,3 +38,7 @@ status: in-progress
 - [H-orch-D1] DONE repair_images.mjs + repair-data.mjs no longer name or picture real properties
 - [H-ui-4] DONE vite.config.ts hotels/*.jpg includeAssets and repair_images.mjs /hotels map removed
 status: done
+status: in-progress
+- [platform-25] P2 FIXED src/components/AuthDialog.tsx — restyled with tm-btn/tm-input/tm-label/tm-link/tm-divider; dropped field icons, dark selected tiles and the feature-breakdown box; shorter calm copy and error messages; auth logic unchanged (D2)
+- [H-orch-D2] DONE AuthDialog restyled with the tm-* kit, d2 check 0 hits, tsc clean for the file
+status: done

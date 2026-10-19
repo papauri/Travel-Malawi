@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check,
-  Calendar, UserCheck, ShieldCheck
-} from 'lucide-react';
+import { ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -101,54 +98,65 @@ export default function PropertyListingGuide() {
     }
   };
 
-  const inputClass =
-    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
-  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
-  const secondaryBtn =
-    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
-  const primaryBtn =
-    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
+  const steps = [
+    {
+      title: 'Name each room by what guests get',
+      detail: 'Use "Sunrise Shore Chalet" or "Baobab Family Cottage (Self-Catering)" instead of "Room 1" or "Double Room". Say if it is self-catering.',
+    },
+    {
+      title: 'Answer the three worries up front',
+      detail: 'Power: "Solar inverter backup." Roads: "2WD fine in dry season, 4WD in Jan-Mar rains." Hot water: "Solar hot showers, borehole supply."',
+    },
+    {
+      title: 'Give directions in three parts',
+      detail: 'Highway turn-off (road, km marker, landmark). Track condition and length. Gate landmark plus a GPS pin so guests can navigate offline.',
+    },
+    {
+      title: 'Add rooms and rates in your Host Dashboard',
+      detail: 'Open Rooms & Rates. Enter MWK in clean thousands and USD in whole dollars. Ulendo can draft room descriptions if you ask.',
+    },
+    {
+      title: 'Sync your calendar to stop double bookings',
+      detail: 'On any room choose Sync iCal and paste the export feed from Airbnb, Booking.com, NightsBridge or RoomRaccoon. Use Test Connection to check it.',
+    },
+    {
+      title: 'Answer guests in the chat',
+      detail: 'Guests message you in the app before and after booking. Reply about transfers, arrival times and meals.',
+    },
+    {
+      title: 'Need a hand? Ask us',
+      detail: 'Our team can help set up your listing. Staff only join your dashboard session with your approval, never with your password, and a banner shows when they are there. Or use the form below.',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-white text-stone-700 font-sans">
-      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+      <main className="tm-page max-w-3xl py-10 print:py-0">
+        <div className="tm-actions print:hidden">
+          <Link to="/list-your-property" className="tm-btn tm-btn-secondary tm-btn-sm">
+            <ArrowLeft size={16} /> Host Hub
+          </Link>
+          <DocQuickEditButton docId="property-listing-guide" onSaved={() => refreshDoc()} />
+          <button onClick={handleShareWhatsApp} className="tm-btn tm-btn-secondary tm-btn-sm">
+            <MessageSquare size={16} /> Share
+          </button>
+          <button onClick={handleCopyLink} className="tm-btn tm-btn-secondary tm-btn-sm" title="Copy link">
+            {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+            {copiedLink ? 'Copied' : 'Copy link'}
+          </button>
+          <button onClick={handleDownload} className="tm-btn tm-btn-secondary tm-btn-sm">
+            <Download size={16} /> HTML
+          </button>
+          <button onClick={handlePrint} className="tm-btn tm-btn-primary tm-btn-sm">
+            <Printer size={16} /> Print / PDF
+          </button>
+        </div>
 
-        {/* Header */}
-        <header className="border-b border-stone-200 pb-6 mb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <p className="text-sm text-stone-500">Listing standards &middot; 2026</p>
-            <div className="flex items-center gap-2 flex-wrap print:hidden">
-              <Link to="/list-your-property" className={secondaryBtn}>
-                <ArrowLeft size={16} className="text-stone-500" />
-                Host Hub
-              </Link>
-              <DocQuickEditButton
-                docId="property-listing-guide"
-                onSaved={() => refreshDoc()}
-              />
-              <button onClick={handleShareWhatsApp} className={secondaryBtn}>
-                <MessageSquare size={16} className="text-stone-500" />
-                Share
-              </button>
-              <button onClick={handleCopyLink} className={secondaryBtn} title="Copy link">
-                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
-                {copiedLink ? 'Copied' : 'Copy link'}
-              </button>
-              <button onClick={handleDownload} className={secondaryBtn}>
-                <Download size={16} className="text-stone-500" />
-                HTML
-              </button>
-              <button onClick={handlePrint} className={primaryBtn}>
-                <Printer size={16} />
-                Print / PDF
-              </button>
-            </div>
-          </div>
-
-          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
-          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+        <header className="mt-6">
+          <h1 className="tm-h1">{customTitle}</h1>
+          <p className="tm-lead mt-2">{customSubtitle}</p>
           {(isCustomized || lastEditedBy) && (
-            <p className="mt-2 text-sm text-stone-500">
+            <p className="tm-muted mt-2">
               {isCustomized && 'Customised edition'}
               {isCustomized && lastEditedBy && ' · '}
               {lastEditedBy && `Maintained by ${lastEditedBy}`}
@@ -156,244 +164,78 @@ export default function PropertyListingGuide() {
           )}
         </header>
 
-        <div className="text-[15px] leading-relaxed">
-          {/* Section 1 */}
-          <section>
-            <h2 className="text-xl font-semibold text-stone-900">1. The architecture of desire: dissolving anxiety</h2>
-            <p className="mt-3 text-stone-700">
-              A mediocre listing gives specifications. A high-converting listing <strong className="font-semibold text-stone-900">dissolves traveler hesitation before it arises</strong>.
-            </p>
+        <ol className="mt-8 space-y-4">
+          {steps.map((step, i) => (
+            <li key={step.title} className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-medium text-stone-50">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-medium text-stone-900">{step.title}</h2>
+                <details className="mt-1 text-sm text-stone-600">
+                  <summary className="tm-link cursor-pointer">Details</summary>
+                  <p className="mt-2 break-words">{step.detail}</p>
+                </details>
+              </div>
+            </li>
+          ))}
+        </ol>
 
-            <div className="mt-4 space-y-4">
-              <div>
-                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will the power go off?&rdquo;</h3>
-                <p className="text-stone-700">
-                  Specify backup: &ldquo;24/7 Solar battery inverter backup with silent generator standby.&rdquo;
-                </p>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will my car get stuck?&rdquo;</h3>
-                <p className="text-stone-700">
-                  Give clear ground reality: &ldquo;Suitable for 2WD saloon cars in dry season; 4WD recommended during Jan–March rains.&rdquo;
-                </p>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will there be hot water?&rdquo;</h3>
-                <p className="text-stone-700">
-                  Reassure immediately: &ldquo;Pressurized solar hot showers with dedicated borehole water supply.&rdquo;
-                </p>
-              </div>
+        <section id="listing-form" className="tm-divider mt-10 pt-8">
+          <h2 className="tm-h2">Want us to write your listing?</h2>
+          <p className="tm-muted mt-1">Send your details and we will prepare a draft for free.</p>
+
+          {submitted ? (
+            <div className="tm-panel mt-5">
+              <p className="font-medium text-stone-900">Listing request received</p>
+              <p className="mt-1 text-sm text-stone-700">
+                Reference <span className="font-mono">{submissionId}</span>. We will WhatsApp you on <strong className="font-semibold">{formData.contactPhone}</strong> with a draft.
+              </p>
             </div>
-          </section>
-
-          {/* Section 2 */}
-          <section>
-            <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Room naming: from commodity to coveted</h2>
-            <p className="mt-3 text-stone-700">
-              Never label rooms by numbers or generic terms. Generic names invite price haggling and degrade perceived luxury:
-            </p>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm border border-stone-200 border-collapse">
-                <thead>
-                  <tr>
-                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Commodity label (avoid)</th>
-                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Psychological name (use)</th>
-                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Why it commands 30% higher rates</th>
-                  </tr>
-                </thead>
-                <tbody className="text-stone-700">
-                  <tr>
-                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Room 1 (Standard)</td>
-                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Sunrise Shore Chalet</td>
-                    <td className="px-3 py-2 border-t border-stone-200">Vividly paints the picture of dawn over Lake Malawi.</td>
-                  </tr>
-                  <tr>
-                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Double Room</td>
-                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Acacia Canopy Suite</td>
-                    <td className="px-3 py-2 border-t border-stone-200">Evokes privacy, nature, and serene bush luxury.</td>
-                  </tr>
-                  <tr>
-                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Family Unit</td>
-                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Baobab Family Cottage (Self-Catering)</td>
-                    <td className="px-3 py-2 border-t border-stone-200">Reassures parents of independence, kitchen facilities, and space.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Section 3 */}
-          <section>
-            <h2 className="text-xl font-semibold text-stone-900 mt-10">3. The 3-part road direction formula</h2>
-            <ol className="mt-3 list-decimal pl-5 space-y-2 text-stone-700">
-              <li><strong className="font-semibold text-stone-900">The highway junction:</strong> &ldquo;Turn off the M5 Lakeshore Road at km marker 42 (opposite Monkey Bay Post Office).&rdquo;</li>
-              <li><strong className="font-semibold text-stone-900">Track condition:</strong> &ldquo;Follow the graded gravel track for 3.8 km. Suitable for all standard 2WD vehicles.&rdquo;</li>
-              <li><strong className="font-semibold text-stone-900">Gate landmark &amp; GPS pin:</strong> &ldquo;Look for our carved wooden boat sign on your right. Drop gate GPS coordinates so guests can navigate offline with Travel Malawi&apos;s cached satellite maps.&rdquo;</li>
-            </ol>
-          </section>
-
-          {/* Section 4: Direct Guest Chat & Ulendo Concierge AI */}
-          <section className="mt-10">
-            <h2 className="text-xl font-semibold text-stone-900">4. Two-way guest chat &amp; Ulendo Concierge AI assistance</h2>
-            <p className="mt-3 text-stone-700">
-              Your listing is alive, not static. Travel Malawi integrates two powerful communication tools:
-            </p>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
-                <p className="font-semibold text-stone-900 text-sm">Direct Guest Inquiries</p>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  Travelers can chat directly with your manager via in-app real-time messaging and WhatsApp before and after booking. They ask about boat transfers, arrival ETAs, dietary preferences (fresh Chambo, vegetarian relish), and road access without middleman friction.
-                </p>
-              </div>
-              <div className="p-4 bg-stone-900 text-stone-100 border border-stone-800 rounded-xl space-y-2">
-                <p className="font-semibold text-white text-sm">Ulendo Concierge AI Assistance</p>
-                <p className="text-xs text-stone-300 leading-relaxed">
-                  Inside your Host Dashboard, chat 24/7 with Ulendo—our resident Malawian hospitality AI copilot. Ulendo helps you craft enticing room descriptions, benchmark dual-currency rates (clean MWK &amp; whole USD), update daily restaurant blackboard specials, and suggest amenities.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 5: 2-Way Calendar Synchronization & Live Diagnostics */}
-          <section className="mt-10">
-            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-emerald-700" />
-              <span>5. 2-Way calendar synchronization &amp; connection diagnostics</span>
-            </h2>
-            <p className="mt-3 text-stone-700 text-sm leading-relaxed">
-              Never worry about double bookings or juggling multiple software tools. Travel Malawi natively synchronizes room calendars via standard RFC 5545 iCal feeds:
-            </p>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
-                <p className="font-semibold text-stone-900 text-sm">Automated Feed Import &amp; Zero Double-Bookings</p>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  In your Host Dashboard under <em>Rooms &amp; Rates</em>, click <strong>Sync iCal</strong> on any room. Paste your RoomRaccoon, NightsBridge, Airbnb, or Booking.com export feed. Dates booked elsewhere block out immediately on Travel Malawi.
-                </p>
-              </div>
-              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
-                <p className="font-semibold text-stone-900 text-sm">On-Demand Connection Testing &amp; Latency Ping</p>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  Click the <strong>Test Connection</strong> button on any room card to verify feed health in real-time. Travel Malawi checks server response latency (e.g. 142ms), validates feed formatting, and previews upcoming blocked reservations.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 6: Concierge Onboarding & Support Shadow Assistance */}
-          <section className="mt-10 p-5 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
-            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-amber-800" />
-              <span>6. Concierge onboarding &amp; support shadow assistance</span>
-            </h2>
-            <p className="mt-2 text-stone-700 text-sm leading-relaxed">
-              You never have to configure your listing alone. Our verified Malawian operations team provides high-touch concierge onboarding:
-            </p>
-            <ul className="mt-3 text-xs text-stone-700 space-y-2 list-disc pl-5">
-              <li><strong>Live Shadow Support:</strong> If you need assistance linking your PMS calendar feeds, setting up room categories, adjusting seasonal rates, or writing meal descriptions, our verified concierge support staff can securely shadow your host dashboard view live.</li>
-              <li><strong>Zero Password Sharing:</strong> You never share your password. Staff shadow sessions are strictly authenticated, audit-logged, and clearly marked with a golden session banner on screen.</li>
-              <li><strong>One-Click Moderation:</strong> Once verified, listings are approved and live immediately.</li>
-            </ul>
-          </section>
-
-          {/* Section 7: listing request form */}
-          <section id="listing-form" className="mt-12 pt-8 border-t border-stone-200">
-            <h2 className="text-xl font-semibold text-stone-900">7. Submit your property for listing curation</h2>
-            <p className="mt-2 text-stone-500">
-              Prefer our hospitality team to write your room names and format your listing? Submit your property details below for free curation.
-            </p>
-
-            {submitted ? (
-              <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
-                <p className="font-medium text-stone-900">Listing request logged</p>
-                <p className="text-stone-700">
-                  Reference: <span className="font-mono">{submissionId}</span>. Our merchandising team will reach out on WhatsApp at <strong className="font-semibold">{formData.contactPhone}</strong> with your listing preview draft.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass}>Property name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Chembe Beach Chalets"
-                      value={formData.propName}
-                      onChange={e => setFormData({ ...formData, propName: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Location / beach / town *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Cape Maclear, Lake Malawi"
-                      value={formData.propLoc}
-                      onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Manager / host name</label>
-                    <input
-                      type="text"
-                      placeholder="Your name"
-                      value={formData.contactName}
-                      onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>WhatsApp number *</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="Include country code"
-                      value={formData.contactPhone}
-                      onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Current room types</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 2 Double lakeview rooms, 1 cottage"
-                      value={formData.roomTypes}
-                      onChange={e => setFormData({ ...formData, roomTypes: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Key amenities</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Solar power, hot showers, Starlink Wi-Fi"
-                      value={formData.amenities}
-                      onChange={e => setFormData({ ...formData, amenities: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="tm-label">Property name *</label>
+                  <input type="text" required placeholder="e.g. Chembe Beach Chalets" value={formData.propName}
+                    onChange={e => setFormData({ ...formData, propName: e.target.value })} className="tm-input" />
                 </div>
-
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <span className="text-sm text-stone-500">Free curation &middot; 0% commission &middot; Direct WhatsApp inquiries</span>
-                  <button type="submit" disabled={submitting} className={primaryBtn}>
-                    <Send size={16} />
-                    {submitting ? 'Submitting…' : 'Submit for free listing'}
-                  </button>
+                <div>
+                  <label className="tm-label">Location / beach / town *</label>
+                  <input type="text" required placeholder="e.g. Cape Maclear, Lake Malawi" value={formData.propLoc}
+                    onChange={e => setFormData({ ...formData, propLoc: e.target.value })} className="tm-input" />
                 </div>
-              </form>
-            )}
-          </section>
-        </div>
+                <div>
+                  <label className="tm-label">Your name</label>
+                  <input type="text" placeholder="Manager or host" value={formData.contactName}
+                    onChange={e => setFormData({ ...formData, contactName: e.target.value })} className="tm-input" />
+                </div>
+                <div>
+                  <label className="tm-label">WhatsApp number *</label>
+                  <input type="tel" required placeholder="Include country code" value={formData.contactPhone}
+                    onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} className="tm-input" />
+                </div>
+                <div>
+                  <label className="tm-label">Room types</label>
+                  <input type="text" placeholder="e.g. 2 double lakeview rooms, 1 cottage" value={formData.roomTypes}
+                    onChange={e => setFormData({ ...formData, roomTypes: e.target.value })} className="tm-input" />
+                </div>
+                <div>
+                  <label className="tm-label">Key amenities</label>
+                  <input type="text" placeholder="e.g. Solar power, hot showers, Wi-Fi" value={formData.amenities}
+                    onChange={e => setFormData({ ...formData, amenities: e.target.value })} className="tm-input" />
+                </div>
+              </div>
+              <div className="tm-actions justify-between">
+                <span className="tm-muted">Free · 0% commission</span>
+                <button type="submit" disabled={submitting} className="tm-btn tm-btn-primary">
+                  <Send size={16} />
+                  {submitting ? 'Sending…' : 'Send details'}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
       </main>
     </div>
   );

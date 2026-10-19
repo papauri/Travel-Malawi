@@ -39,7 +39,9 @@ import {
   Wallet,
   ChevronDown,
   MoreVertical,
-  Menu
+  Menu,
+  Smartphone,
+  Landmark
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
@@ -164,7 +166,7 @@ export default function PropertyChat({
 
     setNewMessage(snippet);
     setShowDepositMenu(false);
-    toast.success('Deposit request template loaded! Details visible in the chat box.');
+    toast.success('Deposit details added to your message');
 
     setTimeout(() => {
       adjustTextareaHeight();
@@ -511,7 +513,7 @@ export default function PropertyChat({
         closedBy: null,
         closedByName: null,
       });
-      toast.success('Started a new conversation session!');
+      toast.success('New chat started');
     } catch (error) {
       console.error('Error restarting chat:', error);
       toast.error('Failed to restart conversation.');
@@ -651,64 +653,64 @@ export default function PropertyChat({
   })();
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
-      {/* Header Bar */}
-      <div className="p-3.5 pt-[max(14px,env(safe-area-inset-top))] sm:p-4 bg-stone-900 text-white flex justify-between items-center gap-2 select-none border-b border-stone-800">
+    <div className="flex flex-col h-full bg-white rounded-t-xl sm:rounded-xl shadow-sm overflow-hidden border border-stone-200">
+      {/* Header */}
+      <div className="p-3.5 pt-[max(14px,env(safe-area-inset-top))] sm:p-4 bg-white text-stone-900 flex justify-between items-center gap-2 select-none border-b border-stone-200">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-8 h-8 rounded-xl bg-stone-800 flex items-center justify-center text-emerald-400 shrink-0 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-amber-800 shrink-0">
                 <MessageSquare className="w-4 h-4" />
               </div>
               {/* Presence dot on avatar */}
               <span 
-                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 transition-colors ${
+                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white transition-colors ${
                   otherInChat
-                    ? 'bg-emerald-400 animate-pulse'
+                    ? 'bg-emerald-500'
                     : hostIsOnline
                     ? 'bg-emerald-500'
-                    : 'bg-stone-500'
+                    : 'bg-stone-300'
                 }`}
               />
             </div>
 
             <div className="min-w-0">
-              <h3 className="font-bold text-sm truncate leading-tight">
+              <h3 className="font-semibold text-sm truncate leading-tight">
                 {isManager ? `Chat with ${guestDisplayName}` : `Chat with ${liveHotel.name}`}
               </h3>
               
               {/* Dynamic Status: Typing / In Chat Now / Opened at / Online / Offline */}
               <div className="flex items-center gap-1.5 mt-0.5">
                 {isOtherTyping ? (
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-300 font-medium animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>{otherParticipantName} is typing...</span>
                   </div>
                 ) : otherInChat ? (
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-300 font-medium">
-                    <Eye className="w-3 h-3 text-emerald-400 animate-pulse" />
-                    <span>Viewing chat right now</span>
+                  <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+                    <Eye className="w-3 h-3" />
+                    <span>In chat now</span>
                   </div>
                 ) : otherLastOpenedAt ? (
-                  <div className="flex items-center gap-1 text-[11px] text-stone-300">
-                    <span className="text-stone-400">Opened by {otherParticipantName}:</span>
-                    <span className="font-medium text-stone-200">{formatReceiptTime(otherLastOpenedAt)}</span>
+                  <div className="flex items-center gap-1 text-[11px] text-stone-500 min-w-0">
+                    <span className="truncate">Opened by {otherParticipantName}:</span>
+                    <span className="font-medium text-stone-700 shrink-0">{formatReceiptTime(otherLastOpenedAt)}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1 text-[11px] text-stone-300">
+                  <div className="flex items-center gap-1 text-[11px] text-stone-500">
                     <span 
                       className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        hostIsOnline ? 'bg-emerald-400' : 'bg-stone-500'
+                        hostIsOnline ? 'bg-emerald-500' : 'bg-stone-300'
                       }`} 
                     />
-                    <span className="text-stone-300 truncate">
-                      {hostIsOnline ? 'Host Online' : 'Host Away'}
+                    <span className="truncate">
+                      {hostIsOnline ? 'Host online' : 'Host away'}
                     </span>
                   </div>
                 )}
 
                 {isChatEnded && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded-md ml-1">
+                  <span className="tm-tag ml-1">
                     Ended
                   </span>
                 )}
@@ -726,9 +728,9 @@ export default function PropertyChat({
             <button
               type="button"
               onClick={() => handleStartCall(false)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-              title="Audio Call"
-              aria-label="Audio Call"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+              title="Audio call"
+              aria-label="Audio call"
             >
               <Phone className="w-4 h-4" />
             </button>
@@ -741,9 +743,9 @@ export default function PropertyChat({
             <button
               type="button"
               onClick={() => handleStartCall(true)}
-              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-              title="Video Call"
-              aria-label="Video Call"
+              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+              title="Video call"
+              aria-label="Video call"
             >
               <Video className="w-4 h-4" />
             </button>
@@ -757,7 +759,7 @@ export default function PropertyChat({
                 id="btn-property-chat-menu"
                 onClick={() => setShowMoreMenu(v => !v)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                  showMoreMenu ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-white hover:bg-stone-800'
+                  showMoreMenu ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100'
                 }`}
                 title="Chat options"
                 aria-label="Chat options"
@@ -768,7 +770,7 @@ export default function PropertyChat({
               </button>
 
               {showMoreMenu && (
-                <div className="absolute right-0 mt-1.5 w-52 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-1.5 w-52 bg-white border border-stone-200 rounded-xl shadow-sm py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
                   {/* Mobile Only: Video Call in Menu */}
                   {!isChatEnded && (
                     (liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false) || isManager || isAdmin(currentUser)
@@ -779,10 +781,10 @@ export default function PropertyChat({
                         setShowMoreMenu(false);
                         handleStartCall(true);
                       }}
-                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
                     >
-                      <Video className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Start Video Call</span>
+                      <Video className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Start video call</span>
                     </button>
                   )}
 
@@ -794,16 +796,16 @@ export default function PropertyChat({
                         handleToggleCalls();
                         setShowMoreMenu(false);
                       }}
-                      className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-800/80 sm:border-0"
+                      className="w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-100 sm:border-0"
                     >
                       <span className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-stone-400" />
-                        <span>Allow Guest Calls</span>
+                        <Phone className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Allow guest calls</span>
                       </span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-stone-800 text-stone-400 border border-stone-700'
+                          ? 'bg-emerald-50 text-emerald-800'
+                          : 'bg-stone-100 text-stone-600'
                       }`}>
                         {liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false ? 'ON' : 'OFF'}
                       </span>
@@ -819,10 +821,10 @@ export default function PropertyChat({
                         setShowMoreMenu(false);
                         setShowEndChatConfirm(true);
                       }}
-                      className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                      className="w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                     >
-                      <PhoneOff className="w-3.5 h-3.5 text-amber-400" />
-                      <span>End Chat Session</span>
+                      <PhoneOff className="w-3.5 h-3.5 text-amber-700" />
+                      <span>End chat</span>
                     </button>
                   )}
 
@@ -834,10 +836,10 @@ export default function PropertyChat({
                         setShowMoreMenu(false);
                         onMinimize();
                       }}
-                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-300 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                     >
-                      <Minus className="w-3.5 h-3.5 text-stone-400" />
-                      <span>Minimize Chat</span>
+                      <Minus className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Minimize chat</span>
                     </button>
                   )}
 
@@ -849,10 +851,10 @@ export default function PropertyChat({
                       setShowMoreMenu(false);
                       setShowDeleteConfirm(true);
                     }}
-                    className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    className="w-full text-left px-3.5 py-2.5 text-red-700 hover:bg-red-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Clear Chat History</span>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear chat history</span>
                   </button>
                 </div>
               )}
@@ -864,7 +866,7 @@ export default function PropertyChat({
             <button 
               type="button"
               onClick={onMinimize} 
-              className="hidden sm:flex p-1.5 hover:bg-stone-800 rounded-lg transition text-stone-400 hover:text-white cursor-pointer"
+              className="hidden sm:flex p-1.5 hover:bg-stone-100 rounded-lg transition text-stone-500 hover:text-stone-900 cursor-pointer"
               title="Minimize chat"
             >
               <Minus className="w-4 h-4" />
@@ -875,7 +877,7 @@ export default function PropertyChat({
           <button 
             type="button"
             onClick={onClose} 
-            className="p-1.5 hover:bg-stone-800 rounded-lg transition text-stone-400 hover:text-white cursor-pointer"
+            className="p-1.5 hover:bg-stone-100 rounded-lg transition text-stone-500 hover:text-stone-900 cursor-pointer"
             title="Close chat"
           >
             <X className="w-4 h-4" />
@@ -886,10 +888,10 @@ export default function PropertyChat({
       {/* Offline Out of Office Banner */}
       {!hostIsOnline && liveHotel.outOfOfficeMessage && (
         <div className="bg-amber-50 border-b border-amber-200/80 p-3 flex items-start gap-2.5 transition-all animate-fadeIn">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-bold text-amber-900">Host is currently away</p>
-            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+            <p className="text-xs font-semibold text-amber-900">The host is away</p>
+            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed break-words">
               {liveHotel.outOfOfficeMessage}
             </p>
           </div>
@@ -898,27 +900,25 @@ export default function PropertyChat({
       
       {/* Active in chat banner when other participant is actively viewing */}
       {otherInChat && !isOtherTyping && (
-        <div className="bg-emerald-50/80 border-b border-emerald-100/90 px-3 py-1.5 flex items-center justify-between gap-2 text-emerald-900 text-xs animate-fadeIn">
+        <div className="bg-emerald-50 border-b border-emerald-100 px-3 py-1.5 flex items-center justify-between gap-2 text-emerald-900 text-xs animate-fadeIn">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span className="font-medium text-[11px]">
               {otherParticipantName} is active in this chat now
             </span>
           </div>
-          <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100/70 px-2 py-0.5 rounded-full">
-            Live
-          </span>
+          
         </div>
       )}
 
-      {/* Messages Scroll Area */}
+      {/* Messages */}
       <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3.5 bg-stone-50/70">
         {!currentUser ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6">
             <MessageSquare className="w-12 h-12 text-stone-300 mb-3" />
-            <h4 className="font-semibold text-stone-900 text-sm mb-1">Sign in to Chat</h4>
+            <h4 className="font-semibold text-stone-900 text-sm mb-1">Sign in to chat</h4>
             <p className="text-xs text-stone-500 max-w-xs leading-relaxed">
-              Please sign in to send messages and connect directly with the property hosts.
+              Sign in to message the host directly.
             </p>
           </div>
         ) : loading ? (
@@ -927,12 +927,12 @@ export default function PropertyChat({
           </div>
         ) : timelineItems.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-stone-400 text-center p-6">
-            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mb-3 text-stone-400 shadow-2xs">
+            <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center mb-3 text-stone-400">
               <MessageSquare className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold text-stone-700">No messages yet</p>
+            <p className="text-sm font-semibold text-stone-700">No messages yet</p>
             <p className="text-xs text-stone-400 mt-1 max-w-xs leading-relaxed">
-              Send a question to the host about rooms, arrival, activities, or dining.
+              Ask the host about rooms, arrival, activities or dining.
             </p>
           </div>
         ) : (
@@ -948,7 +948,7 @@ export default function PropertyChat({
                 const isMissed = call.status === 'missed' || call.status === 'rejected' || (!call.answer && call.status === 'ended');
                 const isVideo = call.type === 'video';
                 const CallIcon = isMissed ? PhoneMissed : (isVideo ? Video : Phone);
-                const iconColor = isMissed ? 'text-red-500' : (call.status === 'connected' ? 'text-blue-500' : 'text-emerald-500');
+                const iconColor = isMissed ? 'text-red-500' : (call.status === 'connected' ? 'text-stone-600' : 'text-emerald-600');
                 
                 let durationText = '';
                 if (call.status === 'connected' || call.status === 'ended') {
@@ -964,12 +964,12 @@ export default function PropertyChat({
                 return (
                   <div key={`call-${item.id || 'call'}-${index}`} className="flex justify-center my-3 animate-fadeIn">
                     <div className="flex items-center gap-2.5 px-4 py-2 bg-stone-100/80 rounded-full border border-stone-200 shadow-2xs">
-                       <div className={`w-7 h-7 rounded-full flex items-center justify-center bg-white shadow-sm border border-stone-100 ${iconColor}`}>
+                       <div className={`w-7 h-7 rounded-full flex items-center justify-center bg-white border border-stone-100 ${iconColor}`}>
                          <CallIcon className="w-3.5 h-3.5" />
                        </div>
                        <div className="flex flex-col">
                          <span className="text-xs font-bold text-stone-700 leading-tight">
-                           {isMissed ? (isMe ? 'Unanswered Call' : 'Missed Call') : (isVideo ? 'Video Call' : 'Voice Call')}
+                           {isMissed ? (isMe ? 'Unanswered call' : 'Missed call') : (isVideo ? 'Video call' : 'Voice call')}
                          </span>
                          <span className="text-[10px] font-medium text-stone-400 mt-0.5">
                             {timeFormatted} {durationText && <span className="text-stone-500 font-semibold">• {durationText}</span>}
@@ -1006,7 +1006,7 @@ export default function PropertyChat({
                       : (liveHotel.name || 'Host')}
                   </span>
                   <div 
-                    className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed shadow-2xs ${
+                    className={`px-4 py-2.5 rounded-xl max-w-[85%] text-sm leading-relaxed shadow-2xs whitespace-pre-wrap break-words ${
                       isMe 
                         ? 'bg-stone-900 text-white rounded-tr-xs' 
                         : 'bg-white border border-stone-200 text-stone-900 rounded-tl-xs'
@@ -1047,50 +1047,50 @@ export default function PropertyChat({
               );
             })}
 
-            {/* Live Real-time Typing Bubble in Message Thread */}
+            {/* Typing indicator */}
             {isOtherTyping && (
               <div className="flex flex-col items-start animate-fadeIn pt-1">
                 <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">
                   {otherParticipantName}
                 </span>
-                <div className="bg-white border border-stone-200 text-stone-700 px-4 py-3 rounded-2xl rounded-tl-xs shadow-2xs flex items-center gap-2.5">
+                <div className="bg-white border border-stone-200 text-stone-700 px-4 py-3 rounded-xl rounded-tl-xs shadow-2xs flex items-center gap-2.5">
                   <span className="text-xs text-stone-600 font-medium">typing</span>
                   <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
+                    <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce" />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Chat Ended Session Banner */}
+            {/* Chat ended */}
             {isChatEnded && (
               <div className="pt-3 pb-1">
-                <div className="bg-stone-200/70 border border-stone-300/80 rounded-xl p-3 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-stone-700 text-xs font-bold">
+                <div className="bg-stone-100 border border-stone-200 rounded-xl p-3 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-stone-700 text-xs font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5 text-stone-500" />
-                    <span>This chat session was ended</span>
+                    <span>This chat was ended</span>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">
                     Ended by {chatDocData?.endedByName || (chatDocData?.endedBy === 'manager' ? 'Host' : 'Guest')} {endedDateStr && `on ${endedDateStr}`}.
                   </p>
-                                      <div className="mt-2.5 flex justify-center gap-2">
+                  <div className="mt-2.5 tm-actions justify-center">
                       <button
                         type="button"
                         onClick={handleRestartChat}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
+                        className="tm-btn tm-btn-primary tm-btn-sm"
                       >
                         <RotateCcw className="w-3 h-3" />
-                        <span>Start New Conversation</span>
+                        <span>Start a new chat</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowDeleteConfirm(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
+                        className="tm-btn tm-btn-danger tm-btn-sm"
                       >
                         <Trash2 className="w-3 h-3" />
-                        <span>Clear History</span>
+                        <span>Clear history</span>
                       </button>
                     </div>
                 </div>
@@ -1101,18 +1101,18 @@ export default function PropertyChat({
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Bottom Message Input Bar */}
+      {/* Message box */}
       {currentUser && (
         <div className="p-3 pb-6 sm:pb-3 bg-white border-t border-stone-100 shrink-0">
           {isChatEnded ? (
             <div className="flex items-center justify-between gap-2 p-1.5 bg-stone-50 rounded-xl border border-stone-200">
-              <span className="text-xs text-stone-500 pl-2">Session ended. Send a message to restart.</span>
+              <span className="text-xs text-stone-500 pl-2">Chat ended. Reopen it to keep talking.</span>
               <button
                 type="button"
                 onClick={handleRestartChat}
-                className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition shrink-0 cursor-pointer"
+                className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
               >
-                Reopen Chat
+                Reopen chat
               </button>
             </div>
           ) : (
@@ -1122,22 +1122,22 @@ export default function PropertyChat({
                   <button
                     type="button"
                     onClick={() => setShowDepositMenu(!showDepositMenu)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded-lg text-xs transition cursor-pointer select-none"
+                    className="tm-btn tm-btn-secondary tm-btn-sm select-none"
                     aria-expanded={showDepositMenu}
                   >
-                    <Wallet className="w-3.5 h-3.5 text-amber-600" /> Send Deposit Details
+                    <Wallet className="w-3.5 h-3.5 text-amber-700" /> Send deposit details
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showDepositMenu ? 'rotate-180' : ''}`} />
                   </button>
 
                   {showDepositMenu && (
-                    <div className="absolute left-0 bottom-full mb-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
+                    <div className="absolute left-0 bottom-full mb-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-xl shadow-sm p-2 z-50 animate-fadeIn space-y-1">
                       <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
-                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
-                          Deposit Instructions
+                        <span className="text-xs font-medium text-stone-500">
+                          Send payment details
                         </span>
                         {getHotelDepositInfo(liveHotel).depositPercentage && (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            {getHotelDepositInfo(liveHotel).depositPercentage}% Policy
+                          <span className="tm-tag">
+                            {getHotelDepositInfo(liveHotel).depositPercentage}% deposit
                           </span>
                         )}
                       </div>
@@ -1145,13 +1145,13 @@ export default function PropertyChat({
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('mobile_money')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-100 font-bold text-xs">
-                          📱
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <Smartphone className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">Airtel Money &amp; Mpamba</p>
+                          <p className="text-xs font-semibold text-stone-900">Airtel Money &amp; Mpamba</p>
                           <p className="text-[11px] text-stone-500 truncate">
                             {getHotelDepositInfo(liveHotel).airtelMoneyNumber || 'Airtel'} • {getHotelDepositInfo(liveHotel).mpambaNumber || 'Mpamba'}
                           </p>
@@ -1161,13 +1161,13 @@ export default function PropertyChat({
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('bank')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 font-bold text-xs">
-                          🏦
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <Landmark className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">Bank Wire Transfer</p>
+                          <p className="text-xs font-semibold text-stone-900">Bank transfer</p>
                           <p className="text-[11px] text-stone-500 truncate">
                             {getHotelDepositInfo(liveHotel).bankName || 'Direct bank transfer'}
                           </p>
@@ -1177,14 +1177,14 @@ export default function PropertyChat({
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('general')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-100 font-bold text-xs">
-                          💬
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <MessageSquare className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">General Payment Inquiry</p>
-                          <p className="text-[11px] text-stone-500 truncate">Ask preference &amp; share terms</p>
+                          <p className="text-xs font-semibold text-stone-900">Ask how they want to pay</p>
+                          <p className="text-[11px] text-stone-500 truncate">Share your deposit terms</p>
                         </div>
                       </button>
                     </div>
@@ -1203,8 +1203,8 @@ export default function PropertyChat({
                   onFocus={adjustTextareaHeight}
                   placeholder={
                     hostIsOnline 
-                      ? "Type your message... (Enter to send, Shift+Enter for newline)" 
-                      : "Host is away. Leave a message..."
+                      ? "Type a message (Enter to send, Shift+Enter for a new line)" 
+                      : "The host is away. Leave a message."
                   }
                   className="flex-1 max-h-[320px] min-h-[54px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 pt-3 pb-4 text-sm transition outline-none resize-y leading-relaxed overflow-y-auto scrollbar-slim"
                   disabled={sending}
@@ -1233,10 +1233,10 @@ export default function PropertyChat({
       {/* Confirm End Chat Dialog */}
       <ConfirmDialog
         isOpen={showEndChatConfirm}
-        title="End Chat Session"
-        message="Are you sure you want to end this conversation? Either participant can review past messages or start a fresh session at any time."
-        confirmText="End Chat"
-        cancelText="Keep Chatting"
+        title="End this chat?"
+        message="You can still read past messages and start a new chat at any time."
+        confirmText="End chat"
+        cancelText="Keep chatting"
         isDestructive={false}
         onConfirm={handleEndChat}
         onCancel={() => setShowEndChatConfirm(false)}
@@ -1245,9 +1245,9 @@ export default function PropertyChat({
       {/* Confirm Clear Chat History Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        title="Clear Chat History"
-        message="Are you sure you want to permanently clear this chat history? All messages and call records in this chat will be removed."
-        confirmText="Clear History"
+        title="Clear chat history?"
+        message="All messages and call records in this chat will be removed for good."
+        confirmText="Clear history"
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={handleDeleteChatHistory}

@@ -174,7 +174,7 @@ export default function NotificationBell() {
         <Bell
           className={`w-5 h-5 transition-transform duration-300 ${
             isVibrating
-              ? 'animate-bell-ring text-rose-600'
+              ? 'animate-bell-ring text-red-600'
               : totalAlertsCount > 0
               ? 'animate-bell-vibrate text-stone-800 group-hover:rotate-12'
               : 'hover:rotate-12'
@@ -184,18 +184,14 @@ export default function NotificationBell() {
         {/* Unread Message Count Badge */}
         {unreadCount > 0 ? (
           <span className="absolute -top-1 -right-1 flex items-center justify-center">
-            {/* Pulsing halo */}
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            {/* Number Pill */}
-            <span className="relative flex items-center justify-center min-w-[19px] h-[19px] px-1 text-[10.5px] font-black text-white bg-rose-600 rounded-full shadow-sm border border-white">
+            <span className="relative flex items-center justify-center min-w-[19px] h-[19px] px-1 text-[10.5px] font-bold text-white bg-red-600 rounded-full border border-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           </span>
         ) : unreadBroadcasts > 0 ? (
           /* Subtle dot for trip broadcasts if no direct unread chat messages */
           <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 border border-white" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-600 border border-white" />
           </span>
         ) : null}
       </button>
@@ -205,14 +201,14 @@ export default function NotificationBell() {
         <WalkthroughTooltip
           id="walkthrough-notification-bell"
           icon={<Bell className="w-3.5 h-3.5 text-stone-300" />}
-          title="Chat & Notifications"
+          title="Chats and notifications"
           description="Direct guest messages, booking inquiries & call alerts live right here."
           arrowPosition="top-right"
           className="fixed top-16 right-3 sm:absolute sm:top-full sm:right-0 mt-2.5 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] pointer-events-auto z-50"
         />
       )}
 
-      {/* Floating Notifications Popover */}
+      {/* Notifications dropdown */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -221,7 +217,7 @@ export default function NotificationBell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-40 sm:hidden"
+            className="fixed inset-0 bg-stone-950/30 z-40 sm:hidden"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -235,38 +231,35 @@ export default function NotificationBell() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.96 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
-            className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[410px] max-w-[calc(100vw-1.5rem)] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col overscroll-contain"
+            className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[410px] max-w-[calc(100vw-1.5rem)] bg-white border border-stone-200 rounded-xl shadow-sm py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col overscroll-contain"
           >
               {/* Header */}
-              <div className="px-4 py-3 bg-stone-900 text-white flex items-center justify-between shrink-0 border-b border-stone-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-stone-800 text-stone-200 border border-stone-700 flex items-center justify-center">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-                  <h3 className="font-serif font-bold text-sm tracking-tight text-white">Notifications</h3>
+              <div className="px-4 py-3 bg-white flex items-center justify-between gap-2 shrink-0 border-b border-stone-200">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-serif font-semibold text-sm text-stone-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-xs">
+                    <span className="tm-tag tm-tag-bad">
                       {unreadCount} new
                     </span>
                   )}
                 </div>
 
-                {/* Quick Sound Toggle & Close Controls */}
+                {/* Sound toggle and close */}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleToggleSound}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                     title={soundOn ? 'Mute notification chimes' : 'Enable notification chimes'}
                   >
-                    {soundOn ? <Volume2 className="w-3.5 h-3.5 text-stone-300" /> : <VolumeX className="w-3.5 h-3.5 text-stone-400" />}
+                    {soundOn ? <Volume2 className="w-3.5 h-3.5 text-stone-500" /> : <VolumeX className="w-3.5 h-3.5 text-stone-500" />}
                     <span className="text-[11px]">{soundOn ? 'Sound on' : 'Muted'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+                    className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition cursor-pointer"
                     title="Close notifications"
                     aria-label="Close notifications"
                   >
@@ -275,20 +268,20 @@ export default function NotificationBell() {
                 </div>
               </div>
 
-              {/* Segmented Tab Switcher: Unread vs Active Chats */}
-              <div className="p-1.5 bg-stone-100/90 border-b border-stone-200/90 flex gap-1 text-xs shrink-0">
+              {/* Tabs: unread / active chats */}
+              <div className="p-1.5 bg-stone-100 border-b border-stone-200 flex gap-1 text-xs shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewTab('unread')}
-                  className={`flex-1 py-1.5 px-3 rounded-lg font-bold text-center transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg font-semibold text-center transition cursor-pointer flex items-center justify-center gap-1.5 ${
                     viewTab === 'unread'
-                      ? 'bg-white text-stone-950 shadow-2xs'
+                      ? 'bg-white text-stone-900 shadow-2xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <span>Unread</span>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-600 text-white">
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-600 text-white">
                       {unreadCount}
                     </span>
                   )}
@@ -296,13 +289,13 @@ export default function NotificationBell() {
                 <button
                   type="button"
                   onClick={() => setViewTab('active')}
-                  className={`flex-1 py-1.5 px-3 rounded-lg font-bold text-center transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-1.5 px-3 rounded-lg font-semibold text-center transition cursor-pointer flex items-center justify-center gap-1.5 ${
                     viewTab === 'active'
-                      ? 'bg-white text-stone-950 shadow-2xs'
+                      ? 'bg-white text-stone-900 shadow-2xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  <span>Active Chats</span>
+                  <span>Active chats</span>
                   {activeChats.length > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-stone-200 text-stone-800">
                       {activeChats.length}
@@ -311,15 +304,11 @@ export default function NotificationBell() {
                 </button>
               </div>
 
-              {/* Content List */}
+              {/* List */}
               <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-12rem))]">
               {viewTab === 'unread' ? (
                 unreadItems.length > 0 ? (
-                  <div className="p-2 space-y-1.5">
-                    <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider bg-stone-100/70 rounded-lg">
-                      <span>Unread Messages</span>
-                      <span>Click to reply</span>
-                    </div>
+                  <div className="divide-y divide-stone-100">
 
                     {unreadItems.map((item, uIdx) => {
                       const initials = (item.senderName || 'U').slice(0, 2).toUpperCase();
@@ -331,17 +320,17 @@ export default function NotificationBell() {
                         <div
                           key={`${item.id || 'notif'}-${uIdx}`}
                           onClick={() => handleOpenItem(item)}
-                          className="w-full text-left p-3 rounded-xl bg-white hover:bg-stone-50 border border-stone-200/70 hover:border-stone-300 transition-all flex items-start gap-3 group cursor-pointer shadow-2xs"
+                          className="w-full text-left px-4 py-3 bg-white hover:bg-stone-50 transition-colors flex items-start gap-3 group cursor-pointer"
                         >
                           {/* Avatar */}
-                          <div className="w-9 h-9 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shrink-0 border border-stone-300 shadow-2xs">
+                          <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-700 font-semibold text-xs flex items-center justify-center shrink-0">
                             {initials}
                           </div>
 
                           {/* Details */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-sm font-bold text-stone-950 truncate group-hover:text-black">
+                              <span className="text-sm font-semibold text-stone-900 truncate">
                                 {item.senderName}
                               </span>
                               <span className="text-[11px] font-medium text-stone-500 shrink-0">
@@ -349,8 +338,8 @@ export default function NotificationBell() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 border border-stone-300">
+                            <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                              <span className="tm-tag shrink-0">
                                 {item.senderRoleTag}
                               </span>
                               <span className="text-xs text-stone-600 font-medium truncate">
@@ -359,24 +348,17 @@ export default function NotificationBell() {
                             </div>
 
                             {/* Message snippet */}
-                            <p className="text-xs text-stone-900 font-normal leading-relaxed mt-1.5 line-clamp-2 bg-stone-100/80 group-hover:bg-white p-2 rounded-lg border border-stone-200 transition">
-                              "{item.lastMessage}"
+                            <p className="text-xs text-stone-600 leading-relaxed mt-1 line-clamp-2 break-words">
+                              {item.lastMessage}
                             </p>
 
-                            <div className="mt-2 flex items-center justify-between pt-1">
-                              <span className="text-[11px] font-medium text-stone-500">
-                                Click to open chat
-                              </span>
+                            <div className="mt-2 flex items-center justify-end gap-2">
                               <button
                                 type="button"
                                 onClick={(e) => handleToggleChat(e, item)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                  isOpenNow
-                                    ? 'bg-stone-200 text-stone-800 hover:bg-rose-100 hover:text-rose-800'
-                                    : 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                                }`}
+                                className={`tm-btn tm-btn-sm ${isOpenNow ? 'tm-btn-secondary' : 'tm-btn-primary'}`}
                               >
-                                {isOpenNow ? 'Close' : 'Open Chat'}
+                                {isOpenNow ? 'Close' : 'Open chat'}
                               </button>
                             </div>
                           </div>
@@ -389,18 +371,15 @@ export default function NotificationBell() {
                     <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center mb-2.5 border border-stone-200">
                       <CheckCheck className="w-6 h-6" />
                     </div>
-                    <p className="text-sm font-serif font-bold text-stone-900">All caught up!</p>
-                    <p className="text-xs text-stone-600 mt-1 max-w-[240px]">
-                      You have no unread messages.
-                    </p>
+                    <p className="text-sm font-semibold text-stone-900">No unread messages</p>
                     {activeChats.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setViewTab('active')}
-                        className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-stone-900 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-full transition cursor-pointer"
+                        className="mt-3 tm-btn tm-btn-secondary tm-btn-sm"
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-stone-700" />
-                        View Active Chats ({activeChats.length})
+                        View active chats ({activeChats.length})
                       </button>
                     )}
                   </div>
@@ -408,11 +387,7 @@ export default function NotificationBell() {
               ) : (
                 /* Active Chats Tab */
                 activeChats.length > 0 ? (
-                  <div className="p-2 space-y-1.5">
-                    <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider bg-stone-100/70 rounded-lg">
-                      <span>Active Conversations</span>
-                      <span>Open / Close anytime</span>
-                    </div>
+                  <div className="divide-y divide-stone-100">
 
                     {activeChats.map((item, aIdx) => {
                       const initials = (item.senderName || 'G').slice(0, 2).toUpperCase();
@@ -424,28 +399,24 @@ export default function NotificationBell() {
                         <div
                           key={`${item.id || 'chat'}-${aIdx}`}
                           onClick={() => handleOpenItem(item)}
-                          className={`w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3 group cursor-pointer shadow-2xs ${
+                          className={`w-full text-left px-4 py-3 transition-colors flex items-start gap-3 group cursor-pointer ${
                             isOpenNow
-                              ? 'bg-stone-50/90 border-stone-400 ring-1 ring-stone-400'
-                              : 'bg-white hover:bg-stone-50 border-stone-200/70 hover:border-stone-300'
+                              ? 'bg-amber-50/60'
+                              : 'bg-white hover:bg-stone-50'
                           }`}
                         >
                           {/* Avatar */}
-                          <div className={`w-9 h-9 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border shadow-2xs ${
-                            isOpenNow
-                              ? 'bg-stone-900 text-white border-stone-400 ring-2 ring-emerald-400/40'
-                              : 'bg-stone-900 text-white border-stone-300'
-                          }`}>
+                          <div className="w-9 h-9 rounded-full font-semibold text-xs flex items-center justify-center shrink-0 bg-stone-100 text-stone-700">
                             {initials}
                           </div>
 
                           {/* Details */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-sm font-bold text-stone-950 truncate group-hover:text-black flex items-center gap-1.5">
+                              <span className="text-sm font-semibold text-stone-900 truncate flex items-center gap-1.5 min-w-0">
                                 {item.senderName}
                                 {item.isUnread && (
-                                  <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0" title="Unread" />
+                                  <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" title="Unread" />
                                 )}
                               </span>
                               <span className="text-[11px] font-medium text-stone-500 shrink-0">
@@ -453,8 +424,8 @@ export default function NotificationBell() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 border border-stone-300">
+                            <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                              <span className="tm-tag shrink-0">
                                 {item.senderRoleTag}
                               </span>
                               <span className="text-xs text-stone-600 font-medium truncate">
@@ -463,35 +434,33 @@ export default function NotificationBell() {
                             </div>
 
                             {/* Message snippet */}
-                            <p className="text-xs text-stone-900 font-normal leading-relaxed mt-1.5 line-clamp-2 bg-stone-100/80 group-hover:bg-white p-2 rounded-lg border border-stone-200 transition">
-                              "{item.lastMessage}"
+                            <p className="text-xs text-stone-600 leading-relaxed mt-1 line-clamp-2 break-words">
+                              {item.lastMessage}
                             </p>
 
-                            {/* Action Row */}
-                            <div className="mt-2 flex items-center justify-between pt-1">
+                            {/* Actions */}
+                            <div className="mt-2 flex items-center justify-between gap-2">
                               {isOpenNow ? (
-                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                  Open Now
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                  Open now
                                 </span>
                               ) : (
-                                <span className="text-[11px] font-medium text-stone-500">
-                                  Click to chat
-                                </span>
+                                <span />
                               )}
 
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenItem(item)}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-stone-900 hover:bg-stone-800 text-white shadow-xs transition cursor-pointer"
+                                  className="tm-btn tm-btn-primary tm-btn-sm"
                                 >
                                   {isOpenNow ? 'Focus' : 'Chat'}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={(e) => handleCloseConversation(e, item)}
-                                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-950 border border-stone-300 transition flex items-center gap-1 cursor-pointer"
+                                  className="tm-btn tm-btn-secondary tm-btn-sm"
                                   title="Close conversation and remove from active chats"
                                 >
                                   <XCircle className="w-3.5 h-3.5 text-stone-500" />
@@ -509,21 +478,21 @@ export default function NotificationBell() {
                     <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center mb-2.5 border border-stone-200">
                       <MessageSquare className="w-6 h-6" />
                     </div>
-                    <p className="text-sm font-serif font-bold text-stone-900">No active chats yet</p>
+                    <p className="text-sm font-semibold text-stone-900">No active chats yet</p>
                     <p className="text-xs text-stone-600 mt-1 max-w-[240px]">
-                      When guests send messages, active conversations will appear here so you can open or close them at any time.
+                      New guest messages show up here.
                     </p>
                   </div>
                 )
               )}
 
-              {/* Trip Broadcasts */}
+              {/* Trip announcements */}
               {unreadBroadcasts > 0 && (
                 <div className="p-3 bg-stone-50 border-t border-stone-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-stone-900 flex items-center gap-1.5">
                       <Radio className="w-3.5 h-3.5 text-stone-700" />
-                      Lodge Guest Announcements ({unreadBroadcasts})
+                      Lodge announcements ({unreadBroadcasts})
                     </span>
                     <button
                       type="button"
@@ -531,16 +500,16 @@ export default function NotificationBell() {
                         setIsOpen(false);
                         navigate('/my-bookings');
                       }}
-                      className="text-xs font-bold text-stone-800 hover:text-stone-950 underline flex items-center gap-0.5 cursor-pointer"
+                      className="tm-link text-xs inline-flex items-center gap-0.5 cursor-pointer"
                     >
-                      View in Bookings <ExternalLink className="w-3 h-3" />
+                      View in bookings <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Footer Navigation */}
+            {/* Footer */}
             <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs">
               {isManager ? (
                 <button
@@ -551,7 +520,7 @@ export default function NotificationBell() {
                   }}
                   className="font-semibold text-stone-800 hover:text-stone-950 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-stone-600" /> Open Host Dashboard
+                  <MessageSquare className="w-3.5 h-3.5 text-stone-600" /> Host dashboard
                 </button>
               ) : (
                 <button
@@ -562,15 +531,8 @@ export default function NotificationBell() {
                   }}
                   className="font-semibold text-stone-800 hover:text-stone-950 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Calendar className="w-3.5 h-3.5 text-stone-600" /> My Trips & Bookings
+                  <Calendar className="w-3.5 h-3.5 text-stone-600" /> My bookings
                 </button>
-              )}
-
-              {unreadCount > 0 && (
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-stone-600">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live real-time sync
-                </div>
               )}
             </div>
           </motion.div>

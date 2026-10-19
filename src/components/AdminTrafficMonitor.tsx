@@ -305,7 +305,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
 
   if (loading) {
     return (
-      <div className="p-6 text-center bg-white rounded-xl border border-stone-200 shadow-2xs">
+      <div className="p-6 text-center bg-white rounded-xl border border-stone-200 ">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-900 border-t-transparent mx-auto mb-2"></div>
         <p className="text-xs font-medium text-stone-600">Loading active visitors…</p>
       </div>
@@ -331,10 +331,10 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     return (
       <div className="fixed inset-0 z-50 flex justify-end">
         <div
-          className="fixed inset-0 bg-stone-900/25 backdrop-blur-[1px]"
+          className="fixed inset-0 bg-stone-900/25 "
           onClick={() => setSelectedSession(null)}
         />
-        <div className="relative w-full sm:w-[460px] bg-white shadow-2xl border-l border-stone-200 z-10 flex flex-col h-full animate-in slide-in-from-right-4 duration-200">
+        <div className="relative w-full sm:w-[460px] bg-white shadow-sm border-l border-stone-200 z-10 flex flex-col h-full animate-in slide-in-from-right-4 duration-200">
           {/* Header */}
           <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50/60">
             <div>
@@ -386,26 +386,26 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
               </span>
               <div className="grid grid-cols-2 gap-3 text-stone-700">
                 <div>
-                  <span className="text-stone-400 block text-[11px]">Time on Current Page</span>
-                  <span className="font-mono font-semibold text-stone-900 text-sm">
+                  <span className="text-stone-400 block text-[11px]">Time on page</span>
+                  <span className="tabular-nums font-semibold text-stone-900 text-sm">
                     {formatWaitDuration(selectedSession.currentWaitSeconds)}
                   </span>
                 </div>
                 <div>
                   <span className="text-stone-400 block text-[11px]">Total Session Duration</span>
-                  <span className="font-mono font-semibold text-stone-900 text-sm">
+                  <span className="tabular-nums font-semibold text-stone-900 text-sm">
                     {formatWaitDuration(selectedSession.totalSessionSeconds)}
                   </span>
                 </div>
                 <div>
                   <span className="text-stone-400 block text-[11px]">Active Time</span>
-                  <span className="font-mono font-medium text-emerald-700">
+                  <span className="tabular-nums font-medium text-emerald-700">
                     {formatWaitDuration(selectedSession.activeSeconds)}
                   </span>
                 </div>
                 <div>
                   <span className="text-stone-400 block text-[11px]">Idle Time</span>
-                  <span className="font-mono font-medium text-stone-500">
+                  <span className="tabular-nums font-medium text-stone-500">
                     {formatWaitDuration(selectedSession.idleSeconds)}
                   </span>
                 </div>
@@ -456,11 +456,11 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                       <span className="font-medium text-stone-900 text-xs truncate">
                         {idx + 1}. {st.title || st.path}
                       </span>
-                      <span className="font-mono text-stone-500 text-[11px] shrink-0">
+                      <span className="tabular-nums text-stone-500 text-[11px] shrink-0">
                         {formatWaitDuration(st.dwellSeconds)}
                       </span>
                     </div>
-                    <div className="text-[11px] text-stone-400 font-mono mt-0.5 truncate">
+                    <div className="text-[11px] text-stone-400 tabular-nums mt-0.5 truncate">
                       {st.path}
                     </div>
                     {st.hotelName && (
@@ -578,26 +578,18 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
   return (
     <div className="space-y-5">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-stone-200">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">
-              Live Visitors
-            </h2>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Live
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-            Active guests and hosts browsing the platform, with page duration and session history.
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-stone-200">
+        <div className="min-w-0">
+          <h2 className="tm-h1">Live visitors</h2>
+          <p className="tm-muted mt-0.5">
+            Who is browsing now, and for how long.
           </p>
         </div>
 
         {/* Action Toolbar */}
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div className="tm-actions">
           <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-1 text-xs">
-            <span className="text-stone-500 px-1.5 text-[11px]">Auto-refresh:</span>
+            <span className="text-stone-500 px-1.5 text-[11px]">Refresh:</span>
             {[
               { label: '5s', val: 5000 },
               { label: '15s', val: 15000 },
@@ -609,7 +601,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                 onClick={() => setAutoRefreshInterval(opt.val)}
                 className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
                   autoRefreshInterval === opt.val
-                    ? 'bg-white text-stone-900 font-semibold shadow-2xs'
+                    ? 'bg-white text-stone-900 font-semibold '
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -622,8 +614,8 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             type="button"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            className="p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg border border-stone-200 bg-white transition cursor-pointer"
-            title="Refresh now"
+            className="tm-btn tm-btn-secondary tm-btn-sm"
+            title="Refresh now" aria-label="Refresh now"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -632,7 +624,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             <button
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 text-xs font-medium rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+              className="tm-btn tm-btn-secondary tm-btn-sm"
             >
               <Download className="w-3.5 h-3.5 text-stone-500" />
               <span>Export</span>
@@ -642,7 +634,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             {showExportMenu && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setShowExportMenu(false)} />
-                <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-lg border border-stone-200 p-1 z-30 space-y-0.5">
+                <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-sm border border-stone-200 p-1 z-30 space-y-0.5">
                   <button
                     type="button"
                     onClick={handleExportCSV}
@@ -669,8 +661,8 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
               type="button"
               onClick={handleClear}
               disabled={clearing}
-              className="p-2 text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-stone-200 bg-white transition cursor-pointer"
-              title="Clear session history"
+              className="tm-btn tm-btn-danger tm-btn-sm"
+              title="Clear session history" aria-label="Clear session history"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -680,9 +672,9 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
-            <span>Active Visitors</span>
+            <span>Active now</span>
             <Users className="w-4 h-4 text-stone-400" />
           </div>
           <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
@@ -693,22 +685,22 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
           </p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
-            <span>Avg. Time on Page</span>
+            <span>Avg. time on page</span>
             <Clock className="w-4 h-4 text-stone-400" />
           </div>
           <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
             {formatWaitDuration(summary.avgWaitSeconds)}
           </p>
           <p className="text-[11px] text-stone-500 mt-0.5">
-            Longest session: <span className="font-mono font-medium text-stone-700">{formatWaitDuration(summary.longestWaitSeconds)}</span>
+            Longest: <span className="tabular-nums font-medium text-stone-700">{formatWaitDuration(summary.longestWaitSeconds)}</span>
           </p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
-            <span>Viewing Stays</span>
+            <span>Viewing stays</span>
             <Building2 className="w-4 h-4 text-stone-400" />
           </div>
           <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
@@ -721,7 +713,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
           </p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
             <span>Locations</span>
             <Globe className="w-4 h-4 text-stone-400" />
@@ -738,14 +730,14 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs min-w-0">
           {[
-            { id: 'all', label: 'All Visitors', count: data?.recentSessions.length || 0 },
+            { id: 'all', label: 'All', count: data?.recentSessions.length || 0 },
             { id: 'anonymous', label: 'Anonymous', count: data?.recentSessions.filter((s) => s.isAnonymous).length || 0 },
-            { id: 'authenticated', label: 'Signed In', count: data?.recentSessions.filter((s) => !s.isAnonymous).length || 0 },
-            { id: 'high_intent', label: 'Viewing Stays', count: data?.recentSessions.filter((s) => s.conversionLikelihood === 'High').length || 0 },
-            { id: 'waiting_long', label: 'On Page > 1m', count: data?.recentSessions.filter((s) => s.currentWaitSeconds >= 60).length || 0 },
+            { id: 'authenticated', label: 'Signed in', count: data?.recentSessions.filter((s) => !s.isAnonymous).length || 0 },
+            { id: 'high_intent', label: 'Viewing stays', count: data?.recentSessions.filter((s) => s.conversionLikelihood === 'High').length || 0 },
+            { id: 'waiting_long', label: 'Over 1 min', count: data?.recentSessions.filter((s) => s.currentWaitSeconds >= 60).length || 0 },
           ].map((tab) => {
             const selected = activeFilter === tab.id;
             return (
@@ -755,7 +747,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                 onClick={() => setActiveFilter(tab.id as TrafficFilter)}
                 className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                   selected
-                    ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                    ? 'bg-stone-900 text-white font-semibold '
                     : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
                 }`}
               >
@@ -770,14 +762,14 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
           })}
         </div>
 
-        <div className="relative min-w-[200px] sm:w-64">
+        <div className="relative w-full sm:w-64 min-w-0">
           <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search visitor, city, page..."
-            className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-stone-200 rounded-lg outline-none focus:border-stone-900 transition"
+            placeholder="Search visitor, city or page"
+            className="tm-input pl-8 pr-7"
           />
           {searchQuery && (
             <button
@@ -792,24 +784,24 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
       </div>
 
       {/* Visitor Sessions Table */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-stone-200  overflow-hidden">
         {filteredSessions.length === 0 ? (
           <div className="p-10 text-center text-stone-500">
-            <p className="text-xs font-semibold text-stone-900">No visitor sessions match this filter</p>
-            <p className="text-xs text-stone-400 mt-0.5">Try clearing the search query or selecting All Visitors.</p>
+            <p className="text-sm font-medium text-stone-900">No visitors match this filter</p>
+            <p className="tm-muted mt-0.5">Clear the search or pick All.</p>
           </div>
         ) : (
           <>
             {/* Desktop & Laptop Table (md+) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden xl:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
+                  <tr className="bg-stone-50 border-b border-stone-200 text-xs font-medium text-stone-500">
                     <th className="px-4 py-2.5">Visitor</th>
-                    <th className="px-3.5 py-2.5 whitespace-nowrap">Status &amp; Duration</th>
-                    <th className="px-3.5 py-2.5">Current Page</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Status</th>
+                    <th className="px-3.5 py-2.5">Current page</th>
                     <th className="px-3.5 py-2.5">Activity</th>
-                    <th className="hidden xl:table-cell px-3.5 py-2.5">Recent Pages</th>
+                    <th className="hidden xl:table-cell px-3.5 py-2.5">Recent pages</th>
                     <th className="px-3.5 py-2.5 text-right whitespace-nowrap">Details</th>
                   </tr>
                 </thead>
@@ -848,7 +840,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                         <td className="px-3.5 py-3 align-top whitespace-nowrap">
                           <div>{renderStatusBadge(s.status, s.currentWaitSeconds)}</div>
                           <div className="text-[11px] text-stone-400 mt-0.5">
-                            Session: <span className="font-mono text-stone-600">{formatWaitDuration(s.totalSessionSeconds)}</span>
+                            Session: <span className="tabular-nums text-stone-600">{formatWaitDuration(s.totalSessionSeconds)}</span>
                           </div>
                         </td>
 
@@ -856,7 +848,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                           <div className="font-medium text-stone-900 max-w-[200px] truncate">
                             {s.currentTitle || s.currentPath}
                           </div>
-                          <div className="text-[11px] text-stone-400 font-mono truncate max-w-[200px] mt-0.5">
+                          <div className="text-[11px] text-stone-400 tabular-nums truncate max-w-[200px] mt-0.5">
                             {s.currentPath}
                           </div>
                         </td>
@@ -905,7 +897,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             </div>
 
             {/* Mobile Stacked Card List (<md) */}
-            <div className="md:hidden divide-y divide-stone-100">
+            <div className="xl:hidden divide-y divide-stone-100">
               {filteredSessions.map((s) => {
                 const isSelected = selectedSession?.sessionId === s.sessionId;
                 return (
@@ -942,12 +934,12 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
 
                     <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
                       <div className="min-w-0">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Current Page</span>
+                        <span className="text-xs text-stone-500 block">Current page</span>
                         <div className="font-medium text-stone-900 truncate mt-0.5">{s.currentTitle || s.currentPath}</div>
-                        <div className="text-[11px] text-stone-400 font-mono truncate">{s.currentPath}</div>
+                        <div className="text-[11px] text-stone-400 tabular-nums truncate">{s.currentPath}</div>
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Activity</span>
+                        <span className="text-xs text-stone-500 block">Activity</span>
                         <div className="mt-0.5">{renderIntentBadge(s.intent)}</div>
                         <div className="text-[11px] text-stone-500 truncate mt-0.5">
                           Session: {formatWaitDuration(s.totalSessionSeconds)}

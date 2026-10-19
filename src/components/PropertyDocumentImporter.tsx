@@ -3,18 +3,15 @@ import { createPortal } from 'react-dom';
 import {
   Upload,
   FileText,
-  Image,
   X,
   Check,
   Loader2,
   AlertCircle,
   ClipboardPaste,
-  Building2,
   ArrowRight,
   ArrowLeft,
   Plus,
   Trash2,
-  User,
   Phone,
   MapPin,
   BedDouble,
@@ -461,21 +458,20 @@ export default function PropertyDocumentImporter({
     }
 
     onImport(cleanPayload);
-    toast.success('Property details applied to your listing!');
+    toast.success('Details added to your listing');
     handleClose();
   };
 
   if (!open || typeof document === 'undefined') return null;
 
-  const inputClass =
-    'w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 outline-none focus:border-stone-900 transition';
-  const labelClass = 'block text-[11px] font-semibold text-stone-600 mb-1';
+  const inputClass = 'tm-input';
+  const labelClass = 'block text-xs font-medium text-stone-700 mb-1';
 
   return createPortal(
     <div
       id="property-document-importer-modal"
       data-lenis-prevent="true"
-      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/60 backdrop-blur-xs flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/50 flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -483,29 +479,30 @@ export default function PropertyDocumentImporter({
       <div
         ref={scrollIsolationRef}
         data-lenis-prevent="true"
-        className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
+        className="bg-white rounded-xl w-full max-w-2xl max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-sm flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 shrink-0">
-          <div>
-            <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
-              Import Property Details
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-stone-200 shrink-0">
+          <div className="min-w-0">
+            <h3 className="tm-h2">
+              Import from a document
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              Extract property info, owner &amp; contacts, amenities, and room rates in seconds
+              We fill in what we find. You check everything before it is added.
             </p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition cursor-pointer"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 3-Step Minimalist Indicator Bar */}
-        <div className="grid grid-cols-3 border-b border-stone-200 bg-stone-50 text-xs font-semibold shrink-0">
+        {/* 3-step indicator */}
+        <div className="grid grid-cols-3 border-b border-stone-200 text-xs font-medium shrink-0">
           <button
             type="button"
             onClick={() => setStep(1)}
@@ -515,7 +512,7 @@ export default function PropertyDocumentImporter({
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
-            1. Source Document
+            1. Document
           </button>
           <button
             type="button"
@@ -529,7 +526,7 @@ export default function PropertyDocumentImporter({
                 : 'border-transparent text-stone-300 cursor-not-allowed'
             }`}
           >
-            2. Property &amp; Contacts
+            2. Details
           </button>
           <button
             type="button"
@@ -543,7 +540,7 @@ export default function PropertyDocumentImporter({
                 : 'border-transparent text-stone-300 cursor-not-allowed'
             }`}
           >
-            3. Rooms &amp; Rates {draftData?.rooms?.length ? `(${draftData.rooms.length})` : ''}
+            3. Rooms {draftData?.rooms?.length ? `(${draftData.rooms.length})` : ''}
           </button>
         </div>
 
@@ -556,7 +553,7 @@ export default function PropertyDocumentImporter({
           {step === 1 && (
             <div className="space-y-4">
               {/* Source Mode Tabs */}
-              <div className="flex bg-stone-100 p-1 rounded-xl gap-1">
+              <div className="flex bg-stone-100 p-1 rounded-lg gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -565,12 +562,12 @@ export default function PropertyDocumentImporter({
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     activeTab === 'text'
-                      ? 'bg-white text-stone-900 shadow-2xs'
+                      ? 'bg-white text-stone-900 shadow-sm'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
                   <ClipboardPaste className="w-3.5 h-3.5" />
-                  <span>Paste Text / Rate Sheet</span>
+                  <span>Paste text</span>
                 </button>
                 <button
                   type="button"
@@ -580,26 +577,26 @@ export default function PropertyDocumentImporter({
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     activeTab === 'file'
-                      ? 'bg-white text-stone-900 shadow-2xs'
+                      ? 'bg-white text-stone-900 shadow-sm'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Upload File (TXT, CSV, Photo, PDF)</span>
+                  <span>Upload a file</span>
                 </button>
               </div>
 
               {activeTab === 'text' ? (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs text-stone-500">
+                  <div className="flex items-center justify-between gap-2 text-xs text-stone-500">
                     <span>
-                      Paste a hotel brochure, WhatsApp rate sheet, room tariff list, or contact card:
+                      Paste a brochure, rate sheet or WhatsApp message.
                     </span>
                     {pastedText.trim().length > 0 && (
                       <button
                         type="button"
                         onClick={() => setPastedText('')}
-                        className="text-stone-400 hover:text-stone-700 underline text-[11px]"
+                        className="tm-link text-[11px]"
                       >
                         Clear
                       </button>
@@ -624,16 +621,13 @@ Amenities: Free WiFi, Solar backup power, Private beach, Breakfast included, Res
 ROOMS & RATES:
 - Standard Lakeview Chalet (Sleeps 2, 4 units) - $95 / MK 165,000
 - Family Beach Cottage (Sleeps 4, 2 units) - $160 / MK 280,000`}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3.5 text-xs font-mono text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition resize-none leading-relaxed"
+                    className="tm-input resize-none leading-relaxed"
                   />
 
                   {liveDetection && (
-                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-stone-100 border border-stone-200 rounded-xl text-xs text-stone-700">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate font-medium">{liveDetection.summary}</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-stone-500 shrink-0">Instant</span>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-stone-50 rounded-lg text-xs text-stone-700 min-w-0">
+                      <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span className="truncate font-medium">{liveDetection.summary}</span>
                     </div>
                   )}
                 </div>
@@ -674,17 +668,15 @@ ROOMS & RATES:
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      <div className="flex justify-center gap-3">
-                        <FileText className="w-7 h-7 text-stone-400" />
-                        <Image className="w-7 h-7 text-stone-400" />
+                      <div className="flex justify-center">
+                        <Upload className="w-7 h-7 text-stone-400" />
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-stone-700">
-                          Drop your rate sheet or property document here
+                          Drop your rate sheet or brochure here
                         </p>
                         <p className="text-xs text-stone-400 mt-1">
-                          Supports .txt and .csv (instant in-browser)
-                          {hasAI ? ', plus photos and PDFs' : ''}
+                          Text or CSV{hasAI ? ', photo or PDF' : ''}. Or click to browse.
                         </p>
                       </div>
                     </div>
@@ -693,7 +685,7 @@ ROOMS & RATES:
               )}
 
               {error && (
-                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -706,10 +698,7 @@ ROOMS & RATES:
             <div className="space-y-5">
               {/* Property Identity & Location */}
               <div className="space-y-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-500">
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>Property Basics</span>
-                </div>
+                <h4 className="text-sm font-semibold text-stone-900">Property</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-1">
                     <label className={labelClass}>Property Name</label>
@@ -766,10 +755,7 @@ ROOMS & RATES:
 
               {/* Owner & Manager Details */}
               <div className="space-y-3 pt-3 border-t border-stone-100">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-500">
-                  <User className="w-3.5 h-3.5" />
-                  <span>Owner &amp; Manager Details</span>
-                </div>
+                <h4 className="text-sm font-semibold text-stone-900">Owner and manager</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className={labelClass}>Owner Name</label>
@@ -839,10 +825,7 @@ ROOMS & RATES:
 
               {/* Front Desk / Booking Contacts & Check-in Schedule */}
               <div className="space-y-3 pt-3 border-t border-stone-100">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-500">
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Front Desk, WhatsApp &amp; Check-In Hours</span>
-                </div>
+                <h4 className="text-sm font-semibold text-stone-900">Contacts and check-in times</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className={labelClass}>Booking / Front Desk Phone</label>
@@ -944,34 +927,33 @@ ROOMS & RATES:
           {/* ================= STEP 3: ROOMS & RATES ================= */}
           {step === 3 && draftData && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
-                    <BedDouble className="w-3.5 h-3.5" />
-                    <span>Deciphered Rooms &amp; Nightly Rates ({draftData.rooms?.length || 0})</span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold text-stone-900">
+                    Rooms found ({draftData.rooms?.length || 0})
                   </h4>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    Review or adjust room names, guest capacity, unit counts, and USD / MWK rates.
+                    Check names, guests, units and nightly rates.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={addRoom}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition cursor-pointer"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Room</span>
+                  <span>Add room</span>
                 </button>
               </div>
 
               {(!draftData.rooms || draftData.rooms.length === 0) ? (
-                <div className="p-6 border border-dashed border-stone-300 rounded-2xl text-center bg-stone-50/50 space-y-2">
+                <div className="p-6 border border-dashed border-stone-300 rounded-xl text-center space-y-2">
                   <BedDouble className="w-6 h-6 text-stone-400 mx-auto" />
                   <p className="text-xs font-semibold text-stone-700">
-                    No individual room lines were detected in this document.
+                    No rooms found in this document.
                   </p>
                   <p className="text-[11px] text-stone-500 max-w-sm mx-auto">
-                    You can add a room right now using "+ Add Room" above, or click "Apply to Property" to import the property &amp; contact details first.
+                    Add one with "Add room", or apply the details now and add rooms later.
                   </p>
                 </div>
               ) : (
@@ -979,11 +961,11 @@ ROOMS & RATES:
                   {draftData.rooms.map((room, idx) => (
                     <div
                       key={`deciphered-room-${idx}`}
-                      className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/60 space-y-3"
+                      className="p-3.5 rounded-xl border border-stone-200 space-y-3"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-mono font-bold text-stone-500 uppercase">
-                          Room #{idx + 1}
+                        <span className="text-xs font-semibold text-stone-600">
+                          Room {idx + 1}
                         </span>
                         <button
                           type="button"
@@ -1083,13 +1065,13 @@ ROOMS & RATES:
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 border-t border-stone-200 bg-stone-50 flex items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-3.5 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
           {step === 1 && (
             <>
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
+                className="tm-btn tm-btn-quiet"
               >
                 Cancel
               </button>
@@ -1101,14 +1083,14 @@ ROOMS & RATES:
                   (activeTab === 'file' && !file) ||
                   (activeTab === 'text' && pastedText.trim().length < 5)
                 }
-                className="px-5 py-2.5 text-xs font-semibold bg-stone-900 text-white rounded-xl hover:bg-stone-800 flex items-center gap-2 disabled:opacity-40 cursor-pointer transition"
+                className="tm-btn tm-btn-primary"
               >
                 {processing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <FileText className="w-4 h-4" />
                 )}
-                <span>{processing ? 'Deciphering...' : 'Decipher Details'}</span>
+                <span>{processing ? 'Reading…' : 'Read document'}</span>
               </button>
             </>
           )}
@@ -1118,27 +1100,27 @@ ROOMS & RATES:
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
+                className="tm-btn tm-btn-quiet"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back</span>
               </button>
-              <div className="flex items-center gap-2">
+              <div className="tm-actions justify-end">
                 {(!draftData.rooms || draftData.rooms.length === 0) && (
                   <button
                     type="button"
                     onClick={handleApplyToProperty}
-                    className="px-4 py-2 text-xs font-semibold border border-stone-300 bg-white hover:bg-stone-100 text-stone-800 rounded-xl transition cursor-pointer"
+                    className="tm-btn tm-btn-secondary"
                   >
-                    Apply Details
+                    Apply details
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition cursor-pointer"
+                  className="tm-btn tm-btn-primary"
                 >
-                  <span>Next: Rooms &amp; Rates</span>
+                  <span>Next: rooms</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1150,7 +1132,7 @@ ROOMS & RATES:
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
+                className="tm-btn tm-btn-quiet"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back</span>
@@ -1158,10 +1140,10 @@ ROOMS & RATES:
               <button
                 type="button"
                 onClick={handleApplyToProperty}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition cursor-pointer shadow-xs"
+                className="tm-btn tm-btn-primary"
               >
                 <Check className="w-4 h-4" />
-                <span>Apply to Property</span>
+                <span>Add to listing</span>
               </button>
             </>
           )}

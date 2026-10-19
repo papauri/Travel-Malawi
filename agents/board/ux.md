@@ -33,3 +33,14 @@ status: in-progress
 - [H-orch-D1] DONE
 - [H-ui-1] DONE same fixes as ux-24/ux-25
 status: done
+status: in-progress
+- [ux-27] P2 FIXED src/components/DirectionsPanel.tsx + src/pages/HotelDetails.tsx (map sections) — two maps + two panels merged into ONE Location panel: single map with Map · Directions · Notes tabs (tm-panel/tm-btn kit; black Google tile, blue GPS pills, stat cards, eyebrow labels, hype strings removed); HotelDetails Location card and bottom Directions block replaced by one <DirectionsPanel> at #location-setting (#directions anchor kept on the panel; openDirections prop switches tab) (D2)
+- [ux-28] P2 FIXED src/components/InteractiveMap.tsx — backdrop-blur and shadow-md/lg/xl/2xl stripped from map controls, badges and overlays (max shadow-sm), pulsing badges stilled, root rounded-xl, chips sentence case (D2)
+- [ux-29] P2 FIXED src/components/OfflineIndicator.tsx — black glass toasts replaced by light kit banners (one line + one action each); 5 stacked help cards in the guide modal became a 4-line list; copy plain (no IndexedDB/Firebase jargon) (D2)
+- [ux-30] P2 FIXED src/pages/Home.tsx — hero gradient overlay -> flat scrim, backdrop-blur and shadow-xl/2xl removed from search bar, dropdowns, chips, sticky bar; 'seamless' wording dropped (D2)
+- [ux-31] P2 FIXED src/pages/SavedProperties.tsx ('unlock' copy), WalkthroughTooltip.tsx (gradient progress bar + blur/glow), CompareWidget.tsx (shadow/blur), LocationPicker.tsx (shadow-2xl), OfflineMapManager.tsx + TripPlannerD3.tsx (font-mono -> tabular-nums, blur/shadow) (D2)
+- [ux-32] checked, no D2 hits: App.tsx RestrictedRoute notices, PriceRangeFilter.tsx. d2.mjs on all ux screens: 63 -> 0
+- [H-orch-D2] DONE
+status: done
+- [ux-33] P2 FIXED InteractiveMap/OfflineMapManager/TripPlannerD3 — neon/emerald map markers, pulsing green dots, emerald icons/buttons → amber/stone (D2 stricter checker; orchestrator)
+status: done

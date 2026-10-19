@@ -349,75 +349,43 @@ export default function ManagerDashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-stone-50 py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl p-5 sm:p-8 border border-stone-200 shadow-2xs text-center">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800 mx-auto mb-4">
-              <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-              Host Dashboard Access
-            </h1>
-            <p className="text-stone-600 text-xs sm:text-sm mt-2 max-w-md mx-auto leading-relaxed">
-              The Host Dashboard is reserved for registered Malawian property owners, B&B hosts, lodge managers, cottage operators, and safari camps.
+      <div className="min-h-screen bg-stone-50 py-10 sm:py-14">
+        <div className="tm-page max-w-xl">
+          <div className="tm-panel text-center">
+            <Lock className="w-6 h-6 text-stone-400 mx-auto mb-3" />
+            <h1 className="tm-h1">Host dashboard</h1>
+            <p className="tm-lead mt-2 mx-auto">
+              For property owners and managers in Malawi. Sign in or create a host account to manage your stays.
             </p>
 
-            <div className="mt-6 grid sm:grid-cols-2 gap-3 text-left">
-              <div className="p-3.5 sm:p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-2">
-                <div className="font-bold text-stone-900 flex items-center justify-between">
-                  <span>Guest Account</span>
-                  <span className="text-[10px] text-stone-500 uppercase">Traveler</span>
-                </div>
-                <ul className="text-stone-600 space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                    <span>Browse stays, B&amp;Bs &amp; direct host chats</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                    <span>Booking vouchers &amp; trip list</span>
-                  </li>
-                  <li className="text-stone-400 italic">
-                    (No dashboard or listing tools)
-                  </li>
-                </ul>
-              </div>
+            <ul className="mt-5 mx-auto max-w-xs space-y-1.5 text-left text-sm text-stone-600">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-stone-500 shrink-0" />
+                <span>Manage rooms and rates</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-stone-500 shrink-0" />
+                <span>Reply to booking requests</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-stone-500 shrink-0" />
+                <span>No commission on direct stays</span>
+              </li>
+            </ul>
 
-              <div className="p-3.5 sm:p-4 rounded-xl bg-stone-900 text-white border border-stone-800 text-xs space-y-2">
-                <div className="font-bold text-white flex items-center justify-between">
-                  <span>Property Owner Account</span>
-                  <span className="text-[10px] text-stone-300 uppercase font-semibold">Host</span>
-                </div>
-                <ul className="text-stone-300 space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
-                    <span>Host Dashboard: Manage rooms &amp; rates</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
-                    <span>Host Starter Pack &amp; response templates</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
-                    <span>0% commission direct WhatsApp stays</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3">
+            <div className="mt-6 tm-actions justify-center">
               <button
                 onClick={() => openAuth('host')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-full text-xs sm:text-sm transition shadow-2xs cursor-pointer"
+                className="tm-btn tm-btn-primary w-full sm:w-auto"
               >
-                <span>Sign Up as Property Owner</span>
+                <span>Create a host account</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
                 onClick={() => openAuth('signin')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-full text-xs sm:text-sm transition border border-stone-200 cursor-pointer"
+                className="tm-btn tm-btn-secondary w-full sm:w-auto"
               >
-                <span>Sign In to Existing Account</span>
+                <span>Sign in</span>
               </button>
             </div>
           </div>
@@ -428,52 +396,29 @@ export default function ManagerDashboard() {
 
   if (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
     return (
-      <div className="min-h-screen bg-stone-50 py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl p-5 sm:p-8 border border-stone-200 shadow-2xs text-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200 text-xs font-medium mb-4">
-              <UserCheck className="w-3.5 h-3.5 text-stone-500" />
-              <span className="truncate max-w-[200px] sm:max-w-none">Signed in as Guest ({user.email})</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-              Property Owner Permissions Required
-            </h1>
-            <p className="text-stone-600 text-xs sm:text-sm mt-2 max-w-md mx-auto leading-relaxed">
-              You are currently signed in with a Guest account. To view the Host Dashboard and list properties, activate your free host permissions below.
+      <div className="min-h-screen bg-stone-50 py-10 sm:py-14">
+        <div className="tm-page max-w-xl">
+          <div className="tm-panel text-center">
+            <p className="tm-tag max-w-full mb-4">
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Signed in as {user.email}</span>
+            </p>
+            <h1 className="tm-h1">Turn on host tools</h1>
+            <p className="tm-lead mt-2 mx-auto">
+              Your account is a guest account. Turn on host tools (free) to list and manage properties. Your bookings and favourites stay as they are.
             </p>
 
-            <div className="mt-5 p-3.5 sm:p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-left space-y-2 max-w-md mx-auto">
-              <div className="font-semibold text-stone-900">What will be enabled:</div>
-              <ul className="text-stone-600 space-y-1.5">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
-                  <span>Full access to this Host Dashboard</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
-                  <span>Host Starter Pack &amp; onboarding toolkit</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
-                  <span>Preserves all your current bookings &amp; favorites</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3">
+            <div className="mt-6 tm-actions justify-center">
               <button
                 onClick={handleActivateHost}
                 disabled={activating}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-full text-xs sm:text-sm transition shadow-2xs cursor-pointer disabled:opacity-50"
+                className="tm-btn tm-btn-primary w-full sm:w-auto"
               >
-                <KeyRound className="w-4 h-4 text-stone-300" />
-                <span>{activating ? 'Activating Host Tools…' : 'Activate Property Owner Account (Free)'}</span>
+                <KeyRound className="w-4 h-4" />
+                <span>{activating ? 'Turning on host tools…' : 'Turn on host tools'}</span>
               </button>
-              <Link
-                to="/"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-full text-xs sm:text-sm transition border border-stone-200"
-              >
-                <span>Back to Stays</span>
+              <Link to="/" className="tm-btn tm-btn-secondary w-full sm:w-auto">
+                <span>Back to stays</span>
               </Link>
             </div>
           </div>
@@ -491,64 +436,37 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 pb-24 w-full">
+    <div className="tm-page py-6 sm:py-8 pb-24 min-w-0">
       {isShadowing && (
-        <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 text-stone-100 flex items-center justify-between gap-3.5 flex-wrap shadow-2xs">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 flex items-center justify-center shrink-0">
-              <UserCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-white">
-                Shadowing Host: {user?.displayName || user?.email}
-              </p>
-              <p className="text-xs text-stone-300 mt-0.5">
-                Viewing dashboard and listings from this property manager&apos;s perspective. Actions taken are securely logged for support.
-              </p>
-            </div>
-          </div>
+        <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+          <UserCheck className="w-4 h-4 mt-0.5 shrink-0" />
+          <p className="min-w-0 break-words">
+            Viewing as {user?.displayName || user?.email}. Actions you take are logged for support.
+          </p>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-5 sm:mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">Host Dashboard</h1>
-          <p className="text-stone-500 mt-0.5 text-xs sm:text-sm">
+      <div className="mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <h1 className="tm-h1">Host dashboard</h1>
+          <p className="tm-muted mt-1">
             {totalPending > 0
               ? `${totalPending} booking request${totalPending === 1 ? '' : 's'} waiting for your reply.`
-              : 'Overview of your listings, units, and booking requests.'}
+              : 'Your listings, rooms and booking requests.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {rooms.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveTab(activeTab === 'bulk_editor' ? 'all' : 'bulk_editor')}
-              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs border ${
-                activeTab === 'bulk_editor'
-                  ? 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
-                  : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
-              }`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>{activeTab === 'bulk_editor' ? 'View Properties' : 'Bulk Room & Rates Editor'}</span>
-            </button>
-          )}
-
-          <Link
-            to="/list-your-property"
-            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition shadow-2xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
+        <div className="tm-actions shrink-0">
+          <Link to="/list-your-property" className="tm-btn tm-btn-primary">
+            <Plus className="h-4 w-4" />
             <span>Add a property</span>
           </Link>
         </div>
       </div>
 
-      {/* Host Telemetry & Performance Summary Strip */}
+      {/* Summary row */}
       {hotels.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 mb-5 sm:mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <button
             type="button"
             onClick={() => {
@@ -556,42 +474,30 @@ export default function ManagerDashboard() {
               setStatusFilter('all');
               setCurrentPage(1);
             }}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+            className="tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer"
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Portfolio &amp; Status</span>
-              <Building2 className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <p className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">{hotels.length}</p>
-              <span className="text-xs text-emerald-700 font-semibold">{liveCount} live</span>
-            </div>
-            <p className="text-xs text-stone-400 mt-0.5">
+            <p className="tm-muted">Properties</p>
+            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{hotels.length}</p>
+            <p className="mt-0.5 text-xs text-stone-500 truncate">
+              {liveCount} live
               {pendingApprovalCount > 0
-                ? `${pendingApprovalCount} pending review`
+                ? ` · ${pendingApprovalCount} pending review`
                 : offlineCount > 0
-                ? `${offlineCount} offline`
-                : 'All stays active'}
+                ? ` · ${offlineCount} offline`
+                : ''}
             </p>
           </button>
 
           <button
             type="button"
             onClick={() => handleOpenBulkEditor()}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+            className="tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer"
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Room Inventory &amp; Sync</span>
-              <BedDouble className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <p className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">{totalRoomUnits}</p>
-              <span className="text-xs text-stone-500 font-normal">units ({rooms.length} types)</span>
-            </div>
-            <p className="text-xs text-stone-400 mt-0.5">
-              {syncedPropertiesCount > 0
-                ? `${syncedPropertiesCount} ${syncedPropertiesCount === 1 ? 'stay' : 'stays'} iCal synced`
-                : 'Click to manage rooms & rates'}
+            <p className="tm-muted">Rooms</p>
+            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{totalRoomUnits}</p>
+            <p className="mt-0.5 text-xs text-stone-500 truncate">
+              {rooms.length} {rooms.length === 1 ? 'type' : 'types'}
+              {syncedPropertiesCount > 0 ? ` · ${syncedPropertiesCount} calendar synced` : ''}
             </p>
           </button>
 
@@ -602,202 +508,73 @@ export default function ManagerDashboard() {
               setStatusFilter('needs_attention');
               setCurrentPage(1);
             }}
-            className={`p-3.5 sm:p-4 rounded-2xl border shadow-2xs text-left transition cursor-pointer ${
-              totalPending > 0
-                ? 'bg-amber-50/70 border-amber-300 hover:border-amber-400'
-                : 'bg-white border-stone-200 hover:border-stone-300'
+            className={`tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer ${
+              totalPending > 0 ? 'ring-1 ring-amber-300' : ''
             }`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Reservation Requests</span>
-              <CalendarCheck className={`w-3.5 h-3.5 ${totalPending > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <p className={`text-xl sm:text-2xl font-bold tabular-nums ${totalPending > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
-                {bookings.length}
-              </p>
-              <span className="text-xs text-emerald-700 font-semibold">
-                {confirmedBookingsCount} confirmed
-              </span>
-            </div>
-            <p className="text-xs text-stone-400 mt-0.5">
-              {totalPending > 0 ? `${totalPending} awaiting host reply` : '0 pending requests'}
+            <p className="tm-muted">Bookings</p>
+            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{bookings.length}</p>
+            <p className={`mt-0.5 text-xs truncate ${totalPending > 0 ? 'text-amber-800 font-medium' : 'text-stone-500'}`}>
+              {totalPending > 0 ? `${totalPending} awaiting reply` : `${confirmedBookingsCount} confirmed`}
             </p>
           </button>
 
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Confirmed Volume (0% Fee)</span>
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
-            </div>
-            <p className="text-lg sm:text-xl font-bold text-stone-900 tabular-nums truncate">
+          <div className="tm-panel min-w-0">
+            <p className="tm-muted">Confirmed revenue</p>
+            <p className="mt-1 text-xl font-semibold text-stone-900 tabular-nums truncate">
               MK {revenueMWK.toLocaleString()}
             </p>
-            <div className="flex items-center justify-between mt-0.5 text-xs">
-              <span className="font-mono font-semibold text-emerald-800">
-                + USD ${revenueUSD.toLocaleString()}
-              </span>
-              <span className="text-stone-400 hidden sm:inline">100% direct</span>
-            </div>
+            <p className="mt-0.5 text-xs text-stone-500 tabular-nums truncate">
+              + ${revenueUSD.toLocaleString()} · no commission
+            </p>
           </div>
         </div>
       )}
 
-      {/* Uniform Wrapping Grid Navigation Tabs (Matching ManageHotel) */}
+      {/* View tabs */}
       <div
-        className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-1.5 sm:gap-2 p-2 bg-white border border-stone-200 rounded-2xl shadow-2xs mb-5 sm:mb-6"
+        className="mb-5 flex flex-wrap gap-1.5 border-b border-stone-200 pb-3"
         role="tablist"
         aria-label="Dashboard views"
       >
-        {/* Tab 1: All Properties */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'all'}
-          onClick={() => {
-            setActiveTab('all');
-            setStatusFilter('all');
-            setCurrentPage(1);
-          }}
-          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-            activeTab === 'all'
-              ? 'bg-stone-900 text-white shadow-2xs'
-              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Building2 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'all' ? 'text-white' : 'text-stone-500'}`} />
-            <span className="truncate">All Properties</span>
-          </div>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-            activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
-          }`}>
-            {hotels.length}
-          </span>
-        </button>
-
-        {/* Tab 2: Live & Online */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'live'}
-          onClick={() => {
-            setActiveTab('live');
-            setStatusFilter('live');
-            setCurrentPage(1);
-          }}
-          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-            activeTab === 'live'
-              ? 'bg-stone-900 text-white shadow-2xs'
-              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'live' ? 'text-emerald-300' : 'text-emerald-600'}`} />
-            <span className="truncate">Live &amp; Online</span>
-          </div>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-            activeTab === 'live' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-          }`}>
-            {liveCount}
-          </span>
-        </button>
-
-        {/* Tab: Pending Review */}
-        {pendingApprovalCount > 0 && (
+        {([
+          { id: 'all', label: 'All', count: hotels.length, show: true },
+          { id: 'live', label: 'Live', count: liveCount, show: true },
+          { id: 'pending', label: 'Pending review', count: pendingApprovalCount, show: pendingApprovalCount > 0 },
+          { id: 'needs_attention', label: 'Needs attention', count: needsAttentionCount, show: true },
+          { id: 'bulk_editor', label: 'Rooms & rates', count: rooms.length, show: true },
+        ] as const).filter((t) => t.show).map((t) => (
           <button
+            key={t.id}
             type="button"
             role="tab"
-            aria-selected={activeTab === 'pending'}
+            aria-selected={activeTab === t.id}
             onClick={() => {
-              setActiveTab('pending');
-              setStatusFilter('pending');
+              if (t.id === 'bulk_editor') {
+                handleOpenBulkEditor();
+                return;
+              }
+              setActiveTab(t.id);
+              setStatusFilter(t.id);
               setCurrentPage(1);
             }}
-            className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-              activeTab === 'pending'
-                ? 'bg-stone-900 text-white shadow-2xs'
-                : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100/80 border border-amber-200'
+            className={`tm-btn tm-btn-sm ${
+              activeTab === t.id
+                ? 'bg-stone-100 text-stone-900 font-semibold'
+                : 'tm-btn-quiet text-stone-600'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertCircle className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pending' ? 'text-amber-300' : 'text-amber-600'}`} />
-              <span className="truncate">Pending Review</span>
-            </div>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-              activeTab === 'pending' ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
-            }`}>
-              {pendingApprovalCount}
+            <span>{t.label}</span>
+            <span className={`tabular-nums ${activeTab === t.id ? 'text-stone-600' : 'text-stone-400'}`}>
+              {t.count}
             </span>
           </button>
-        )}
-
-        {/* Tab 3: Needs Attention */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'needs_attention'}
-          onClick={() => {
-            setActiveTab('needs_attention');
-            setStatusFilter('needs_attention');
-            setCurrentPage(1);
-          }}
-          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-            activeTab === 'needs_attention'
-              ? 'bg-stone-900 text-white shadow-2xs'
-              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Clock className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'needs_attention' ? 'text-white' : 'text-stone-500'}`} />
-            <span className="truncate">Needs Attention</span>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md font-bold ${
-              activeTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
-            }`}>
-              {needsAttentionCount}
-            </span>
-            {totalPending > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-                activeTab === 'needs_attention' ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-              }`}>
-                {totalPending} req
-              </span>
-            )}
-          </div>
-        </button>
-
-        {/* Tab 4: Room Inventory & Bulk Rates */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'bulk_editor'}
-          onClick={() => {
-            handleOpenBulkEditor();
-          }}
-          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-            activeTab === 'bulk_editor'
-              ? 'bg-stone-900 text-white shadow-2xs'
-              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
-          }`}
-          title="Open Bulk Room & Rates Editor"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <BedDouble className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'bulk_editor' ? 'text-white' : 'text-stone-500'}`} />
-            <span className="truncate">Rooms &amp; Rates</span>
-          </div>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-            activeTab === 'bulk_editor' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
-          }`}>
-            {rooms.length}
-          </span>
-        </button>
+        ))}
       </div>
 
       {/* Tab Content 1: Bulk Room & Rate Editor Section */}
       {activeTab === 'bulk_editor' ? (
-        <div className="mb-7 transition-all animate-in fade-in duration-150">
+        <div className="mb-7 min-w-0">
           <BulkRoomEditor
             hotels={hotels}
             rooms={rooms}
@@ -815,31 +592,31 @@ export default function ManagerDashboard() {
         <>
 
       {/* Sort Dropdown */}
-      {hotels.length > 0 && (
-        <div className="flex justify-end mb-5">
+      {hotels.length > 1 && (
+        <div className="flex justify-end mb-4">
           <div className="relative shrink-0 w-full sm:w-48 text-left">
             <button
               type="button"
               onClick={() => setSortMenuOpen(!sortMenuOpen)}
-              className="w-full flex items-center justify-between h-9 bg-white border border-stone-200 rounded-xl px-3.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
+              className="tm-btn tm-btn-secondary tm-btn-sm w-full justify-between"
             >
               <span>
-                {sortBy === 'default' && 'Sort: Default'}
-                {sortBy === 'pending' && 'Sort: Most Pending'}
-                {sortBy === 'rooms' && 'Sort: Most Rooms'}
-                {sortBy === 'name' && 'Sort: Name (A-Z)'}
+                {sortBy === 'default' && 'Sort: default'}
+                {sortBy === 'pending' && 'Sort: most pending'}
+                {sortBy === 'rooms' && 'Sort: most rooms'}
+                {sortBy === 'name' && 'Sort: name (A–Z)'}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${sortMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {sortMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setSortMenuOpen(false)} />
-                <div className="absolute top-full left-0 right-0 mt-1.5 p-1 bg-white border border-stone-200 rounded-xl shadow-lg z-20 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute top-full left-0 right-0 mt-1.5 p-1 bg-white border border-stone-200 rounded-lg shadow-sm z-20 flex flex-col gap-0.5">
                   {[
                     { value: 'default', label: 'Default' },
-                    { value: 'pending', label: 'Most Pending' },
-                    { value: 'rooms', label: 'Most Rooms' },
-                    { value: 'name', label: 'Name (A-Z)' },
+                    { value: 'pending', label: 'Most pending' },
+                    { value: 'rooms', label: 'Most rooms' },
+                    { value: 'name', label: 'Name (A–Z)' },
                   ].map(opt => (
                     <button
                       key={opt.value}
@@ -848,7 +625,7 @@ export default function ManagerDashboard() {
                         setSortBy(opt.value as SortOption);
                         setSortMenuOpen(false);
                       }}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${
+                      className={`w-full text-left px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer ${
                         sortBy === opt.value ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-600 hover:bg-stone-50'
                       }`}
                     >
@@ -863,30 +640,26 @@ export default function ManagerDashboard() {
       )}
 
       {/* Property Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {hotels.length === 0 ? (
-          <div className="col-span-full bg-white p-6 sm:p-10 md:p-12 text-center rounded-2xl border border-stone-200 shadow-2xs">
-            <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-stone-300 mx-auto mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 mb-1.5">Nothing listed yet</h3>
-            <p className="text-stone-500 text-xs sm:text-sm max-w-md mx-auto mb-5 sm:mb-6">
-              Walk through your first listing in four steps — the basics, the description,
-              your photographs, then rooms and rates.
+          <div className="col-span-full tm-panel text-center py-10">
+            <Building2 className="h-10 w-10 text-stone-300 mx-auto mb-3" />
+            <h3 className="tm-h2 mb-1">Nothing listed yet</h3>
+            <p className="tm-muted max-w-md mx-auto mb-5">
+              Add your first property in four short steps.
             </p>
-            <Link
-              to="/list-your-property"
-              className="inline-flex items-center justify-center h-10 bg-stone-900 text-white px-5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition shadow-2xs"
-            >
+            <Link to="/list-your-property" className="tm-btn tm-btn-secondary">
               List your first property
             </Link>
           </div>
         ) : filteredHotels.length === 0 ? (
-          <div className="col-span-full bg-white p-6 sm:p-10 text-center rounded-2xl border border-stone-200 shadow-2xs">
-            <p className="text-sm font-semibold text-stone-700 mb-2">No properties matching this filter</p>
+          <div className="col-span-full tm-panel text-center py-8">
+            <p className="text-sm text-stone-700 mb-2">No properties match this filter.</p>
             <button
               onClick={() => setStatusFilter('all')}
-              className="text-xs text-emerald-700 font-bold underline cursor-pointer"
+              className="tm-link text-sm cursor-pointer"
             >
-              Reset filter to show all ({hotels.length})
+              Show all ({hotels.length})
             </button>
           </div>
         ) : (
@@ -898,52 +671,33 @@ export default function ManagerDashboard() {
             return (
               <div
                 key={`mgr-hotel-${hotel.id}`}
-                className="group bg-white rounded-2xl shadow-2xs border border-stone-200/90 overflow-visible flex flex-col hover:border-stone-300 hover:shadow-xs transition duration-200"
+                className="bg-white rounded-xl border border-stone-200 flex flex-col min-w-0 hover:border-stone-300 transition-colors"
               >
                 {/* Card Media Header */}
-                <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-44 bg-stone-100 relative shrink-0 overflow-hidden rounded-t-2xl">
+                <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-40 bg-stone-100 relative shrink-0 overflow-hidden rounded-t-xl">
                   <SmartImage
                     src={getHotelImage(hotel)}
                     alt={hotel.name}
-                    className="w-full h-full object-cover group-hover:scale-102 transition duration-500 ease-out"
+                    className="w-full h-full object-cover"
                   />
 
-                  {/* Status Badge / Quick Moderation Action */}
+                  {/* Status badge (admins approve from the card body or the More menu) */}
                   {hotel.status === 'pending' ? (
-                    userIsAdmin ? (
-                      <button
-                        type="button"
-                        disabled={approvingHotelId === hotel.id}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleApproveListing(hotel);
-                        }}
-                        className="absolute top-2.5 left-2.5 z-20 max-w-[calc(100%-6rem)] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
-                        title="Click to approve this stay and make it live on Travel Malawi"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">
-                          {approvingHotelId === hotel.id ? 'Approving...' : 'Pending · Approve'}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toast('This listing has been submitted and is awaiting administrator verification before going live.');
-                        }}
-                        className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-50 transition cursor-pointer"
-                        title="Listing is pending review"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
-                        <span>Pending review</span>
-                      </button>
-                    )
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toast('This listing is waiting for review before it goes live.');
+                      }}
+                      className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-white/95 text-amber-900 border border-amber-200 hover:bg-amber-50 transition-colors cursor-pointer"
+                      title="Listing is pending review"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
+                      <span>Pending review</span>
+                    </button>
                   ) : (
-                    <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
+                    <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-white/95 text-stone-800 border border-stone-200">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         hotel.status === 'rejected' ? 'bg-stone-400' :
                         'bg-emerald-600'
@@ -959,12 +713,12 @@ export default function ManagerDashboard() {
                     type="button"
                     onClick={(e) => handleToggleHotelOnline(e, hotel)}
                     disabled={togglingHotelId === hotel.id}
-                    className={`absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none shadow-2xs border ${
+                    className={`absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium transition-colors cursor-pointer select-none border ${
                       hotel.isOnline !== false
-                        ? 'bg-white/95 hover:bg-white text-stone-800 border-stone-200/90'
-                        : 'bg-white/90 hover:bg-white text-stone-500 border-stone-200/70'
+                        ? 'bg-white/95 hover:bg-white text-stone-800 border-stone-200'
+                        : 'bg-white/90 hover:bg-white text-stone-500 border-stone-200'
                     }`}
-                    title="Click to toggle Host Online/Offline Status"
+                    title="Switch this listing online or offline"
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-300'}`} />
                     <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
@@ -972,29 +726,24 @@ export default function ManagerDashboard() {
                 </div>
 
                 {/* Card Body */}
-                <div className="p-3.5 sm:p-4 flex-1 flex flex-col min-w-0">
+                <div className="p-4 flex-1 flex flex-col min-w-0">
                   <div className="mb-2 min-w-0">
-                    <h3 className="text-sm sm:text-base font-serif font-bold text-stone-900 truncate">
+                    <h3 className="font-serif text-base font-semibold text-stone-900 truncate">
                       <MaskedPlaceName name={hotel.name} fallback="[Your Listed Lodge]" />
                     </h3>
                     <p className="text-stone-500 text-xs truncate">{hotel.location || 'Malawi'}</p>
                   </div>
 
                   {/* Room & Booking Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs mb-3">
-                    <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-700 px-2 py-0.5 rounded-lg font-medium text-[11px]">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3 min-w-0">
+                    <span className="tm-tag">
                       <BedDouble className="w-3 h-3 text-stone-400" />
                       {roomsCount} {roomsCount === 1 ? 'room type' : 'room types'}
                     </span>
-                    {pendingCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-bold text-[11px]">
-                        <CalendarCheck className="w-3 h-3 text-amber-600" />
+                    {pendingCount > 0 && (
+                      <span className="tm-tag tm-tag-warn">
+                        <CalendarCheck className="w-3 h-3" />
                         {pendingCount} awaiting reply
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 bg-stone-50 text-stone-500 px-2 py-0.5 rounded-lg text-[11px] border border-stone-100">
-                        <CalendarCheck className="w-3 h-3 text-stone-400" />
-                        0 requests
                       </span>
                     )}
                     {(() => {
@@ -1009,7 +758,7 @@ export default function ManagerDashboard() {
                               e.stopPropagation();
                               setIcalModalHotel(hotel);
                             }}
-                            className="inline-flex items-center gap-1 text-stone-500 hover:text-amber-800 text-[11px] font-medium transition cursor-pointer"
+                            className="inline-flex items-center gap-1 text-stone-500 hover:text-amber-800 text-xs font-medium transition-colors cursor-pointer"
                             title="Connect RoomRaccoon, Airbnb, or external PMS calendar"
                           >
                             <CalendarSync className="w-3 h-3 text-stone-400" />
@@ -1025,28 +774,27 @@ export default function ManagerDashboard() {
                             e.stopPropagation();
                             setIcalModalHotel(hotel);
                           }}
-                          className="inline-flex items-center gap-1.5 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition cursor-pointer"
-                          title="Click to view & test live 2-way calendar sync connections"
+                          className="tm-tag tm-tag-good hover:bg-emerald-100 transition-colors cursor-pointer"
+                          title="View and test calendar sync"
                         >
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <CalendarSync className="w-3 h-3 text-emerald-700" />
-                          <span>iCal Synced ({syncedFeedsCount})</span>
+                          <CalendarSync className="w-3 h-3" />
+                          <span>Calendar synced ({syncedFeedsCount})</span>
                         </button>
                       );
                     })()}
                   </div>
 
                   {roomsCount === 0 && (
-                    <p className="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3 py-1.5">
+                    <p className="mb-3 text-xs text-amber-800">
                       Add a room to accept bookings.
                     </p>
                   )}
 
                   {hotel.status === 'pending' && userIsAdmin && (
-                    <div className="mb-3 flex items-center justify-between gap-2 p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-950">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 min-w-0 text-xs text-amber-900">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span className="font-semibold text-[11px] truncate">Pending Review</span>
+                        <span className="font-medium truncate">Waiting for your review</span>
                       </div>
                       <button
                         type="button"
@@ -1056,36 +804,34 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           handleApproveListing(hotel);
                         }}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg font-semibold text-[11px] transition shadow-2xs shrink-0 cursor-pointer"
+                        className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                         title="Approve this stay to make it live"
                       >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>{approvingHotelId === hotel.id ? 'Approving...' : 'Approve Stay'}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>{approvingHotelId === hotel.id ? 'Approving…' : 'Approve'}</span>
                       </button>
                     </div>
                   )}
 
                   {/* Quick Action Button Group */}
-                  <div className="mt-auto pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <Link
-                        to={`/dashboard/hotel/${hotel.id}`}
-                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold h-9 px-3 rounded-xl flex items-center justify-center gap-1 transition shadow-2xs flex-1 truncate"
-                      >
-                        <span>Manage</span>
-                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                      </Link>
-                      <Link
-                        to={`/dashboard/hotel/${hotel.id}?tab=bookings`}
-                        className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold h-9 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shrink-0"
-                        title="View Bookings"
-                      >
-                        <span>Bookings</span>
-                        {pendingCount > 0 && (
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        )}
-                      </Link>
-                    </div>
+                  <div className="mt-auto pt-3 tm-divider tm-actions">
+                    <Link
+                      to={`/dashboard/hotel/${hotel.id}`}
+                      className="tm-btn tm-btn-primary tm-btn-sm flex-1 min-w-0"
+                    >
+                      <span className="truncate">Manage</span>
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                    </Link>
+                    <Link
+                      to={`/dashboard/hotel/${hotel.id}?tab=bookings`}
+                      className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
+                      title="View bookings"
+                    >
+                      <span>Bookings</span>
+                      {pendingCount > 0 && (
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      )}
+                    </Link>
 
                     <div className="relative shrink-0 text-left">
                       <button
@@ -1095,10 +841,10 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           setOpenCardMenuId(openCardMenuId === hotel.id ? null : hotel.id!);
                         }}
-                        className="h-9 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer flex items-center gap-1 text-xs font-semibold shadow-2xs"
+                        className="tm-btn tm-btn-quiet tm-btn-sm"
                         aria-label="More actions"
                       >
-                        <span>Actions</span>
+                        <span>More</span>
                         <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openCardMenuId === hotel.id ? 'rotate-180' : ''}`} />
                       </button>
 
@@ -1111,8 +857,8 @@ export default function ManagerDashboard() {
                               setOpenCardMenuId(null);
                             }}
                           />
-                          <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
-                            {/* Elevated Moderation Actions */}
+                          <div className="absolute right-0 bottom-full mb-1.5 w-52 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-sm border border-stone-200 py-1 z-40 text-left">
+                            {/* Admin moderation actions */}
                             {userIsAdmin && hotel.status === 'pending' && (
                               <>
                                 <button
@@ -1124,10 +870,10 @@ export default function ManagerDashboard() {
                                     setOpenCardMenuId(null);
                                     handleApproveListing(hotel);
                                   }}
-                                  className="w-full px-3 py-2 text-xs text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 flex items-center gap-2 font-bold transition cursor-pointer"
+                                  className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 font-medium transition-colors cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                  <span>{approvingHotelId === hotel.id ? 'Approving...' : 'Approve Stay (Go Live)'}</span>
+                                  <span>{approvingHotelId === hotel.id ? 'Approving…' : 'Approve and go live'}</span>
                                 </button>
 
                                 <button
@@ -1138,10 +884,10 @@ export default function ManagerDashboard() {
                                     setOpenCardMenuId(null);
                                     handleRejectListing(hotel);
                                   }}
-                                  className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 font-medium transition cursor-pointer"
+                                  className="w-full px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 flex items-center gap-2 font-medium transition cursor-pointer"
                                 >
-                                  <X className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                  <span>Reject Stay</span>
+                                  <X className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                  <span>Reject</span>
                                 </button>
 
                                 <div className="my-1 border-t border-stone-100" />
@@ -1168,7 +914,7 @@ export default function ManagerDashboard() {
                               className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                             >
                               <SlidersHorizontal className="w-3.5 h-3.5 text-stone-400" />
-                              <span>Bulk Rate Editor</span>
+                              <span>Edit rates in bulk</span>
                             </button>
 
                             <button
@@ -1181,8 +927,8 @@ export default function ManagerDashboard() {
                               }}
                               className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                             >
-                              <CalendarSync className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>Calendar Sync (iCal / PMS)</span>
+                              <CalendarSync className="w-3.5 h-3.5 text-stone-400" />
+                              <span>Calendar sync</span>
                             </button>
 
                             <a
@@ -1193,7 +939,7 @@ export default function ManagerDashboard() {
                               className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition"
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
-                              <span>Preview Listing</span>
+                              <span>Preview listing</span>
                             </a>
 
                             <div className="my-1 border-t border-stone-100" />
@@ -1208,7 +954,7 @@ export default function ManagerDashboard() {
                             >
                               <span className="flex items-center gap-2">
                                 <span className={`w-2 h-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500' : 'bg-stone-400'}`} />
-                                <span>{hotel.isOnline !== false ? 'Set Offline (Away)' : 'Set Online'}</span>
+                                <span>{hotel.isOnline !== false ? 'Set offline' : 'Set online'}</span>
                               </span>
                             </button>
 
@@ -1222,10 +968,10 @@ export default function ManagerDashboard() {
                                 setOpenCardMenuId(null);
                                 setHotelToDelete(hotel);
                               }}
-                              className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                              className="w-full px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 flex items-center gap-2 transition cursor-pointer"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                              <span>Delete Listing</span>
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <span>Delete listing</span>
                             </button>
                           </div>
                         </>

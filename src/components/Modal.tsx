@@ -99,7 +99,7 @@ export default function Modal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-stone-950/50"
         onClick={onClose}
       />
 
@@ -111,8 +111,8 @@ export default function Modal({
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
-        className={`relative z-10 w-full ${SIZES[size]} bg-white shadow-2xl shadow-stone-950/25
-          rounded-2xl sm:rounded-3xl
+        className={`relative z-10 w-full ${SIZES[size]} bg-white shadow-sm
+          rounded-xl
           max-h-[calc(100dvh-1.5rem)] sm:max-h-[88dvh] flex flex-col overflow-hidden my-auto text-left border border-stone-100`}
         data-lenis-prevent="true"
       >
@@ -145,7 +145,7 @@ export default function Modal({
         </div>
 
         {footer && (
-          <div className="shrink-0 border-t border-stone-100 bg-white/95 backdrop-blur px-4 sm:px-6 md:px-7 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="shrink-0 border-t border-stone-100 bg-white px-4 sm:px-6 md:px-7 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}

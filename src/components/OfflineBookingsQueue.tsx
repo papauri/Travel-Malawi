@@ -30,43 +30,33 @@ export default function OfflineBookingsQueue({ className = '', compact = false }
   }
 
   return (
-    <div className={`bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden ${className}`}>
+    <div className={`tm-panel !p-0 overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50/50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-700 shrink-0">
-            <HardDrive className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm sm:text-base font-bold text-stone-900">
-                Offline Bookings Queue
-              </h3>
+      <div className="p-4 sm:p-5 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <HardDrive className="w-5 h-5 text-stone-500 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="tm-h2">Saved offline</h3>
               {pendingCount > 0 ? (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                  {pendingCount} Pending Sync
-                </span>
+                <span className="tm-tag tm-tag-warn">{pendingCount} waiting to send</span>
               ) : (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
-                  All Synced
-                </span>
+                <span className="tm-tag tm-tag-good">All sent</span>
               )}
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">
-              Saved locally via IndexedDB. Synchronizes with Firebase when online.
-            </p>
+            <p className="tm-muted mt-0.5">Bookings made without a connection are sent when you are back online.</p>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="tm-actions shrink-0">
           {syncedCount > 0 && (
             <button
               type="button"
               onClick={clearCompleted}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
-              Clear Synced ({syncedCount})
+              Clear sent ({syncedCount})
             </button>
           )}
 
@@ -74,15 +64,11 @@ export default function OfflineBookingsQueue({ className = '', compact = false }
             type="button"
             onClick={syncNow}
             disabled={isSyncing || (!isOnline && pendingCount > 0)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-              isOnline
-                ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-xs'
-                : 'bg-stone-100 text-stone-500 border border-stone-200'
-            }`}
-            title={!isOnline ? 'Reconnect to internet to sync' : 'Sync pending bookings with Firebase'}
+            className="tm-btn tm-btn-secondary tm-btn-sm"
+            title={!isOnline ? 'Reconnect to send' : 'Send waiting bookings now'}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Syncing...' : isOnline ? 'Sync with Firebase' : 'Offline'}</span>
+            <span>{isSyncing ? 'Sending…' : isOnline ? 'Send now' : 'Offline'}</span>
           </button>
         </div>
       </div>
@@ -98,17 +84,15 @@ export default function OfflineBookingsQueue({ className = '', compact = false }
           return (
             <div
               key={b.id}
-              className={`p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 transition ${
-                isPending ? 'bg-amber-50/20' : isFailed ? 'bg-red-50/20' : 'bg-white'
-              }`}
+              className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3"
             >
               {/* Main Booking Details */}
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-xs font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                  <span className="tm-tag font-mono">
                     {b.reference}
                   </span>
-                  <h4 className="text-sm font-bold text-stone-900 truncate">
+                  <h4 className="text-sm font-semibold text-stone-900 truncate min-w-0">
                     {b.hotelName} &middot; <span className="text-stone-600 font-normal">{b.roomName}</span>
                   </h4>
                 </div>
@@ -127,9 +111,9 @@ export default function OfflineBookingsQueue({ className = '', compact = false }
                 </div>
 
                 {isFailed && b.lastError && (
-                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <p className="text-xs text-red-700 flex items-start gap-1 mt-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Sync failed: {b.lastError}</span>
+                    <span className="break-words">Not sent: {b.lastError}</span>
                   </p>
                 )}
               </div>
@@ -137,30 +121,30 @@ export default function OfflineBookingsQueue({ className = '', compact = false }
               {/* Status and Action Controls */}
               <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto">
                 {isPending && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                  <span className="tm-tag tm-tag-warn">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Saved Offline</span>
+                    <span>Waiting</span>
                   </span>
                 )}
 
                 {isSyncingItem && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                  <span className="tm-tag">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Syncing...</span>
+                    <span>Sending…</span>
                   </span>
                 )}
 
                 {isSynced && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="tm-tag tm-tag-good">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Synced to Firebase</span>
+                    <span>Sent</span>
                   </span>
                 )}
 
                 {isFailed && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                  <span className="tm-tag tm-tag-bad">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Failed</span>
+                    <span>Not sent</span>
                   </span>
                 )}
 

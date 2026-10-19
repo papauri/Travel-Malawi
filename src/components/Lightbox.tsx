@@ -93,7 +93,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
       role="dialog"
       aria-modal="true"
       aria-label="Photo gallery"
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl select-none"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 select-none"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -101,7 +101,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
     >
       {/* Header controls */}
       <div className="absolute top-4 left-0 right-0 px-4 sm:px-6 flex justify-between items-center z-10 pointer-events-none">
-        <span className="text-white/80 font-mono text-sm tracking-widest font-semibold bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
+        <span className="text-white/80 text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
           {safeIndex + 1} / {images.length}
         </span>
         <div className="flex items-center gap-2 pointer-events-auto">
@@ -118,7 +118,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
                   setCurrentIndex(prev => (prev >= images.length - 1 ? Math.max(0, images.length - 2) : prev));
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-md active:scale-95 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition cursor-pointer"
               title="Delete this photo"
               aria-label="Delete this photo"
             >
@@ -128,7 +128,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
           )}
           <button
             onClick={onClose}
-            className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md active:scale-95 cursor-pointer"
+            className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition active:scale-95 cursor-pointer"
             aria-label="Close photo gallery"
           >
             <X className="w-6 h-6" />
@@ -149,7 +149,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
           <SmartImage
             src={images[safeIndex]}
             alt={`Gallery photo ${safeIndex + 1} of ${images.length}`}
-            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-none"
+            className="max-w-full max-h-full object-contain rounded-xl shadow-sm pointer-events-none"
           />
         </motion.div>
       </AnimatePresence>
@@ -161,7 +161,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
             type="button"
             aria-label="Previous photo"
             onClick={prev}
-            className="absolute left-4 md:left-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition backdrop-blur-md z-10 active:scale-95"
+            className="absolute left-4 md:left-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition z-10 active:scale-95"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
@@ -169,7 +169,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
             type="button"
             aria-label="Next photo"
             onClick={next}
-            className="absolute right-4 md:right-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition backdrop-blur-md z-10 active:scale-95"
+            className="absolute right-4 md:right-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition z-10 active:scale-95"
           >
             <ChevronRight className="w-8 h-8" />
           </button>

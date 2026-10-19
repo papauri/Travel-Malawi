@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   Upload,
   FileText,
-  Image,
   X,
   Check,
   Loader2,
@@ -189,7 +188,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
           setExtractedSections(localResult.sections);
           setExpandedSections(new Set(localResult.sections.map((_, i) => i)));
           setDecipherEngineUsed('local');
-          toast.success(`⚡ Extracted ${localResult.stats.itemsCount} items with Local Tool!`);
+          toast.success(`Found ${localResult.stats.itemsCount} items`);
           return;
         } else {
           throw new Error('Could not identify distinct menu items. Try formatting lines with item name, dash, and price (e.g. "Chambo Cakes - MWK 14,000 / USD 8").');
@@ -245,7 +244,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('Scanner was unreachable. Automatically extracted using the Local Tool!', { icon: '⚡' });
+            toast('The scanner was unreachable, so the menu was read on this device instead.');
             return;
           }
         }
@@ -260,7 +259,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('Extracted using Local Tool', { icon: '⚡' });
+            toast('Read on this device');
             return;
           }
         }
@@ -289,7 +288,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
         setExtractedSections(sections);
         setExpandedSections(new Set(sections.map((_, i) => i)));
         setDecipherEngineUsed(data.engine === 'local' ? 'local' : 'ai');
-        toast.success(`Imported ${sections.length} section(s) with ${sections.reduce((sum, s) => sum + s.items.length, 0)} items!`);
+        toast.success(`Found ${sections.length} section(s) with ${sections.reduce((sum, s) => sum + s.items.length, 0)} items`);
       } else {
         // If scanner returned empty, try local parser
         if (rawTextForFallback) {
@@ -298,7 +297,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast.success('Extracted using Local Tool!');
+            toast.success('Read on this device');
             return;
           }
         }
@@ -314,7 +313,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('Extracted with Local Tool', { icon: '⚡' });
+            toast('Read on this device');
             return;
           }
         } catch {}
@@ -328,7 +327,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
   const handleApply = () => {
     if (extractedSections) {
       onImport(extractedSections);
-      toast.success(`Imported ${extractedSections.length} menu section(s) with ${extractedSections.reduce((sum, s) => sum + s.items.length, 0)} items!`);
+      toast.success(`Added ${extractedSections.length} menu section(s) with ${extractedSections.reduce((sum, s) => sum + s.items.length, 0)} items`);
       handleClose();
     }
   };
@@ -371,7 +370,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
   return createPortal(
     <div
       id="menu-importer-modal"
-      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/60 backdrop-blur-xs flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/50 flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
       data-lenis-prevent="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
@@ -380,25 +379,21 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
       <div
         ref={scrollIsolationRef}
         data-lenis-prevent="true"
-        className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
+        className="bg-white rounded-xl w-full max-w-2xl max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-sm flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-stone-200 bg-stone-50/50 shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-stone-900">Extract & Import Menu</h3>
-              <span className="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                {hasSmartScanner ? 'Instant & Smart Scan' : 'Instant Local Tool'}
-              </span>
-            </div>
+        <div className="flex items-center justify-between gap-3 p-5 border-b border-stone-200 shrink-0">
+          <div className="min-w-0">
+            <h3 className="tm-h2">Import a menu</h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              Instantly parse menus from plain text, CSV, photos, PDFs, or spreadsheets
+              Paste text or upload a photo, PDF or spreadsheet. You check it before it is added.
             </p>
           </div>
           <button
             id="close-importer-btn"
             onClick={handleClose}
-            className="p-1.5 rounded-full hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition"
+            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -406,11 +401,11 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
 
         {/* Engine Switcher Bar (only when smart scanner is available and not reviewing) */}
         {!extractedSections && hasSmartScanner && (
-          <div className="px-5 pt-3 pb-2 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+          <div className="px-5 pt-3 pb-2 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
             <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium">
-              <span>Extraction Mode:</span>
+              <span>How to read it</span>
             </div>
-            <div className="inline-flex p-1 rounded-xl bg-stone-200/70 text-xs font-semibold">
+            <div className="inline-flex p-1 rounded-lg bg-stone-100 text-xs font-medium">
               <button
                 type="button"
                 id="engine-local-btn"
@@ -420,12 +415,12 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
                   engine === 'local'
-                    ? 'bg-white text-emerald-700 shadow-xs'
+                    ? 'bg-white text-stone-900 shadow-sm'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Local Tool (Fast & Instant)</span>
+                <Zap className="w-3.5 h-3.5" />
+                <span>On this device</span>
               </button>
               <button
                 type="button"
@@ -436,12 +431,12 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
                   engine === 'ai'
-                    ? 'bg-white text-indigo-700 shadow-xs'
+                    ? 'bg-white text-stone-900 shadow-sm'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <ScanText className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Document & Vision Scan</span>
+                <ScanText className="w-3.5 h-3.5" />
+                <span>Scan photos and PDFs</span>
               </button>
             </div>
           </div>
@@ -449,7 +444,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
 
         {/* Tab Selector (only when not viewing extracted results) */}
         {!extractedSections && (
-          <div className="flex border-b border-stone-200 bg-stone-50 px-5 pt-2 gap-2 shrink-0">
+          <div className="flex border-b border-stone-200 px-5 pt-2 gap-2 shrink-0 overflow-x-auto">
             <button
               type="button"
               id="tab-paste-text"
@@ -464,7 +459,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
               }`}
             >
               <ClipboardPaste className="w-4 h-4" />
-              <span>Paste Menu Text / CSV</span>
+              <span>Paste text</span>
             </button>
             <button
               type="button"
@@ -480,7 +475,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
               }`}
             >
               <Upload className="w-4 h-4" />
-              <span>Upload Document (Photo / PDF / TXT)</span>
+              <span>Upload a file</span>
             </button>
           </div>
         )}
@@ -493,9 +488,9 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
                 /* Paste Raw Text Mode */
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs text-stone-600">
-                    <span className="font-medium">Paste your menu text or price list below:</span>
+                    <span className="font-medium">Paste your menu or price list</span>
                     {pastedText.length > 0 && (
-                      <span className="font-mono text-[11px] text-stone-400">
+                      <span className="tabular-nums text-[11px] text-stone-400">
                         {pastedText.length} chars • {pastedText.split(/\r?\n/).length} lines
                       </span>
                     )}
@@ -527,24 +522,21 @@ Succulent lake catfish with garlic herbs (gf, sf)
 BEVERAGES
 Carlsberg Green (330ml) - MWK 2,500
 Fresh Malawi Mango Smoothie - MWK 4,500`}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3.5 text-xs font-mono outline-none focus:border-stone-900 focus:bg-white transition resize-none leading-relaxed"
+                    className="tm-input resize-none leading-relaxed"
                   />
 
                   {/* Live Local Analysis Card */}
                   {liveAnalysis && liveAnalysis.sections.length > 0 && (
-                    <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                          <Zap className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-emerald-900">
-                            Local Tool Detected: {liveAnalysis.stats.sectionsCount} section{liveAnalysis.stats.sectionsCount !== 1 ? 's' : ''} (
+                    <div className="p-3 bg-stone-50 rounded-lg flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-stone-900">
+                            Found {liveAnalysis.stats.sectionsCount} section{liveAnalysis.stats.sectionsCount !== 1 ? 's' : ''} (
                             {liveAnalysis.sections.map((s) => s.name).slice(0, 3).join(', ')}
                             {liveAnalysis.sections.length > 3 ? '...' : ''}), {liveAnalysis.stats.itemsCount} dishes
                           </p>
-                          <p className="text-[11px] text-emerald-700">
-                            {liveAnalysis.stats.pricesFoundCount} prices detected with tags • Ready to extract in 0ms
+                          <p className="text-[11px] text-stone-500">
+                            {liveAnalysis.stats.pricesFoundCount} prices found
                           </p>
                         </div>
                       </div>
@@ -552,24 +544,23 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                         type="button"
                         id="instant-decipher-btn"
                         onClick={() => processMenu('local')}
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-xs transition shrink-0"
+                        className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                       >
-                        ⚡ Extract Now
+                        Use this
                       </button>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-[11px] text-stone-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500">
                     <div className="flex items-center gap-2">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span>Supports MWK, USD, dual currencies, and tags like (gf), (v), (sf)</span>
+                      <span>MWK and USD prices and tags like (gf), (v) are understood.</span>
                     </div>
                     {pastedText.length > 0 && (
                       <button
                         type="button"
                         id="clear-menu-text-btn"
                         onClick={() => setPastedText('')}
-                        className="text-stone-500 hover:text-stone-800 underline"
+                        className="tm-link"
                       >
                         Clear text
                       </button>
@@ -586,7 +577,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                     onDragOver={handleDragOver}
                     onClick={() => inputRef.current?.click()}
                     className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                      file ? 'border-emerald-300 bg-emerald-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50'
+                      file ? 'border-stone-400 bg-stone-50' : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50'
                     }`}
                   >
                     <input
@@ -601,57 +592,38 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                         {preview ? (
                           <img src={preview} alt="Menu preview" className="max-h-40 mx-auto rounded-lg object-contain" />
                         ) : (
-                          <FileText className="w-12 h-12 mx-auto text-emerald-500" />
+                          <FileText className="w-12 h-12 mx-auto text-stone-500" />
                         )}
                         <p className="text-sm font-semibold text-stone-800">{file.name}</p>
                         <p className="text-xs text-stone-400">{(file.size / 1024).toFixed(0)} KB • Click to change</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <div className="flex justify-center gap-3">
-                          <Image className="w-8 h-8 text-stone-400" />
-                          <FileText className="w-8 h-8 text-stone-400" />
+                        <div className="flex justify-center">
                           <Upload className="w-8 h-8 text-stone-400" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-stone-800">Drop your menu file here</p>
                           <p className="text-xs text-stone-400 mt-1">
-                            or click to browse • Text files, CSV, Excel, photos, or PDFs
+                            or click to browse. Photo, PDF, text, CSV or Excel.
                           </p>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-stone-600">
-                    <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
-                      <Zap className="w-4 h-4 text-emerald-600" />
-                      <span>Text (.txt) or CSV: 100% Local Tool</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
-                      <Image className="w-4 h-4 text-blue-500" />
-                      <span>Photo or scanned page (Vision OCR)</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
-                      <FileText className="w-4 h-4 text-red-500" />
-                      <span>PDF menu document (Document OCR)</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
-                      <FileText className="w-4 h-4 text-emerald-600" />
-                      <span>Excel spreadsheet (.xlsx)</span>
-                    </div>
-                  </div>
+
                 </>
               )}
 
               {error && (
-                <div id="importer-error-banner" className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <div id="importer-error-banner" className="flex items-start gap-2.5 p-3 bg-red-50 rounded-lg text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
                   <div className="flex-1">
                     <p className="font-semibold">{error}</p>
                     {activeTab === 'file' && (
                       <p className="mt-1 text-stone-600">
-                        Tip: You can copy and paste the text directly into the "Paste Menu Text" tab to use the instant Local Tool.
+                        Tip: copy the menu text into the "Paste text" tab instead.
                       </p>
                     )}
                   </div>
@@ -661,33 +633,18 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
           ) : (
             /* Extracted Results Review */
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-950">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-emerald-50 rounded-lg">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-emerald-900">
                       Extracted {extractedSections.length} section{extractedSections.length !== 1 ? 's' : ''} with{' '}
                       {extractedSections.reduce((sum, s) => sum + s.items.length, 0)} dishes
                     </p>
-                    <p className="text-xs text-emerald-700 flex items-center gap-1.5 mt-0.5">
-                      {decipherEngineUsed === 'local' ? (
-                        <>
-                          <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Extracted via Local Parser Tool (instant & private)</span>
-                        </>
-                      ) : decipherEngineUsed === 'fallback' ? (
-                        <>
-                          <Zap className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Extracted via Local Parser Tool</span>
-                        </>
-                      ) : (
-                        <>
-                          <ScanText className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Extracted via Document & Vision Scanner</span>
-                        </>
-                      )}
+                    <p className="text-xs text-emerald-800 mt-0.5">
+                      {decipherEngineUsed === 'ai'
+                        ? 'Read by the scanner. Check the items below.'
+                        : 'Read on this device. Check the items below.'}
                     </p>
                   </div>
                 </div>
@@ -695,22 +652,22 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                   type="button"
                   id="re-extract-btn"
                   onClick={() => setExtractedSections(null)}
-                  className="text-xs text-stone-500 hover:text-stone-900 flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-emerald-100/60 transition"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>Re-parse</span>
+                  <span>Try again</span>
                 </button>
               </div>
 
               {/* Sections list */}
               <div className="space-y-3">
                 {extractedSections.map((section, sIdx) => (
-                  <div key={`ext-sec-${section.id || sIdx}-${sIdx}`} className="border border-stone-200 rounded-xl overflow-hidden shadow-xs">
-                    <div className="w-full flex items-center justify-between p-3.5 bg-stone-50/80 border-b border-stone-200">
+                  <div key={`ext-sec-${section.id || sIdx}-${sIdx}`} className="border border-stone-200 rounded-xl overflow-hidden">
+                    <div className="w-full flex items-center justify-between p-3.5 bg-stone-50 border-b border-stone-200">
                       <button
                         type="button"
                         onClick={() => toggleSection(sIdx)}
-                        className="flex items-center gap-2 text-left flex-1"
+                        className="flex items-center gap-2 text-left flex-1 min-w-0"
                       >
                         {expandedSections.has(sIdx) ? (
                           <ChevronUp className="w-4 h-4 text-stone-400" />
@@ -718,7 +675,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                           <ChevronDown className="w-4 h-4 text-stone-400" />
                         )}
                         <div>
-                          <p className="text-sm font-bold text-stone-900">
+                          <p className="text-sm font-semibold text-stone-900 break-words">
                             {section.name}{' '}
                             <span className="text-xs font-normal text-stone-500">
                               ({section.items.length} item{section.items.length !== 1 ? 's' : ''})
@@ -748,7 +705,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                           section.items.map((item, iIdx) => (
                             <div key={`ext-item-${item.id || iIdx}-${sIdx}-${iIdx}`} className="p-3.5 flex justify-between items-start gap-3 hover:bg-stone-50/50 transition">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-stone-800">{item.name}</p>
+                                <p className="text-sm font-semibold text-stone-800 break-words">{item.name}</p>
                                 {item.description && (
                                   <p className="text-xs text-stone-500 mt-1 leading-relaxed">{item.description}</p>
                                 )}
@@ -757,7 +714,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                                     {item.tags.map((tag, tIdx) => (
                                       <span
                                         key={`ext-tag-${tag}-${sIdx}-${iIdx}-${tIdx}`}
-                                        className="text-[10px] uppercase font-semibold px-2 py-0.5 bg-stone-100 text-stone-600 rounded-md"
+                                        className="tm-tag"
                                       >
                                         {tag}
                                       </span>
@@ -770,7 +727,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                                 {item.prices && Object.keys(item.prices).length > 0 ? (
                                   <div className="text-right">
                                     {!!item.prices.MWK && (
-                                      <p className="text-xs font-bold text-emerald-800">
+                                      <p className="text-xs font-semibold text-stone-900 tabular-nums">
                                         MK {Number(item.prices.MWK).toLocaleString()}
                                       </p>
                                     )}
@@ -806,23 +763,23 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-stone-200 bg-stone-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="p-4 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           {!extractedSections ? (
             <>
               <div className="text-xs text-stone-500 flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 text-stone-400" />
                 <span>
                   {engine === 'local'
-                    ? 'Local Tool runs 100% in your browser. Fast, private, and instant.'
-                    : 'Document & Vision Scanner analyzes photos and PDF documents.'}
+                    ? 'Read in your browser. Nothing is uploaded.'
+                    : 'Photos and PDFs are sent to the scanner to read.'}
                 </span>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="tm-actions w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   id="cancel-importer-btn"
                   onClick={handleClose}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-800 rounded-full transition"
+                  className="tm-btn tm-btn-quiet"
                 >
                   Cancel
                 </button>
@@ -835,17 +792,16 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                     (activeTab === 'file' && !file) ||
                     (activeTab === 'text' && pastedText.trim().length < 5)
                   }
-                  className="px-5 py-2.5 text-xs font-semibold bg-stone-900 text-white rounded-full hover:bg-stone-800 disabled:opacity-40 flex items-center gap-2 shadow-xs transition"
+                  className="tm-btn tm-btn-primary"
                 >
                   {processing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Extracting Menu Items...</span>
+                      <span>Reading menu…</span>
                     </>
                   ) : (
                     <>
-                      {engine === 'local' ? <Zap className="w-4 h-4 text-emerald-400" /> : <ScanText className="w-4 h-4 text-indigo-300" />}
-                      <span>{engine === 'local' ? 'Extract with Local Tool' : 'Extract Menu Items'}</span>
+                      <span>Read menu</span>
                     </>
                   )}
                 </button>
@@ -854,9 +810,9 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
           ) : (
             <>
               <p className="text-xs text-stone-500">
-                Ready to add to restaurant menu. Existing sections will be preserved or merged.
+                Your existing menu sections are kept.
               </p>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="tm-actions w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   id="start-over-btn"
@@ -866,18 +822,18 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                     setPastedText('');
                     setPreview(null);
                   }}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-800 transition"
+                  className="tm-btn tm-btn-quiet"
                 >
-                  Start Over
+                  Start over
                 </button>
                 <button
                   type="button"
                   id="apply-menu-btn"
                   onClick={handleApply}
-                  className="px-5 py-2.5 text-xs font-semibold bg-emerald-700 text-white rounded-full hover:bg-emerald-600 flex items-center gap-2 shadow-xs transition"
+                  className="tm-btn tm-btn-primary"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Apply to Restaurant Menu</span>
+                  <span>Add to menu</span>
                 </button>
               </div>
             </>

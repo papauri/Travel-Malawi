@@ -61,53 +61,18 @@ export function ConciergeAvatar({
   size?: 'sm' | 'md' | 'lg'; 
   isOnline?: boolean 
 }) {
-  const containerSize = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-10 h-10' : 'w-9 h-9';
-  const capWidth = size === 'sm' ? 'w-3 h-1.5' : 'w-4 h-2';
-  const faceSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  const containerSize = size === 'sm' ? 'w-7 h-7 text-xs' : size === 'lg' ? 'w-10 h-10 text-base' : 'w-9 h-9 text-sm';
 
+  // A plain initial, like a person's contact photo, rather than a cartoon or robot mark (D2).
   return (
     <div className={`relative ${containerSize} rounded-full shrink-0 select-none`}>
-      {/* Outer subtle brass/gold ring */}
-      <div className="w-full h-full rounded-full bg-stone-900 p-[1.5px] shadow-md ring-1 ring-amber-400/40 group-hover:ring-amber-400/80 transition-all">
-        {/* Inner vignette background */}
-        <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-b from-stone-800 via-stone-850 to-stone-950 flex flex-col items-center justify-end relative">
-          
-          {/* Concierge Pillbox / Bellhop Hat with golden trim */}
-          <div className="absolute top-0.5 z-20 flex flex-col items-center -rotate-3 group-hover:rotate-0 transition-transform duration-300">
-            <div className={`${capWidth} rounded-t-sm bg-rose-950 border-t border-x border-rose-800 flex items-end justify-center shadow-xs`}>
-              <div className="w-full h-[2px] bg-amber-400" />
-            </div>
-          </div>
-
-          {/* Friendly Concierge Face */}
-          <div className={`${faceSize} rounded-full bg-amber-100 border border-amber-200/90 flex flex-col items-center justify-center relative shadow-xs mb-1 z-10`}>
-            {/* Eyes */}
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="w-0.5 h-0.5 bg-stone-900 rounded-full" />
-              <span className="w-0.5 h-0.5 bg-stone-900 rounded-full" />
-            </div>
-            {/* Warm Concierge Smile */}
-            <div className="w-1.5 h-0.5 border-b-[1.5px] border-stone-900 rounded-b-full mt-0.5" />
-            {/* Subtle Rosy Cheeks */}
-            <span className="absolute top-1.5 left-0.5 w-0.5 h-0.5 bg-rose-300 rounded-full opacity-80" />
-            <span className="absolute top-1.5 right-0.5 w-0.5 h-0.5 bg-rose-300 rounded-full opacity-80" />
-          </div>
-
-          {/* Dapper Hospitality Blazer & Golden Bowtie / Keys */}
-          <div className="w-6 h-2.5 bg-stone-900 rounded-t-sm border-t border-stone-700/80 flex items-start justify-center relative z-10 -mt-2">
-            {/* White Collar Peak */}
-            <div className="w-2 h-1 bg-white rounded-b-xs shadow-xs" />
-            {/* Golden Bowtie */}
-            <div className="absolute top-0.5 w-1.5 h-0.5 bg-amber-400 rounded-xs shadow-xs" />
-          </div>
-        </div>
+      <div className="w-full h-full rounded-full bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center font-serif font-semibold">
+        U
       </div>
-
-      {/* Online / Active Ready Indicator */}
       {isOnline && (
-        <span 
-          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-stone-900 shadow-xs" 
-          title="Concierge On Duty"
+        <span
+          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+          title="Available"
         />
       )}
     </div>
@@ -1563,8 +1528,8 @@ export default function OperationsCopilot() {
           <WalkthroughTooltip
             id="walkthrough-concierge-trigger"
             icon={<ConciergeBell className="w-3.5 h-3.5 text-stone-300" />}
-            title="Ulendo Concierge"
-            description="Tap anytime for live room audits, revenue metrics & instant operations help."
+            title="Ask Ulendo"
+            description="Questions about arrivals, rates or your rooms? Ulendo can help."
             arrowPosition="bottom-right"
             className="absolute bottom-full right-0 mb-3 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto"
           />
@@ -1585,20 +1550,19 @@ export default function OperationsCopilot() {
               setIsMinimized(true);
             }
           }}
-          className={`pointer-events-auto relative group flex items-center justify-center w-12 h-12 rounded-full bg-stone-900/95 hover:bg-stone-900 text-stone-100 shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-stone-700/80 hover:border-amber-400/70 backdrop-blur-md transition-all cursor-pointer select-none ${
-            isOpen && isMinimized ? 'ring-2 ring-amber-400/70 shadow-[0_0_20px_rgba(251,191,36,0.3)]' : ''
+          className={`pointer-events-auto relative group flex items-center justify-center w-12 h-12 rounded-full bg-white text-stone-900 shadow-sm border border-stone-200 hover:border-amber-700/50 transition-colors cursor-pointer select-none ${
+            isOpen && isMinimized ? 'ring-2 ring-amber-700/30' : ''
           }`}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.94 }}
-          title={isOpen && !isMinimized ? 'Minimize Ulendo' : isOpen && isMinimized ? 'Expand Ulendo Concierge (Active)' : 'Ulendo Concierge'}
-          aria-label="Ulendo Concierge"
+          whileTap={{ scale: 0.96 }}
+          title={isOpen && !isMinimized ? 'Minimise Ulendo' : isOpen && isMinimized ? 'Back to your chat with Ulendo' : 'Ask Ulendo'}
+          aria-label="Ask Ulendo"
         >
           {/* Little Concierge Avatar Fella */}
           <ConciergeAvatar size="md" isOnline={true} />
 
           {/* Active session pulse dot when minimized */}
           {isOpen && isMinimized && (
-            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-stone-900 animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-amber-600 ring-2 ring-white" />
           )}
         </motion.button>
       </div>
@@ -1615,7 +1579,7 @@ export default function OperationsCopilot() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMinimized(true)}
-            className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-[145]"
+            className="fixed inset-0 bg-stone-950/30 z-[145]"
           />
         )}
 
@@ -1627,48 +1591,40 @@ export default function OperationsCopilot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className={`fixed z-[150] bg-white shadow-2xl border border-stone-200/90 flex flex-col overflow-hidden transition-[width,height,inset] duration-200 ${
+            className={`fixed z-[150] bg-white shadow-sm border border-stone-200 flex flex-col overflow-hidden transition-[width,height,inset] duration-200 ${
               isExpanded
-                ? 'inset-x-0 bottom-0 top-4 sm:inset-x-auto sm:top-auto sm:bottom-16 sm:right-6 sm:w-[580px] sm:h-[calc(100dvh-5rem)] rounded-t-3xl sm:rounded-2xl'
-                : 'inset-x-0 bottom-0 top-10 sm:inset-x-auto sm:top-auto sm:bottom-20 sm:right-6 sm:w-[460px] h-[calc(100dvh-2.5rem)] sm:h-[680px] sm:max-h-[calc(100dvh-6.5rem)] sm:min-h-[520px] rounded-t-3xl sm:rounded-2xl'
+                ? 'inset-x-0 bottom-0 top-4 sm:inset-x-auto sm:top-auto sm:bottom-16 sm:right-6 sm:w-[580px] sm:h-[calc(100dvh-5rem)] rounded-t-xl sm:rounded-xl'
+                : 'inset-x-0 bottom-0 top-10 sm:inset-x-auto sm:top-auto sm:bottom-20 sm:right-6 sm:w-[460px] h-[calc(100dvh-2.5rem)] sm:h-[680px] sm:max-h-[calc(100dvh-6.5rem)] sm:min-h-[520px] rounded-t-xl sm:rounded-xl'
             }`}
           >
             {/* TOP HEADER */}
-            <div className="bg-stone-900 text-white p-3 pt-[max(12px,env(safe-area-inset-top))] sm:pt-3 px-3.5 sm:px-4 flex flex-col border-b border-stone-800 shrink-0">
+            <div className="bg-white text-stone-900 p-3 pt-[max(12px,env(safe-area-inset-top))] sm:pt-3 px-3.5 sm:px-4 flex flex-col border-b border-stone-200 shrink-0">
               {/* Mobile grab handle */}
-              <div className="w-10 h-1 bg-stone-700/80 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
+              <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                   <ConciergeAvatar size="sm" isOnline={true} />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <h3 className="text-xs font-bold text-stone-100 tracking-wide flex items-center gap-1 sm:gap-1.5 truncate">
-                        {userIsAdmin ? 'Ulendo • Platform Concierge' : 'Ulendo • Lodge Concierge'}
-                        <ConciergeBell className="w-3 h-3 text-amber-400 shrink-0" />
-                      </h3>
-                      <span className="text-[9px] font-semibold bg-stone-800 text-stone-300 border border-stone-700 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
-                        {userIsAdmin ? 'Admin' : 'Manager'}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
+                    <h3 className="text-sm font-semibold text-stone-900 truncate">Ulendo</h3>
+                    <p className="text-xs text-stone-500 truncate max-w-[200px] sm:max-w-[260px]">
                       {userIsAdmin
-                        ? `Executive hospitality desk • ${properties.length} properties`
+                        ? `Helping across ${properties.length} properties`
                         : properties.length === 1
-                        ? `At your service at ${properties[0].name}`
-                        : `At your service • ${properties.length} assigned lodges`}
+                        ? `Here to help at ${properties[0].name}`
+                        : `Here to help with your ${properties.length} properties`}
                     </p>
                   </div>
                 </div>
 
                 {/* MOBILE UNBURDENED CONTROLS (sm:hidden) */}
-                <div className="flex items-center gap-1 text-stone-400 shrink-0 sm:hidden">
+                <div className="flex items-center gap-1 text-stone-500 shrink-0 sm:hidden">
                   {/* Quick Reset button */}
                   <button
                     type="button"
                     id="btn-copilot-mobile-clear"
                     onClick={handleClearCopilotChat}
-                    className="p-1.5 hover:bg-stone-800 text-stone-400 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    className="p-1.5 hover:bg-stone-100 text-stone-500 hover:text-stone-900 rounded-lg transition cursor-pointer"
                     title="Reset conversation"
                     aria-label="Reset conversation"
                   >
@@ -1682,19 +1638,19 @@ export default function OperationsCopilot() {
                       id="btn-copilot-mobile-menu"
                       onClick={() => setShowMobileMenu(prev => !prev)}
                       className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center ${
-                        showMobileMenu ? 'bg-stone-800 text-white ring-1 ring-stone-700' : 'hover:bg-stone-800 hover:text-stone-200'
+                        showMobileMenu ? 'bg-stone-100 text-stone-900' : 'hover:bg-stone-100 hover:text-stone-900'
                       }`}
                       title="Menu options"
                       aria-label="Menu options"
                     >
                       <Menu className="w-4 h-4" />
                       {learnedRules.length > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-600" />
                       )}
                     </button>
 
                     {showMobileMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-60 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 top-full mt-2 w-60 bg-white border border-stone-200 rounded-lg shadow-sm py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
                         {/* Directives & Memory Rules */}
                         <button
                           type="button"
@@ -1702,14 +1658,14 @@ export default function OperationsCopilot() {
                             setShowMobileMenu(false);
                             setViewingMemory(prev => !prev);
                           }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-100 text-stone-700 flex items-center justify-between gap-2 cursor-pointer"
                         >
                           <span className="flex items-center gap-2">
-                            <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Learned Rules & Memory</span>
+                            <Sliders className="w-3.5 h-3.5 text-amber-700" />
+                            <span>What Ulendo remembers</span>
                           </span>
                           {learnedRules.length > 0 && (
-                            <span className="bg-amber-400/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                            <span className="bg-amber-50 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                               {learnedRules.length}
                             </span>
                           )}
@@ -1722,10 +1678,10 @@ export default function OperationsCopilot() {
                             setShowMobileMenu(false);
                             handleClearCopilotChat();
                           }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-rose-400 flex items-center gap-2 border-t border-stone-800/80 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-100 text-red-700 flex items-center gap-2 border-t border-stone-100 cursor-pointer"
                         >
-                          <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
-                          <span>Clear Conversation</span>
+                          <RotateCcw className="w-3.5 h-3.5 text-red-700" />
+                          <span>Clear conversation</span>
                         </button>
 
                         {/* Minimize window */}
@@ -1735,10 +1691,10 @@ export default function OperationsCopilot() {
                             setShowMobileMenu(false);
                             setIsMinimized(true);
                           }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-300 flex items-center gap-2 border-t border-stone-800/80 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-100 text-stone-700 flex items-center gap-2 border-t border-stone-100 cursor-pointer"
                         >
-                          <Minus className="w-3.5 h-3.5 text-stone-400" />
-                          <span>Minimize Window</span>
+                          <Minus className="w-3.5 h-3.5 text-stone-500" />
+                          <span>Minimise</span>
                         </button>
                       </div>
                     )}
@@ -1751,27 +1707,27 @@ export default function OperationsCopilot() {
                       setIsOpen(false);
                       setIsMinimized(false);
                     }}
-                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                    title="Close Assistant"
-                    aria-label="Close Assistant"
+                    className="p-1.5 hover:bg-stone-100 hover:text-stone-900 rounded-lg transition cursor-pointer"
+                    title="Close"
+                    aria-label="Close"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 {/* DESKTOP CONTROLS (hidden sm:flex) */}
-                <div className="hidden sm:flex items-center gap-1 text-stone-400 shrink-0">
+                <div className="hidden sm:flex items-center gap-1 text-stone-500 shrink-0">
                   {/* Rules & Directives tab toggle */}
                   <button
                     type="button"
                     onClick={() => setViewingMemory(prev => !prev)}
-                    className={`p-1.5 rounded-lg transition cursor-pointer ${viewingMemory ? 'bg-stone-800 text-stone-200' : 'hover:bg-stone-800 hover:text-stone-200'}`}
-                    title="Operating Rules & Preferences"
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${viewingMemory ? 'bg-stone-100 text-stone-900' : 'hover:bg-stone-100 hover:text-stone-900'}`}
+                    title="What Ulendo remembers" aria-label="What Ulendo remembers"
                   >
                     <div className="relative">
                       <Sliders className="w-3.5 h-3.5" />
                       {learnedRules.length > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-stone-700 text-stone-200 font-bold text-[8px] w-3 h-3 rounded-full flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 bg-amber-100 text-amber-900 font-bold text-[8px] w-3 h-3 rounded-full flex items-center justify-center">
                           {learnedRules.length}
                         </span>
                       )}
@@ -1782,7 +1738,7 @@ export default function OperationsCopilot() {
                   <button
                     type="button"
                     onClick={() => setIsExpanded(prev => !prev)}
-                    className="hidden sm:inline-flex p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    className="hidden sm:inline-flex p-1.5 hover:bg-stone-100 hover:text-stone-900 rounded-lg transition cursor-pointer"
                     title={isExpanded ? "Collapse to standard size" : "Expand window"}
                   >
                     {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -1793,10 +1749,10 @@ export default function OperationsCopilot() {
                     type="button"
                     id="btn-copilot-clear-chat"
                     onClick={handleClearCopilotChat}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white rounded-lg transition cursor-pointer border border-stone-700/60 text-xs font-medium"
+                    className="tm-btn tm-btn-quiet tm-btn-sm"
                     title="Reset & clear conversation"
                   >
-                    <RotateCcw className="w-3 h-3 text-stone-400" />
+                    <RotateCcw className="w-3 h-3 text-stone-500" />
                     <span>Reset</span>
                   </button>
 
@@ -1804,8 +1760,8 @@ export default function OperationsCopilot() {
                   <button
                     type="button"
                     onClick={() => setIsMinimized(true)}
-                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                    title="Minimize window"
+                    className="p-1.5 hover:bg-stone-100 hover:text-stone-900 rounded-lg transition cursor-pointer"
+                    title="Minimise" aria-label="Minimise"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
@@ -1817,8 +1773,8 @@ export default function OperationsCopilot() {
                       setIsOpen(false);
                       setIsMinimized(false);
                     }}
-                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                    title="Close Assistant"
+                    className="p-1.5 hover:bg-stone-100 hover:text-stone-900 rounded-lg transition cursor-pointer"
+                    title="Close"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1858,68 +1814,50 @@ export default function OperationsCopilot() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <SlidersHorizontal className="w-4 h-4 text-amber-600" />
-                        Learned Directives & Operational Rules
-                      </h4>
-                      <p className="text-[11px] text-stone-500">
-                        Your assistant remembers your rules, policies, and pricing preferences.
-                      </p>
+                      <h4 className="text-sm font-semibold text-stone-900">What Ulendo remembers</h4>
+                      <p className="text-xs text-stone-500">Your rules, policies and pricing preferences.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setViewingMemory(false)}
-                      className="text-xs text-stone-500 hover:text-stone-800 underline"
+                      className="tm-link text-xs shrink-0"
                     >
                       Back to chat
                     </button>
                   </div>
 
-                  {/* Manager Companion & Learned Habits Profile Card */}
-                  <div className="p-3 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 border border-amber-200/90 rounded-2xl space-y-2.5 shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <ConciergeBell className="w-3.5 h-3.5 text-amber-700" />
-                        <span className="text-xs font-bold text-stone-900 tracking-tight">
-                          Learned Companion & Habits Profile
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/80">
-                        {managerHabits.familiarityTier}
-                      </span>
+                  {/* What Ulendo knows about you */}
+                  <section className="space-y-2 border-b border-stone-200 pb-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-stone-800">About you</span>
+                      <span className="tm-tag">{managerHabits.familiarityTier}</span>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="bg-white p-2 rounded-xl border border-stone-200/80 shadow-2xs">
-                        <span className="text-stone-400 block text-[10px]">Preferred Name</span>
-                        <span className="font-semibold text-stone-800">{managerHabits.preferredName || userDisplayName || 'Friend'}</span>
+                    <dl className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="min-w-0">
+                        <dt className="text-stone-500">Name</dt>
+                        <dd className="font-medium text-stone-800 truncate">{managerHabits.preferredName || userDisplayName || 'Friend'}</dd>
                       </div>
-                      <div className="bg-white p-2 rounded-xl border border-stone-200/80 shadow-2xs">
-                        <span className="text-stone-400 block text-[10px]">Currency Preference</span>
-                        <span className="font-semibold text-stone-800">{managerHabits.currencyPreference}</span>
+                      <div className="min-w-0">
+                        <dt className="text-stone-500">Currency</dt>
+                        <dd className="font-medium text-stone-800">{managerHabits.currencyPreference}</dd>
                       </div>
-                    </div>
+                    </dl>
 
                     {managerHabits.habits && managerHabits.habits.length > 0 && (
-                      <div className="pt-1 space-y-1.5">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-stone-600 uppercase tracking-wider">
-                          <span>Observed Lodge Habits ({managerHabits.habits.length})</span>
-                          <span className="text-amber-700 font-semibold normal-case">Learns automatically</span>
-                        </div>
-                        <div className="space-y-1 max-h-36 overflow-y-auto">
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-stone-700 font-medium">
+                          Habits Ulendo has noticed ({managerHabits.habits.length})
+                        </summary>
+                        <ul className="mt-1.5 space-y-1 max-h-36 overflow-y-auto list-disc pl-5 text-stone-700 marker:text-stone-400">
                           {managerHabits.habits.map((h, idx) => (
-                            <div key={`habit-item-${idx}`} className="text-[11px] bg-white p-2 rounded-xl border border-stone-200/80 text-stone-800 flex items-start gap-1.5 shadow-2xs">
-                              <span className="text-amber-600 font-bold shrink-0 mt-0.5">•</span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[10px] uppercase font-bold text-amber-800/80 mr-1.5">[{h.category}]</span>
-                                <span className="leading-snug">{h.text}</span>
-                              </div>
-                            </div>
+                            <li key={`habit-item-${idx}`} className="leading-snug break-words">
+                              <span className="text-stone-500">{h.category}:</span> {h.text}
+                            </li>
                           ))}
-                        </div>
-                      </div>
+                        </ul>
+                      </details>
                     )}
-                  </div>
+                  </section>
 
                   {/* Add New Directive Form */}
                   <form onSubmit={handleAddCustomDirective} className="flex gap-2">
@@ -1928,28 +1866,29 @@ export default function OperationsCopilot() {
                       value={newDirectiveInput}
                       onChange={e => setNewDirectiveInput(e.target.value)}
                       placeholder="e.g. Remember: lakefront chalet checkout is 10:30 AM"
-                      className="flex-1 text-xs px-3 py-2 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400"
+                      aria-label="Something for Ulendo to remember"
+                      className="tm-input flex-1 min-w-0"
                     />
                     <button
                       type="submit"
                       disabled={!newDirectiveInput.trim()}
-                      className="px-3 py-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shrink-0 cursor-pointer"
+                      className="tm-btn tm-btn-primary tm-btn-sm shrink-0"
                     >
-                      Save Rule
+                      Save
                     </button>
                   </form>
 
                   {/* List of Directives */}
-                  <div className="space-y-2">
+                  <div>
                     {learnedRules.length === 0 ? (
-                      <div className="p-4 bg-white rounded-2xl border border-stone-200 text-center text-xs text-stone-500">
-                        No custom directives saved yet. Directives you teach Ulendo will show up here.
-                      </div>
+                      <p className="py-4 text-center text-xs text-stone-500">
+                        Nothing saved yet. Type a rule above and Ulendo will keep to it.
+                      </p>
                     ) : (
                       learnedRules.map((rule, rIdx) => (
                         <div
                           key={`${rule.id}-${rIdx}`}
-                          className="p-3 bg-white rounded-xl border border-stone-200 flex items-start justify-between gap-3 text-xs"
+                          className="py-2.5 border-b border-stone-200 flex items-start justify-between gap-3 text-xs"
                         >
                           <div className="space-y-1">
                             <p className="text-stone-800 leading-relaxed">{rule.text}</p>
@@ -1960,8 +1899,9 @@ export default function OperationsCopilot() {
                           <button
                             type="button"
                             onClick={() => handleDeleteDirective(rule.id)}
-                            className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
-                            title="Remove directive"
+                            className="text-stone-400 hover:text-red-700 p-1 cursor-pointer shrink-0"
+                            title="Forget this"
+                            aria-label="Forget this"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1986,35 +1926,26 @@ export default function OperationsCopilot() {
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0 overflow-x-hidden`}
                     >
                       <div
-                        className={`min-w-0 rounded-2xl break-words [overflow-wrap:anywhere] overflow-hidden ${
+                        className={`min-w-0 rounded-xl break-words [overflow-wrap:anywhere] overflow-hidden ${
                           msg.role === 'user'
-                            ? 'max-w-[88%] p-3 sm:p-3.5 text-sm sm:text-[14.5px] leading-relaxed bg-stone-900 text-white rounded-br-xs shadow-xs'
-                            : 'w-full max-w-full p-3 sm:p-3.5 text-xs sm:text-[13.5px] leading-relaxed bg-white text-stone-800 border border-stone-200/90 shadow-2xs rounded-tl-xs'
+                            ? 'max-w-[88%] p-3 sm:p-3.5 text-sm sm:text-[14.5px] leading-relaxed bg-stone-800 text-stone-50 rounded-br-sm'
+                            : 'w-full max-w-full p-3 sm:p-3.5 text-xs sm:text-[13.5px] leading-relaxed bg-white text-stone-800 border border-stone-200 rounded-tl-sm'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
                           <div className="flex flex-col space-y-2 max-w-full min-w-0 overflow-x-hidden">
-                            {/* Executive Assistant Header Bar */}
-                            <div className="flex items-center justify-between gap-2 pb-1.5 mb-0.5 border-b border-stone-100 text-xs select-none">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-5 h-5 rounded-md bg-stone-900 text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-                                  <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />
-                                </div>
-                                <span className="font-semibold text-stone-900 tracking-tight truncate">Ulendo Concierge</span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-500 font-medium shrink-0">
-                                  Live Data
-                                </span>
-                              </div>
+                            <div className="flex items-center justify-between gap-2 text-xs select-none">
+                              <span className="font-medium text-stone-500 truncate">Ulendo</span>
                               <button
                                 type="button"
                                 onClick={() => handleCopyMessage(msg.id, msg.content)}
-                                title="Copy content to clipboard"
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-md hover:bg-stone-100 border border-transparent hover:border-stone-200 transition shrink-0"
+                                title="Copy this reply"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-md hover:bg-stone-100 transition shrink-0"
                               >
                                 {copiedMsgId === msg.id ? (
                                   <>
-                                    <Check className="w-3 h-3 text-emerald-600" />
-                                    <span className="text-emerald-700 font-semibold">Copied</span>
+                                    <Check className="w-3 h-3" />
+                                    <span>Copied</span>
                                   </>
                                 ) : (
                                   <>
@@ -2091,7 +2022,7 @@ export default function OperationsCopilot() {
                                     );
                                   },
                                   table: ({ children }) => (
-                                    <div className="my-2 overflow-x-auto scrollbar-thin rounded-xl border border-stone-200 bg-white shadow-2xs w-full max-w-full">
+                                    <div className="my-2 overflow-x-auto scrollbar-thin rounded-lg border border-stone-200 bg-white w-full max-w-full">
                                       <table className="w-full border-collapse text-left text-xs table-auto">
                                         {children}
                                       </table>
@@ -2113,7 +2044,7 @@ export default function OperationsCopilot() {
                                     </tr>
                                   ),
                                   th: ({ children }) => (
-                                    <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold text-stone-700 uppercase tracking-tight bg-stone-100/90 break-words [overflow-wrap:anywhere] max-w-[150px] sm:max-w-[200px] leading-tight">
+                                    <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-stone-700 bg-stone-100/90 break-words [overflow-wrap:anywhere] max-w-[150px] sm:max-w-[200px] leading-tight">
                                       {children}
                                     </th>
                                   ),
@@ -2148,7 +2079,7 @@ export default function OperationsCopilot() {
                                     </code>
                                   ),
                                   pre: ({ children }) => (
-                                    <pre className="overflow-x-auto max-w-full p-3 bg-stone-900 text-stone-100 rounded-xl text-xs font-mono my-2 scrollbar-thin border border-stone-800 shadow-2xs">
+                                    <pre className="overflow-x-auto max-w-full p-3 bg-stone-100 text-stone-800 rounded-lg text-xs my-2 scrollbar-thin border border-stone-200 whitespace-pre-wrap">
                                       {children}
                                     </pre>
                                   ),
@@ -2179,14 +2110,14 @@ export default function OperationsCopilot() {
                                 <button
                                   type="button"
                                   onClick={() => decidePendingRule(msg.id, true)}
-                                  className="px-3 py-1 rounded-md bg-stone-900 text-white text-xs hover:bg-stone-800"
+                                  className="tm-btn tm-btn-primary tm-btn-sm"
                                 >
                                   Remember
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => decidePendingRule(msg.id, false)}
-                                  className="px-3 py-1 rounded-md border border-stone-300 text-stone-800 text-xs hover:bg-white"
+                                  className="tm-btn tm-btn-secondary tm-btn-sm"
                                 >
                                   Don't save
                                 </button>
@@ -2210,52 +2141,44 @@ export default function OperationsCopilot() {
                           Boolean(proposal.amenity);
 
                         return (
-                          <div className="w-full min-w-0 max-w-full overflow-hidden mt-2 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
+                          <div className="w-full min-w-0 max-w-full overflow-hidden mt-2 p-3 bg-white border border-stone-300 rounded-xl space-y-2.5 animate-in fade-in">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-wider min-w-0">
+                              <div className="flex items-center gap-1.5 text-stone-900 font-semibold text-sm min-w-0">
                                 {isAmenityProposal ? (
                                   <Utensils className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                                 ) : (
                                   <CheckCircle2 className="w-3.5 h-3.5 text-stone-700 shrink-0" />
                                 )}
                                 <span className="truncate">
-                                  {isAmenityProposal && (proposal.type === 'remove_amenity' ? 'Proposed Amenity Removal' : 'Proposed Amenity Addition')}
-                                  {proposal.type === 'update_room_price' && 'Proposed Rate Change'}
-                                  {proposal.type === 'update_property_online' && 'Proposed Status Change'}
-                                  {proposal.type === 'update_property_policy' && 'Proposed Policy Update'}
-                                  {proposal.type === 'update_daily_board' && 'Daily Board update'}
-                                  {proposal.type === 'add_restaurant_dish' && 'Dining Menu Addition'}
-                                  {proposal.type === 'update_booking_status' && 'Proposed Booking Change'}
-                                  {proposal.type === 'update_property_status' && 'Listing Approval / Status'}
-                                  {proposal.type === 'toggle_featured' && 'Homepage Featured Listing'}
+                                  {isAmenityProposal && (proposal.type === 'remove_amenity' ? 'Remove an amenity' : 'Add an amenity')}
+                                  {proposal.type === 'update_room_price' && 'Change a room rate'}
+                                  {proposal.type === 'update_property_online' && 'Take bookings on or off'}
+                                  {proposal.type === 'update_property_policy' && 'Update a policy'}
+                                  {proposal.type === 'update_daily_board' && 'Update the daily board'}
+                                  {proposal.type === 'add_restaurant_dish' && 'Add a dish to the menu'}
+                                  {proposal.type === 'update_booking_status' && 'Change a booking'}
+                                  {proposal.type === 'update_property_status' && 'Change listing status'}
+                                  {proposal.type === 'toggle_featured' && 'Homepage feature'}
                                 </span>
                               </div>
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="text-[10px] bg-amber-100/90 text-amber-900 border border-amber-300/80 px-2 py-0.5 rounded-md font-semibold">
-                                  Confirmation Required
-                                </span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
-                                  isAllSelected 
-                                    ? 'bg-stone-200 text-stone-800' 
-                                    : effectiveTargetIds.length > 1 
-                                    ? 'bg-stone-200 text-stone-800' 
-                                    : 'bg-stone-200 text-stone-700'
-                                }`}>
-                                  {isAllSelected 
-                                    ? `All ${properties.length} Properties` 
-                                    : effectiveTargetIds.length > 1 
-                                    ? `${effectiveTargetIds.length} Properties` 
-                                    : 'Single Property'}
+                                <span className="tm-tag tm-tag-warn">Needs your OK</span>
+                                <span className="tm-tag">
+                                  {isAllSelected
+                                    ? `All ${properties.length} properties`
+                                    : effectiveTargetIds.length > 1
+                                    ? `${effectiveTargetIds.length} properties`
+                                    : '1 property'}
                                 </span>
                               </div>
                             </div>
 
                             {/* TARGET SELECTION CONTROLS (Allows applying changes to all properties or specific ones) */}
                             {hasMultipleProperties && !msg.actionApplied && !msg.actionRejected && (
-                              <div className="p-2.5 bg-stone-100/90 rounded-xl border border-stone-200/90 space-y-1.5">
+                              <div className="pt-2 border-t border-stone-200 space-y-1.5">
                                 <div className="flex items-center justify-between gap-1">
                                   <span className="text-[11px] font-semibold text-stone-700 flex items-center gap-1">
-                                    <Layers className="w-3 h-3 text-stone-500" /> Target Properties:
+                                    <Layers className="w-3 h-3 text-stone-500" /> Apply to:
                                   </span>
                                   <div className="flex items-center gap-1">
                                     <button
@@ -2263,8 +2186,8 @@ export default function OperationsCopilot() {
                                       onClick={() => handleSelectAllHotelsForProposal(msg.id)}
                                       className={`text-[10px] px-2 py-0.5 rounded font-semibold transition cursor-pointer ${
                                         isAllSelected
-                                          ? 'bg-amber-600 text-white shadow-2xs'
-                                          : 'bg-white text-stone-600 hover:bg-stone-200 border border-stone-200'
+                                          ? 'bg-stone-800 text-white'
+                                          : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
                                       }`}
                                     >
                                       All ({properties.length})
@@ -2283,12 +2206,12 @@ export default function OperationsCopilot() {
                                         onClick={() => handleToggleHotelForProposal(msg.id, p.id!, effectiveTargetIds)}
                                         className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer border ${
                                           selected
-                                            ? 'bg-white border-amber-500/80 text-stone-900 shadow-2xs'
-                                            : 'bg-stone-200/60 border-stone-300 text-stone-500 hover:bg-stone-200'
+                                            ? 'bg-white border-amber-700/60 text-stone-900'
+                                            : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
                                         }`}
                                       >
                                         <div className={`w-3 h-3 rounded flex items-center justify-center border ${
-                                          selected ? 'bg-amber-600 border-amber-600 text-white' : 'border-stone-400 bg-white'
+                                          selected ? 'bg-amber-700 border-amber-700 text-white' : 'border-stone-400 bg-white'
                                         }`}>
                                           {selected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                         </div>
@@ -2302,33 +2225,29 @@ export default function OperationsCopilot() {
                                   <button
                                     type="button"
                                     onClick={() => handleSelectAllHotelsForProposal(msg.id)}
-                                    className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold underline flex items-center gap-1 pt-0.5 cursor-pointer"
+                                    className="tm-link text-[11px] flex items-center gap-1 pt-0.5"
                                   >
-                                    <CheckCheck className="w-3 h-3" /> Apply to all {properties.length} properties instead
+                                    <CheckCheck className="w-3 h-3" /> Use all {properties.length} properties
                                   </button>
                                 )}
                               </div>
                             )}
 
                             {/* DETAIL PREVIEW BOX */}
-                            <div className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs space-y-1.5 min-w-0 max-w-full overflow-hidden">
+                            <div className="text-xs space-y-1.5 min-w-0 max-w-full overflow-hidden">
                               {/* Amenity Details */}
                               {isAmenityProposal && (
                                 <div className="space-y-1">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-stone-500 font-medium">Amenity:</span>
-                                    <span className="font-bold text-stone-900 text-xs bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                      <Coffee className="w-3 h-3 text-amber-700 shrink-0" />
+                                    <span className="font-semibold text-stone-900 text-xs flex items-center gap-1">
                                       <span className="break-words [overflow-wrap:anywhere]">{proposal.amenity || 'Breakfast Included'}</span>
                                     </span>
                                   </div>
                                   <div className="text-[11px] text-stone-500 break-words [overflow-wrap:anywhere]">
-                                    Target lodges: <strong className="text-stone-800">{targetProps.map(p => p.name).join(', ') || 'Selected properties'}</strong>
+                                    For: <strong className="text-stone-800">{targetProps.map(p => p.name).join(', ') || 'Selected properties'}</strong>
                                   </div>
-                                  <p className="text-[11px] text-emerald-700 font-medium pt-0.5 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                    <span>Will be published to live guest booking listings once confirmed.</span>
-                                  </p>
+                                  <p className="text-[11px] text-stone-500 pt-0.5">Guests will see this on your listing once you confirm.</p>
                                 </div>
                               )}
 
@@ -2356,7 +2275,7 @@ export default function OperationsCopilot() {
                               {/* Online / Offline toggle details */}
                               {proposal.type === 'update_property_online' && (
                                 <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
-                                  <p>Front Desk Status: <strong className={proposal.isOnline ? 'text-emerald-700' : 'text-amber-700'}>{proposal.isOnline ? '🟢 Online (Accepting Bookings)' : '🌙 Offline'}</strong></p>
+                                  <p>Bookings: <strong className={proposal.isOnline ? 'text-emerald-700' : 'text-amber-700'}>{proposal.isOnline ? 'Open (taking bookings)' : 'Paused'}</strong></p>
                                   {proposal.outOfOfficeMessage && (
                                     <p className="text-[11px] text-stone-500 italic">"{proposal.outOfOfficeMessage}"</p>
                                   )}
@@ -2389,7 +2308,7 @@ export default function OperationsCopilot() {
                               {/* Restaurant dish */}
                               {proposal.type === 'add_restaurant_dish' && (
                                 <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
-                                  <p>Menu Dish: <strong className="text-stone-900">{proposal.dishName}</strong> ({proposal.dishSection || 'Breakfast'})</p>
+                                  <p>Dish: <strong className="text-stone-900">{proposal.dishName}</strong> ({proposal.dishSection || 'Breakfast'})</p>
                                   {proposal.dishPriceUSD && <p className="text-[11px] text-stone-500">Price: USD ${proposal.dishPriceUSD}</p>}
                                 </div>
                               )}
@@ -2397,7 +2316,7 @@ export default function OperationsCopilot() {
                               {/* Booking status details */}
                               {proposal.type === 'update_booking_status' && (
                                 <div className="text-stone-700 text-xs break-words [overflow-wrap:anywhere]">
-                                  Set Booking <strong className="text-stone-900">{proposal.bookingRef || proposal.bookingId}</strong> status to:{' '}
+                                  Set booking <strong className="text-stone-900">{proposal.bookingRef || proposal.bookingId}</strong> status to:{' '}
                                   <strong className="capitalize text-stone-900">{proposal.newStatus}</strong>
                                 </div>
                               )}
@@ -2418,13 +2337,13 @@ export default function OperationsCopilot() {
                             </div>
 
                             {msg.actionApplied ? (
-                              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs pt-1">
+                              <div className="flex items-center gap-1.5 text-emerald-700 font-medium text-xs pt-1">
                                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                <span>Action applied to live system</span>
+                                <span>Done. The change is live.</span>
                               </div>
                             ) : msg.actionRejected ? (
-                              <div className="text-stone-400 text-xs italic pt-1">
-                                Action dismissed
+                              <div className="text-stone-500 text-xs pt-1">
+                                Cancelled. Nothing was changed.
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 pt-1 min-w-0">
@@ -2432,18 +2351,18 @@ export default function OperationsCopilot() {
                                   type="button"
                                   onClick={() => handleApplyAction(msg.id, proposal, effectiveTargetIds)}
                                   disabled={executingAction === msg.id}
-                                  className="flex-1 min-w-0 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer shadow-xs text-center leading-tight whitespace-normal"
+                                  className="tm-btn tm-btn-primary tm-btn-sm flex-1 min-w-0 h-auto text-center leading-tight whitespace-normal"
                                 >
                                   {executingAction === msg.id ? (
                                     <>
                                       <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                                      <span>Applying Changes...</span>
+                                      <span>Saving...</span>
                                     </>
                                   ) : (
                                     <>
-                                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                      <Check className="w-3.5 h-3.5 shrink-0" />
                                       <span className="break-words [overflow-wrap:anywhere]">
-                                        Confirm & Apply to {isAllSelected && properties.length > 1 ? `All ${properties.length} Properties` : effectiveTargetIds.length > 1 ? `${effectiveTargetIds.length} Selected Lodges` : (targetProps[0]?.name || 'Property')}
+                                        Yes, apply to {isAllSelected && properties.length > 1 ? `all ${properties.length} properties` : effectiveTargetIds.length > 1 ? `${effectiveTargetIds.length} properties` : (targetProps[0]?.name || 'this property')}
                                       </span>
                                     </>
                                   )}
@@ -2451,7 +2370,7 @@ export default function OperationsCopilot() {
                                 <button
                                   type="button"
                                   onClick={() => handleDismissAction(msg.id)}
-                                  className="py-2 px-3 bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 rounded-xl text-xs font-medium transition cursor-pointer shrink-0"
+                                  className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                                 >
                                   Cancel
                                 </button>
@@ -2465,8 +2384,8 @@ export default function OperationsCopilot() {
 
                   {/* Generating Spinner */}
                   {generating && (
-                    <div className="flex items-center gap-2 text-stone-500 text-xs p-2.5 bg-white rounded-2xl border border-stone-200 w-fit animate-pulse">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-400" />
+                    <div className="flex items-center gap-2 text-stone-500 text-xs px-1 py-2 w-fit" aria-live="polite">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>{getGeneratingStatusText(activeQueryIntent, activeQueryText || lastUserMsg?.content || '')}</span>
                     </div>
                   )}
@@ -2490,22 +2409,19 @@ export default function OperationsCopilot() {
                   <button
                     type="button"
                     onClick={() => setShowPromptsMenu(prev => !prev)}
-                    className="h-10 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 active:bg-stone-200 rounded-xl border border-stone-200 transition shadow-2xs cursor-pointer select-none"
-                    title="Suggested prompt ideas"
-                    aria-label="Suggested prompt ideas"
+                    className="tm-btn tm-btn-secondary h-10 px-2.5 sm:px-3 select-none"
+                    title="Things you can ask"
+                    aria-label="Things you can ask"
                   >
-                    <Compass className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <Compass className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                     <span className="hidden sm:inline">Ideas</span>
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showPromptsMenu ? 'rotate-180' : ''}`} />
                   </button>
 
                   {showPromptsMenu && (
-                    <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white border border-stone-200 rounded-lg shadow-sm p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
                       <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Compass className="w-3.5 h-3.5 text-amber-600" />
-                          Suggested Prompts
-                        </span>
+                        <span className="text-xs font-medium text-stone-600">Things you can ask</span>
                         <button
                           type="button"
                           onClick={() => setShowPromptsMenu(false)}
@@ -2525,7 +2441,6 @@ export default function OperationsCopilot() {
                             }}
                             className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition flex items-start gap-2 cursor-pointer pt-2"
                           >
-                            <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
                             <span className="flex-1 leading-snug">{suggestion}</span>
                           </button>
                         ))}
@@ -2541,32 +2456,28 @@ export default function OperationsCopilot() {
                   onChange={e => setInputMessage(e.target.value)}
                   placeholder={
                     userIsAdmin
-                      ? 'Executive query or adjust platform rates/status...'
-                      : 'Ask about bookings, checkouts, or adjust room rates...'
+                      ? 'Ask about any property, booking or listing'
+                      : 'Ask about bookings, check-outs or room rates'
                   }
                   disabled={generating}
-                  className="flex-1 min-w-0 text-sm sm:text-[15px] px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400 disabled:opacity-60 transition"
+                  aria-label="Message Ulendo"
+                  className="tm-input flex-1 min-w-0 h-10 disabled:opacity-60"
                 />
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || generating}
-                  className="w-10 h-10 bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white rounded-xl transition shadow-2xs flex items-center justify-center shrink-0 cursor-pointer"
-                  title="Send query"
+                  className="tm-btn tm-btn-primary w-10 h-10 px-0 shrink-0"
+                  title="Send"
+                  aria-label="Send"
                 >
                   {generating ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4 text-stone-300" />
+                    <Send className="w-4 h-4" />
                   )}
                 </button>
               </form>
-              <div className="flex items-center justify-between text-[10px] text-stone-400 px-1 pt-1.5">
-                <span>{userIsAdmin ? 'Platform Administrator Scope' : 'Scoped to your managed property'}</span>
-                <span className="flex items-center gap-1 text-stone-500">
-                  <ShieldAlert className="w-3 h-3 text-stone-400" />
-                  Modifications require confirmation
-                </span>
-              </div>
+              <p className="text-[11px] text-stone-500 px-1 pt-1.5">Ulendo asks before changing anything.</p>
             </div>
           </motion.div>
         )}

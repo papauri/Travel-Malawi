@@ -11,8 +11,8 @@ import { downloadDocHtml } from '../lib/downloadDoc';
 export default function MarketingDeck() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'marketing-presentation',
-    'The Sovereign Direct Booking Rail for Malawi',
-    'Eliminating middleman fees and returning direct booking sovereignty to Malawian accommodations.'
+    'Direct booking for Malawi',
+    'Take bookings directly, keep your revenue and talk to your guests.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -97,42 +97,39 @@ export default function MarketingDeck() {
     }
   };
 
-  const secondaryBtn =
-    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
-  const primaryBtn =
-    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
-  const inputCls =
-    'w-full bg-white border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900';
-  const labelCls = 'block text-sm font-medium text-stone-700 mb-1';
+  const secondaryBtn = 'tm-btn tm-btn-secondary tm-btn-sm';
+  const primaryBtn = 'tm-btn tm-btn-primary';
+  const inputCls = 'tm-input';
+  const labelCls = 'tm-label';
   const th = 'bg-stone-50 text-left font-medium text-stone-900 px-3 py-2';
   const td = 'px-3 py-2 border-t border-stone-200 text-stone-700 align-top';
 
   return (
     <div className="min-h-screen bg-white text-stone-700 font-sans">
-      <div className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+      <div className="tm-page max-w-3xl py-10 print:py-0">
 
         {/* Toolbar (hidden when printing) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8 print:hidden">
+        <div className="tm-actions justify-between mb-8 print:hidden">
           <Link to="/list-your-property" className={secondaryBtn} title="Return to Partner Hub">
-            <ArrowLeft size={16} className="text-stone-500" />
+            <ArrowLeft size={16} />
             <span>Partner Hub</span>
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="tm-actions">
             <DocQuickEditButton docId="marketing-presentation" onSaved={() => refreshDoc()} />
             <button onClick={handleShareWhatsApp} className={secondaryBtn}>
-              <MessageSquare size={16} className="text-stone-500" />
+              <MessageSquare size={16} />
               <span>Share on WhatsApp</span>
             </button>
             <button onClick={handlePrint} className={secondaryBtn}>
-              <Printer size={16} className="text-stone-500" />
+              <Printer size={16} />
               <span>Print / PDF</span>
             </button>
             <button onClick={handleDownload} className={secondaryBtn}>
-              <Download size={16} className="text-stone-500" />
+              <Download size={16} />
               <span>HTML</span>
             </button>
             <button onClick={handleCopyLink} className={secondaryBtn} title="Copy link">
-              {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+              {copiedLink ? <Check size={16} /> : <Copy size={16} />}
               <span>{copiedLink ? 'Copied' : 'Copy link'}</span>
             </button>
           </div>
@@ -140,9 +137,9 @@ export default function MarketingDeck() {
 
         {/* Header */}
         <header className="border-b border-stone-200 pb-6 mb-8">
-          <p className="text-sm text-stone-500">Travel Malawi &middot; Commercial deck &middot; Partner edition 2026</p>
-          <h1 className="mt-2 text-3xl font-semibold text-stone-900">{customTitle}</h1>
-          <p className="mt-2 text-stone-500 text-[15px] leading-relaxed">{customSubtitle}</p>
+          <p className="tm-muted">Travel Malawi &middot; Partner overview</p>
+          <h1 className="tm-h1 mt-2">{customTitle}</h1>
+          <p className="tm-lead mt-2">{customSubtitle}</p>
           {(isCustomized || lastEditedBy) && (
             <p className="mt-3 text-sm text-stone-500">
               {isCustomized && 'Customised edition'}
@@ -154,7 +151,7 @@ export default function MarketingDeck() {
 
         {/* Section 1 */}
         <section>
-          <h2 className="text-xl font-semibold text-stone-900 mt-10">1. The Market Absurdity: The Leaking Bucket</h2>
+          <h2 className="tm-h2 mt-10">1. What lodges lose to booking-site fees</h2>
           <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
             Every year, Malawian lodges surrender <strong className="font-semibold text-stone-900">15% to 25% of their gross revenue</strong> to European online travel agencies (OTAs) simply to host guests who are:
           </p>
@@ -178,23 +175,23 @@ export default function MarketingDeck() {
               </p>
             </li>
           </ul>
-          <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-[15px] leading-relaxed text-stone-700">
+          <div className="mt-6 tm-panel text-[15px] leading-relaxed text-stone-700">
             <strong className="font-semibold text-stone-900">The Cold Math: </strong>
             A 10-room lodge charging MK 90,000/night with 50% occupancy surrenders <strong className="font-semibold text-stone-900">MK 24,600,000 to MK 41,000,000 every single year</strong> in commission fees to overseas corporations that provide zero customer service in Malawi. Travel Malawi keeps 100% of that revenue in the lodge owner&apos;s hands.
           </div>
         </section>
 
         {/* Section 2 */}
-        <section className="border-t border-stone-200 mt-10">
-          <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Competitive Leverage Matrix</h2>
+        <section className="tm-divider mt-10">
+          <h2 className="tm-h2 mt-10">2. How the options compare</h2>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-sm border border-stone-200">
               <thead>
                 <tr>
-                  <th className={th}>Friction Point</th>
-                  <th className={th}>Legacy European OTAs</th>
+                  <th className={th}>What matters</th>
+                  <th className={th}>Overseas booking sites</th>
                   <th className={th}>Direct WhatsApp Only</th>
-                  <th className={th}>Travel Malawi Rail</th>
+                  <th className={th}>Travel Malawi</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,7 +199,7 @@ export default function MarketingDeck() {
                   <td className={`${td} font-medium text-stone-900`}>Commission Cut</td>
                   <td className={td}>15% to 25% deducted</td>
                   <td className={td}>0%</td>
-                  <td className={`${td} font-medium text-stone-900`}>0% Guaranteed</td>
+                  <td className={`${td} font-medium text-stone-900`}>0%</td>
                 </tr>
                 <tr>
                   <td className={`${td} font-medium text-stone-900`}>Payout Settlement</td>
@@ -224,7 +221,7 @@ export default function MarketingDeck() {
                 </tr>
                 <tr>
                   <td className={`${td} font-medium text-stone-900`}>Calendar Synchronization</td>
-                  <td className={td}>Isolated in foreign platform silo</td>
+                  <td className={td}>Stays on their platform</td>
                   <td className={td}>Manual diary (Double-booking risk)</td>
                   <td className={`${td} font-medium text-stone-900`}>2-Way iCal Sync (RoomRaccoon, Airbnb) + Live Latency Diagnostics</td>
                 </tr>
@@ -240,40 +237,40 @@ export default function MarketingDeck() {
         </section>
 
         {/* Section 3 */}
-        <section className="border-t border-stone-200 mt-10">
-          <h2 className="text-xl font-semibold text-stone-900 mt-10">3. The Trojan Horse Strategy: Zero Friction Adoption</h2>
+        <section className="tm-divider mt-10">
+          <h2 className="tm-h2 mt-10">3. Keep your other channels</h2>
           <h3 className="mt-4 text-base font-semibold text-stone-900">
             &ldquo;We never ask a lodge to leave Booking.com.&rdquo;
           </h3>
           <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
             Asking a lodge manager to drop their existing channels triggers loss aversion. Instead, we say:
           </p>
-          <blockquote className="mt-4 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-[15px] leading-relaxed text-stone-700">
+          <blockquote className="mt-4 tm-panel text-[15px] leading-relaxed text-stone-700">
             &ldquo;Keep your international OTA listing active for whatever foreign travelers it catches. But list your rooms on Travel Malawi to capture your domestic and regional weekend guests at 0% commission. Why give away 20% to Amsterdam when a guest is driving from Area 43?&rdquo;
           </blockquote>
         </section>
 
         {/* Section 4: Partnership form */}
-        <section id="partner-form" className="border-t border-stone-200 mt-10">
-          <h2 className="text-xl font-semibold text-stone-900 mt-10">4. Register as a Strategic Partner</h2>
+        <section id="partner-form" className="tm-divider mt-10">
+          <h2 className="tm-h2 mt-10">4. Become a partner</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
-            Whether you manage a lodge portfolio, corporate travel account, or safari transport fleet, let our team tailor a direct integration.
+            Tell us who you are and we will get back to you.
           </p>
 
           {submitted ? (
-            <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
+            <div className="mt-6 tm-panel">
               <h3 className="text-base font-semibold text-stone-900">
-                Zikomo! We Have Received Your Partnership Request
+                Zikomo, we have your request
               </h3>
               <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
-                Reference: <span className="font-mono text-stone-900">{submissionId}</span>. Our executive partnerships lead will contact you within 24 hours.
+                Reference: <span className="font-mono text-stone-900">{submissionId}</span>. Our partnerships lead will contact you within 24 hours.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Organisation / Property Name *</label>
+                  <label className={labelCls}>Organisation or property name *</label>
                   <input
                     type="text"
                     required
@@ -285,7 +282,7 @@ export default function MarketingDeck() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Partnership Category</label>
+                  <label className={labelCls}>Type of partner</label>
                   <select
                     value={formData.partnerType}
                     onChange={e => setFormData({ ...formData, partnerType: e.target.value })}
@@ -300,7 +297,7 @@ export default function MarketingDeck() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Lead Contact Name</label>
+                  <label className={labelCls}>Contact name</label>
                   <input
                     type="text"
                     placeholder="e.g. Grace Banda"
@@ -311,7 +308,7 @@ export default function MarketingDeck() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>WhatsApp / Phone *</label>
+                  <label className={labelCls}>WhatsApp or phone *</label>
                   <input
                     type="tel"
                     required
@@ -324,7 +321,7 @@ export default function MarketingDeck() {
               </div>
 
               <div>
-                <label className={labelCls}>Partnership Goals / Strategic Inquiries</label>
+                <label className={labelCls}>What would you like to do?</label>
                 <textarea
                   rows={3}
                   placeholder="e.g. Listing 5 properties in Lake Malawi region, bulk corporate bookings for Lilongwe staff"
@@ -336,10 +333,10 @@ export default function MarketingDeck() {
 
               <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
                 <span className="text-sm text-stone-500">
-                  Strict confidentiality &middot; Fast turnaround &middot; National Malawi coverage
+                  Kept confidential
                 </span>
                 <button type="submit" disabled={submitting} className={primaryBtn}>
-                  {submitting ? 'Submitting…' : 'Submit Partnership Inquiry'}
+                  {submitting ? 'Sending…' : 'Send request'}
                 </button>
               </div>
             </form>

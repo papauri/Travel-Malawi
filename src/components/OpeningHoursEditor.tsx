@@ -55,7 +55,7 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">{label}</label>
+        <label className="tm-label mb-0">{label}</label>
         
         {/* Quick Mode Buttons */}
         <div className="flex items-center gap-1.5 p-0.5 bg-stone-100 rounded-lg border border-stone-200/80">
@@ -64,13 +64,13 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
             onClick={setAll24Hours}
             className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
               all7DaysAllDay
-                ? 'bg-stone-900 text-white shadow-2xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/70'
+                ? 'bg-white text-stone-900 shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
             title="Set property to open 24 hours / all day every day"
           >
-            {all7DaysAllDay && <CheckCircle2 className="h-3 w-3 text-emerald-400" />}
-            <span>All Day (24/7)</span>
+            {all7DaysAllDay && <CheckCircle2 className="h-3 w-3 text-emerald-700" />}
+            <span>Open 24/7</span>
           </button>
           
           <button
@@ -78,39 +78,32 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
             onClick={setStandardHours}
             className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
               !all7DaysAllDay
-                ? 'bg-stone-900 text-white shadow-2xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/70'
+                ? 'bg-white text-stone-900 shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
             title="Switch to custom opening and closing times per day"
           >
             <Clock className="h-3 w-3" />
-            <span>Custom Hours</span>
+            <span>Set hours</span>
           </button>
         </div>
       </div>
 
-      {hint && <p className="text-xs text-stone-400">{hint}</p>}
+      {hint && <p className="text-xs text-stone-500">{hint}</p>}
 
       {/* Banner when All Day (24/7) is active */}
       {all7DaysAllDay && (
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5">
-            <span className="p-1 rounded-md bg-stone-900 text-white mt-0.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-stone-900">Open All Day (24/7 Round-the-Clock)</p>
-              <p className="text-[11px] text-stone-500 mt-0.5">
-                Your listing shows <span className="font-semibold text-emerald-800">"Open 24 hours"</span> and stays <span className="font-semibold text-emerald-800">"Open now"</span> constantly for arriving guests.
-              </p>
-            </div>
-          </div>
+        <div className="rounded-lg bg-stone-50 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-sm text-stone-700 min-w-0">
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+            Guests see "Open 24 hours".
+          </p>
           <button
             type="button"
             onClick={() => setShowDayBreakdown(!showDayBreakdown)}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-white border border-stone-300 px-2.5 py-1.5 rounded-lg transition self-start sm:self-auto cursor-pointer shrink-0"
+            className="tm-btn tm-btn-quiet tm-btn-sm"
           >
-            <span>{showDayBreakdown ? 'Hide schedule rows' : 'View / customize days'}</span>
+            <span>{showDayBreakdown ? 'Hide days' : 'Edit days'}</span>
             {showDayBreakdown ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
         </div>
@@ -118,7 +111,7 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
 
       {/* Daily Rows Table */}
       {(!all7DaysAllDay || showDayBreakdown) && (
-        <div className="rounded-2xl border border-stone-200 divide-y divide-stone-100 overflow-hidden bg-white shadow-2xs">
+        <div className="rounded-lg border border-stone-200 divide-y divide-stone-100 overflow-hidden bg-white">
           {DISPLAY_ORDER.map(dayIndex => {
             const day = week[dayIndex];
             const allDayActive = isAllDay(day);
@@ -143,35 +136,33 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
                     onClick={() => toggleAllDay(dayIndex)}
                     className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition cursor-pointer shrink-0 ${
                       allDayActive
-                        ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                        : 'bg-stone-50 hover:bg-stone-100 text-stone-600 border-stone-200'
+                        ? 'bg-stone-900 text-white border-stone-900'
+                        : 'bg-white hover:bg-stone-50 text-stone-600 border-stone-300'
                     }`}
                     title={allDayActive ? "Click to set custom open/close hours" : "Click to set this day open 24 hours / all day"}
                   >
-                    {allDayActive ? '✓ All Day (24 hrs)' : 'All Day'}
+                    {allDayActive ? '✓ 24 hours' : '24 hours'}
                   </button>
                 )}
 
                 {day.closed ? (
                   <span className="text-xs sm:text-sm text-stone-400 italic">Closed</span>
                 ) : allDayActive ? (
-                  <span className="text-xs sm:text-sm text-stone-600 font-medium bg-stone-100/80 px-2.5 py-1 rounded-lg">
-                    Open 24 hours around the clock
-                  </span>
+                  <span className="text-xs sm:text-sm text-stone-600">Open 24 hours</span>
                 ) : (
-                  <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
                     <input
                       type="time"
                       value={day.open}
                       onChange={e => update(dayIndex, { open: e.target.value })}
-                      className="bg-stone-50 border border-stone-200 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-stone-900 transition"
+                      className="bg-white border border-stone-300 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs sm:text-sm focus:outline-none focus:border-stone-500 transition"
                     />
                     <span className="text-stone-400 text-xs sm:text-sm">to</span>
                     <input
                       type="time"
                       value={day.close}
                       onChange={e => update(dayIndex, { close: e.target.value })}
-                      className="bg-stone-50 border border-stone-200 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs sm:text-sm outline-none focus:border-stone-900 transition"
+                      className="bg-white border border-stone-300 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs sm:text-sm focus:outline-none focus:border-stone-500 transition"
                     />
                   </div>
                 )}
@@ -180,7 +171,7 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
                   type="button"
                   onClick={() => applyToAll(dayIndex)}
                   title="Copy these hours to every day"
-                  className="ml-auto flex items-center gap-1.5 text-xs font-medium text-stone-400 hover:text-stone-900 transition shrink-0 cursor-pointer"
+                  className="ml-auto flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-900 transition shrink-0 cursor-pointer"
                 >
                   <Copy className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Apply to all</span>
                 </button>
@@ -190,9 +181,6 @@ export default function OpeningHoursEditor({ value, onChange, label = 'Opening h
         </div>
       )}
 
-      <p className="text-xs text-stone-400">
-        Tip: Select "All Day (24/7)" for 24-hour round-the-clock service, or set custom opening and closing hours per day.
-      </p>
     </div>
   );
 }

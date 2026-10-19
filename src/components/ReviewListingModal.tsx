@@ -6,9 +6,9 @@ import { getHotelImage } from '../lib/images';
 import { pinProblem, PIN_PROBLEM_LABELS, mapLinkUrl } from '../lib/geo';
 import { formatMoney } from '../lib/currency';
 import {
-  CheckCircle2, XCircle, Clock, MapPin, MapPinOff, ExternalLink,
+  CheckCircle2, Clock, MapPin, MapPinOff, ExternalLink,
   Phone, Mail, MessageSquare, Calendar, Building, Camera, Check,
-  X, ShieldCheck, AlertTriangle, Eye, Edit3, User,
+  X, AlertTriangle, Eye, Edit3, User,
   DollarSign, Compass, Info, ChevronRight, Trash2, Star, RefreshCw, Globe
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -240,38 +240,31 @@ export default function ReviewListingModal({
         {/* Modal Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
           <div>
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`tm-tag ${
                 hotel.status === 'pending'
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                  ? 'tm-tag-warn'
                   : hotel.status === 'rejected'
-                  ? 'bg-stone-100 text-stone-700 border border-stone-300'
-                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                  ? ''
+                  : 'tm-tag-good'
               }`}>
-                <span className={`w-2 h-2 rounded-full ${
-                  hotel.status === 'pending'
-                    ? 'bg-amber-500 animate-pulse'
-                    : hotel.status === 'rejected'
-                    ? 'bg-stone-500'
-                    : 'bg-emerald-600'
-                }`} />
-                {hotel.status === 'pending' ? 'Pending Marketing & Admin Review' : hotel.status === 'rejected' ? 'Rejected / Unpublished' : 'Live & Approved'}
+                {hotel.status === 'pending' ? 'Waiting for review' : hotel.status === 'rejected' ? 'Rejected' : 'Live'}
               </span>
 
               {hotel.stayType === 'entire_place' && (
-                <span className="text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200 px-2 py-0.5 rounded-md">
-                  Entire Place
+                <span className="tm-tag">
+                  Entire place
                 </span>
               )}
 
               {hotel.categories?.[0] && (
-                <span className="text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200 px-2 py-0.5 rounded-md">
+                <span className="tm-tag">
                   {hotel.categories[0]}
                 </span>
               )}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mt-1.5">
+            <h2 className="tm-h2 mt-1.5 break-words">
               {hotel.name}
             </h2>
             <p className="text-xs sm:text-sm text-stone-500 flex items-center gap-1 mt-0.5">
@@ -280,7 +273,7 @@ export default function ReviewListingModal({
             </p>
           </div>
 
-          {/* Sub-Tabs: Compliance Dossier vs Traveller Ad Preview */}
+          {/* Sub-tabs: details vs traveller preview */}
           <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl shrink-0 self-start sm:self-center">
             <button
               type="button"
@@ -291,7 +284,7 @@ export default function ReviewListingModal({
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Marketing Dossier
+              Details
             </button>
             <button
               type="button"
@@ -303,7 +296,7 @@ export default function ReviewListingModal({
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Traveller Ad Preview</span>
+              <span>Preview</span>
             </button>
           </div>
         </div>
@@ -317,13 +310,13 @@ export default function ReviewListingModal({
               
               {/* Photo Showcase (7 cols) */}
               <div className="lg:col-span-7 space-y-2.5">
-                <div className="relative aspect-[16/10] bg-stone-100 rounded-xl overflow-hidden border border-stone-200 shadow-2xs group">
+                <div className="relative aspect-[16/10] bg-stone-100 rounded-xl overflow-hidden border border-stone-200 group">
                   <SmartImage
                     src={currentPreviewImage}
                     alt={hotel.name}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-2.5 right-2.5 bg-black/75 backdrop-blur-xs text-white text-[11px] font-medium px-2 py-1 rounded-md">
+                  <div className="absolute bottom-2.5 right-2.5 bg-black/70 text-white text-[11px] font-medium px-2 py-1 rounded-md">
                     Photo {selectedImageIndex + 1} of {Math.max(allImages.length, 1)}
                   </div>
                 </div>
@@ -348,15 +341,14 @@ export default function ReviewListingModal({
               </div>
 
               {/* Quality & Verification Checklist (5 cols) */}
-              <div className="lg:col-span-5 bg-stone-50/80 rounded-xl p-4 border border-stone-200/90 flex flex-col justify-between">
+              <div className="lg:col-span-5 tm-panel min-w-0">
                 <div>
                   <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-stone-200">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Review Checklist</span>
+                    <h4 className="text-sm font-semibold text-stone-900">
+                      <span>Checklist</span>
                     </h4>
                     <span className="text-[11px] font-medium text-stone-500">
-                      {checks.filter(c => c.passed).length}/{checks.length} verified
+                      {checks.filter(c => c.passed).length} of {checks.length} done
                     </span>
                   </div>
 
@@ -366,7 +358,7 @@ export default function ReviewListingModal({
                       return (
                         <div key={c.id} className="flex items-start gap-2.5 text-xs">
                           <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${
-                            c.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            c.passed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'
                           }`}>
                             {c.passed ? (
                               <Check className="w-3 h-3 stroke-[2.5]" />
@@ -388,36 +380,32 @@ export default function ReviewListingModal({
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-stone-200">
-                  <p className="text-[11px] text-stone-500 leading-relaxed">
-                    Verified properties receive direct traveler inquiries and instant booking access across Malawian and international search channels.
-                  </p>
-                </div>
+
               </div>
             </div>
 
             {/* Description & Location Notes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
-                  Storefront Description
+              <div className="tm-panel min-w-0">
+                <h4 className="text-sm font-semibold text-stone-900 mb-2">
+                  Description
                 </h4>
                 <p className="text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
                   {hotel.description || 'No description provided by the host.'}
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                  Driving Directions &amp; Gate Location
+              <div className="tm-panel min-w-0 space-y-3">
+                <h4 className="text-sm font-semibold text-stone-900">
+                  Directions
                 </h4>
                 <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-                  {hotel.locationNotes || 'No specific driving directions provided.'}
+                  {hotel.locationNotes || 'No directions given.'}
                 </p>
 
                 <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 font-mono text-stone-600">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="flex items-center gap-1.5 tabular-nums text-stone-600">
+                    <MapPin className="w-3.5 h-3.5 text-stone-400" />
                     <span>
                       {hotel.coordinates ? `${hotel.coordinates.lat.toFixed(4)}, ${hotel.coordinates.lng.toFixed(4)}` : 'No coordinates'}
                     </span>
@@ -427,9 +415,9 @@ export default function ReviewListingModal({
                     href={mapLinkUrl(hotel)}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 text-stone-700 hover:text-stone-900 font-semibold underline cursor-pointer"
+                    className="tm-link inline-flex items-center gap-1"
                   >
-                    <span>Inspect on Google Maps</span>
+                    <span>Open in Google Maps</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -437,30 +425,25 @@ export default function ReviewListingModal({
             </div>
 
             {/* Room Inventory & Dual-Currency Rates */}
-            <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                    Room Inventory &amp; Dual Currency Rates
-                  </h4>
-                  <p className="text-[11px] text-stone-400 mt-0.5">
-                    Ensuring fair, transparent pricing in both Malawian Kwacha (MWK) and USD.
-                  </p>
-                </div>
-                <span className="text-xs font-semibold px-2.5 py-1 bg-stone-100 rounded-md text-stone-700">
-                  {hotelRooms.length} Room Unit{hotelRooms.length === 1 ? '' : 's'}
+            <div className="tm-panel space-y-3">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-100">
+                <h4 className="text-sm font-semibold text-stone-900">
+                  Rooms and rates
+                </h4>
+                <span className="tm-tag">
+                  {hotelRooms.length} room type{hotelRooms.length === 1 ? '' : 's'}
                 </span>
               </div>
 
               {hotelRooms.length === 0 ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                <div className="bg-amber-50 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">No room units registered yet</p>
+                    <p className="font-semibold">No rooms added yet</p>
                     <p className="text-[11px] text-amber-800 mt-0.5">
                       {hotel.stayType === 'entire_place'
-                        ? 'This property is set as an Entire Place stay. The system will auto-synthesize bookings using the primary entire place rate.'
-                        : 'A lodge listing cannot take bookings until individual room categories (e.g. Standard Chalet, Executive Suite) are added.'}
+                        ? 'Entire-place stay: bookings use the entire-place rate.'
+                        : 'Add at least one room type before this listing can take bookings.'}
                     </p>
                   </div>
                 </div>
@@ -479,14 +462,14 @@ export default function ReviewListingModal({
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
-                            <span className="text-xs sm:text-sm font-mono font-bold text-stone-900">
+                            <span className="text-xs sm:text-sm tabular-nums font-semibold text-stone-900">
                               {priceMwk > 0 ? `MK ${priceMwk.toLocaleString()}` : '—'}
                             </span>
-                            <span className="text-[11px] text-stone-500 font-mono ml-1.5">
+                            <span className="text-[11px] text-stone-500 tabular-nums ml-1.5">
                               {priceUsd > 0 ? `($${priceUsd})` : ''}
                             </span>
                           </div>
-                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600">
+                          <span className="text-[11px] text-stone-500">
                             per night
                           </span>
                         </div>
@@ -497,16 +480,16 @@ export default function ReviewListingModal({
               )}
             </div>
 
-            {/* Host Contacts & Communications Channel */}
-            <div className="bg-stone-50 rounded-xl p-4 border border-stone-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">Host / Manager</span>
+            {/* Host contacts */}
+            <div className="tm-panel grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="min-w-0">
+                <span className="text-[11px] text-stone-500 block">Host</span>
                 <p className="font-semibold text-stone-900 mt-0.5">{hotel.managerName || 'Not specified'}</p>
                 <p className="text-stone-500 text-[11px] truncate">{hotel.managerEmail || hotel.contactEmail || 'No email'}</p>
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">Direct Telephone</span>
+                <span className="text-[11px] text-stone-500 block">Phone</span>
                 {cleanPhone ? (
                   <a href={`tel:${cleanPhone}`} className="font-semibold text-stone-900 hover:underline flex items-center gap-1 mt-0.5">
                     <Phone className="w-3 h-3 text-stone-500" />
@@ -518,15 +501,15 @@ export default function ReviewListingModal({
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">WhatsApp Inquiries</span>
+                <span className="text-[11px] text-stone-500 block">WhatsApp</span>
                 {waUrl ? (
                   <a
                     href={waUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 text-emerald-800 font-semibold hover:underline mt-0.5"
+                    className="tm-link inline-flex items-center gap-1 mt-0.5"
                   >
-                    <MessageSquare className="w-3 h-3 text-emerald-600" />
+                    <MessageSquare className="w-3 h-3" />
                     <span>+{cleanWa}</span>
                     <ExternalLink className="w-2.5 h-2.5" />
                   </a>
@@ -539,12 +522,12 @@ export default function ReviewListingModal({
             {/* Amenities Chips */}
             {hotel.amenities && hotel.amenities.length > 0 && (
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
-                  Amenities &amp; Features ({hotel.amenities.length})
+                <h4 className="text-sm font-semibold text-stone-900 mb-2">
+                  Amenities ({hotel.amenities.length})
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
                   {hotel.amenities.map(a => (
-                    <span key={a} className="px-2.5 py-1 rounded-md bg-stone-100 border border-stone-200 text-stone-700 text-xs font-medium">
+                    <span key={a} className="tm-tag">
                       {a}
                     </span>
                   ))}
@@ -552,33 +535,33 @@ export default function ReviewListingModal({
               </div>
             )}
 
-            {/* Public Reviews & Social Proof (Works for Pending & Approved Properties) */}
-            <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
+            {/* Public reviews (works for pending and approved properties) */}
+            <div className="tm-panel space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                      Public Reviews &amp; Social Proof
+                    <h4 className="text-sm font-semibold text-stone-900">
+                      Public reviews
                     </h4>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white border border-stone-200 text-stone-700">
+                    <span className="tm-tag">
                       <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span>{existingReviews.length > 0 ? `${hotel.reviewsSummary?.averageRating || '4.8'} (${existingReviews.length})` : '0 attached'}</span>
+                      <span>{existingReviews.length > 0 ? (hotel.reviewsSummary?.averageRating ? `${hotel.reviewsSummary.averageRating} (${existingReviews.length})` : `${existingReviews.length} attached`) : 'None yet'}</span>
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    Fetch and attach public reviews (Google, TripAdvisor, Booking.com) even while this property is pending approval.
+                    Attach public reviews, even while the listing waits for approval.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <div className="tm-actions shrink-0">
                   <button
                     type="button"
                     disabled={isFetchingReviews}
                     onClick={handleQuickFetchReviews}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer shadow-2xs"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isFetchingReviews ? 'animate-spin' : ''}`} />
-                    <span>{isFetchingReviews ? 'Fetching Reviews...' : 'Fetch Public Reviews'}</span>
+                    <span>{isFetchingReviews ? 'Fetching reviews…' : 'Fetch reviews'}</span>
                   </button>
 
                   {onOpenReviewScraper && hotel.id && (
@@ -588,25 +571,27 @@ export default function ReviewListingModal({
                         onClose();
                         onOpenReviewScraper(hotel.id!);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 text-xs font-semibold transition cursor-pointer"
+                      className="tm-btn tm-btn-quiet tm-btn-sm"
                     >
                       <Globe className="w-3.5 h-3.5 text-stone-500" />
-                      <span>Open Review Studio</span>
+                      <span>Open review studio</span>
                     </button>
                   )}
                 </div>
               </div>
 
               {existingReviews.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 pt-1">
                   {existingReviews.slice(0, 4).map((rev, idx) => (
-                    <div key={idx} className="p-2.5 rounded-lg bg-white border border-stone-200/80 text-xs">
+                    <div key={idx} className="min-w-0 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-stone-900 truncate">{rev.author || 'Guest'}</span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-stone-700 shrink-0">
-                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-                          {rev.rating || 5}
-                        </span>
+                        {rev.rating ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-stone-700 shrink-0">
+                            <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                            {rev.rating}
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-[11px] text-stone-600 line-clamp-2 mt-1">{rev.comment}</p>
                       {rev.source && (
@@ -623,52 +608,47 @@ export default function ReviewListingModal({
         {/* ================= TAB 2: LIVE TRAVELLER AD PREVIEW ================= */}
         {activeTab === 'preview' && (
           <div className="space-y-4">
-            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>
-                <strong>Storefront Simulation:</strong> This represents exactly how international travelers and domestic guests will encounter this listing across Travel Malawi discovery feeds.
-              </span>
-            </div>
+            <p className="tm-muted">This is how travellers will see the listing.</p>
 
-            {/* Simulated Live Hotel Card / Hero */}
-            <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
+            {/* Simulated listing card */}
+            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
               <div className="relative aspect-[16/9] sm:aspect-[21/9] bg-stone-100 overflow-hidden">
                 <SmartImage src={currentPreviewImage} alt={hotel.name} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-black/35" />
                 
                 <div className="absolute top-3 left-3 flex items-center gap-2">
-                  <span className="bg-white/90 backdrop-blur-xs text-stone-900 text-xs font-bold px-2.5 py-1 rounded-md shadow-2xs">
-                    {hotel.categories?.[0] || 'Lakeside Stay'}
-                  </span>
+                  {hotel.categories?.[0] && (
+                    <span className="bg-white/90 text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-md">
+                      {hotel.categories[0]}
+                    </span>
+                  )}
                   {hotel.stayType === 'entire_place' && (
-                    <span className="bg-stone-900/80 backdrop-blur-xs text-white text-xs font-medium px-2.5 py-1 rounded-md">
-                      Entire Place
+                    <span className="bg-stone-900/80 text-white text-xs font-medium px-2.5 py-1 rounded-md">
+                      Entire place
                     </span>
                   )}
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <h3 className="text-xl sm:text-3xl font-serif font-bold text-white drop-shadow-sm">
+                  <h3 className="text-xl sm:text-3xl font-serif font-semibold text-white drop-shadow-sm break-words">
                     {hotel.name}
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-200 flex items-center gap-1.5 mt-1">
                     <MapPin className="w-3.5 h-3.5 text-stone-300" />
                     <span>{hotel.location}</span>
-                    <span>&middot;</span>
-                    <span className="text-emerald-400 font-medium">Verified Partner</span>
                   </p>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-stone-50/50">
+              <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Starting Nightly Rate</span>
+                  <span className="text-xs text-stone-500">From</span>
                   <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-xl sm:text-2xl font-mono font-bold text-stone-900">
+                    <span className="text-xl sm:text-2xl tabular-nums font-semibold text-stone-900">
                       {primaryRateMwk > 0 ? `MK ${primaryRateMwk.toLocaleString()}` : primaryRateUsd > 0 ? `$${primaryRateUsd}` : 'Rate on inquiry'}
                     </span>
                     {primaryRateUsd > 0 && primaryRateMwk > 0 && (
-                      <span className="text-xs text-stone-500 font-mono">
+                      <span className="text-xs text-stone-500 tabular-nums">
                         (${primaryRateUsd} USD)
                       </span>
                     )}
@@ -680,9 +660,9 @@ export default function ReviewListingModal({
                   <Link
                     to={`/hotel/${hotel.id}`}
                     target="_blank"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition shadow-2xs"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
-                    <span>Open Live Storefront</span>
+                    <span>Open listing page</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -693,11 +673,10 @@ export default function ReviewListingModal({
 
         {/* Rejection / Request Edits Form Drawer */}
         {showRejectForm && (
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
+          <div className="tm-panel space-y-3 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center gap-1.5">
-                <XCircle className="w-4 h-4 text-stone-600" />
-                <span>Specify Feedback / Reason for Host</span>
+              <h4 className="text-sm font-semibold text-stone-900">
+                <span>What should the host change?</span>
               </h4>
               <button
                 type="button"
@@ -711,16 +690,16 @@ export default function ReviewListingModal({
             {/* Quick Reason Chips */}
             <div className="flex flex-wrap gap-1.5 text-xs">
               {[
-                'Please upload higher resolution photos of the rooms and grounds',
-                'Verify GPS coordinates; current pin points outside Malawi',
-                'Provide valid Malawian WhatsApp contact for guest inquiries',
-                'Confirm room nightly rates in MWK and USD'
+                'Please upload sharper photos of the rooms and grounds',
+                'Please check the map pin; it is outside Malawi',
+                'Please add a Malawi WhatsApp number for guests',
+                'Please confirm your nightly room rates'
               ].map(reason => (
                 <button
                   key={reason}
                   type="button"
                   onClick={() => setRejectReason(reason)}
-                  className="px-2.5 py-1 bg-white border border-stone-200 rounded-md text-[11px] text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                  className="px-2.5 py-1 bg-white border border-stone-200 rounded-lg text-[11px] text-left text-stone-700 hover:bg-stone-100 transition cursor-pointer"
                 >
                   {reason}
                 </button>
@@ -730,15 +709,15 @@ export default function ReviewListingModal({
             <textarea
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}
-              placeholder="Explain to the host what needs updating before this listing can be approved..."
-              className="w-full h-20 p-2.5 bg-white border border-stone-300 rounded-lg text-xs text-stone-900 focus:outline-none focus:border-stone-900 resize-none"
+              placeholder="Tell the host what to update before approval…"
+              className="tm-input h-20 resize-none"
             />
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="tm-actions justify-end">
               <button
                 type="button"
                 onClick={() => setShowRejectForm(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-200 transition cursor-pointer"
+                className="tm-btn tm-btn-quiet tm-btn-sm"
               >
                 Cancel
               </button>
@@ -746,9 +725,9 @@ export default function ReviewListingModal({
                 type="button"
                 disabled={isUpdating}
                 onClick={handleRejectClick}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition cursor-pointer"
+                className="tm-btn tm-btn-danger tm-btn-sm"
               >
-                Confirm Rejection &amp; Archive
+                Reject and notify host
               </button>
             </div>
           </div>
@@ -756,22 +735,22 @@ export default function ReviewListingModal({
 
         {/* Modal Action Bar Footer */}
         <div className="pt-4 border-t border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="tm-actions">
             <Link
               to={`/admin/hotel/${hotel.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Details in Full Manager</span>
+              <span>Edit details</span>
             </Link>
 
             <Link
               to={`/hotel/${hotel.id}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>View Live Link</span>
+              <span>View page</span>
             </Link>
 
             {onDelete && (
@@ -780,34 +759,34 @@ export default function ReviewListingModal({
                 onClick={() => {
                   if (hotel.id) onDelete(hotel.id);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                className="tm-btn tm-btn-danger tm-btn-sm"
               >
-                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                <span>Delete Listing</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete listing</span>
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="tm-actions self-end sm:self-auto">
             {hotel.status === 'pending' ? (
               <>
                 <button
                   type="button"
                   disabled={isUpdating}
                   onClick={() => setShowRejectForm(true)}
-                  className="px-3.5 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-semibold transition cursor-pointer"
+                  className="tm-btn tm-btn-secondary"
                 >
-                  Request Edits / Reject
+                  Request changes
                 </button>
 
                 <button
                   type="button"
                   disabled={isUpdating}
                   onClick={handleApproveClick}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-stone-900 text-white hover:bg-stone-800 text-xs font-bold transition shadow-xs cursor-pointer"
+                  className="tm-btn tm-btn-primary"
                 >
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>{isUpdating ? 'Approving...' : 'Approve & Publish Live'}</span>
+                  <Check className="w-4 h-4" />
+                  <span>{isUpdating ? 'Approving…' : 'Approve and publish'}</span>
                 </button>
               </>
             ) : hotel.status === 'rejected' ? (
@@ -815,24 +794,24 @@ export default function ReviewListingModal({
                 type="button"
                 disabled={isUpdating}
                 onClick={handleApproveClick}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 text-xs font-bold transition shadow-xs cursor-pointer"
+                className="tm-btn tm-btn-primary"
               >
                 <Check className="w-4 h-4" />
-                <span>Re-Approve Listing</span>
+                <span>Approve again</span>
               </button>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Approved &amp; Live</span>
+              <div className="tm-actions">
+                <span className="tm-tag tm-tag-good">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Live</span>
                 </span>
                 <button
                   type="button"
                   disabled={isUpdating}
                   onClick={() => setShowRejectForm(true)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
-                  Suspend Listing
+                  Suspend listing
                 </button>
               </div>
             )}

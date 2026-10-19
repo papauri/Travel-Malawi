@@ -68,7 +68,7 @@ export default function ConfirmDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-stone-950/50"
             onClick={onCancel}
           />
           <motion.div
@@ -77,7 +77,7 @@ export default function ConfirmDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
-            className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl shadow-stone-950/25 p-5 sm:p-7 relative z-10 my-auto text-left overscroll-contain border border-stone-100"
+            className="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-sm p-5 sm:p-7 relative z-10 my-auto text-left overscroll-contain border border-stone-100"
           >
             <div className="flex flex-col items-center text-center">
               <div className={`h-11 w-11 sm:h-14 sm:w-14 grid place-items-center rounded-full mb-3.5 sm:mb-5 ${

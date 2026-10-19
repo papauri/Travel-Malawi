@@ -385,20 +385,20 @@ export default function AdminAISettings() {
     return (
       <div className="flex items-center justify-center py-24 text-stone-500 gap-3">
         <Loader2 className="w-5 h-5 animate-spin text-stone-700" />
-        <span className="text-sm">Loading AI configuration...</span>
+        <span className="text-sm">Loading AI settings...</span>
       </div>
     );
   }
 
   if (!config) {
     return (
-      <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl text-center">
-        <p className="text-stone-600 text-sm">Failed to connect to the AI administration service.</p>
+      <div className="tm-panel text-center">
+        <p className="tm-muted">Couldn't load the AI settings. Check the server is running, then try again.</p>
         <button
           onClick={fetchConfig}
-          className="mt-4 px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition"
+          className="tm-btn tm-btn-secondary tm-btn-sm mt-3"
         >
-          Retry
+          Try again
         </button>
       </div>
     );
@@ -410,13 +410,13 @@ export default function AdminAISettings() {
   const totalCount = Object.keys(config.providers).length;
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl min-w-0">
       {/* 1. Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">AI Services & Provider Keys</h2>
-          <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-            Configure multi-provider backends for Ulendo hospitality intelligence, listing generation, and vision OCR.
+          <h2 className="tm-h1">AI settings</h2>
+          <p className="tm-muted mt-0.5">
+            Keys and models for Ulendo, listing writing and document reading.
           </p>
         </div>
 
@@ -425,22 +425,23 @@ export default function AdminAISettings() {
             type="button"
             onClick={handleFetchAllLiveModels}
             disabled={fetchingAllProviders}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 hover:border-stone-300 transition disabled:opacity-50"
-            title="Query active models across all providers simultaneously"
+            className="tm-btn tm-btn-secondary tm-btn-sm"
+            title="Check every provider for its current models"
           >
             {fetchingAllProviders ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
             ) : (
               <Globe className="w-3.5 h-3.5 text-stone-500" />
             )}
-            <span>{fetchingAllProviders ? 'Querying APIs...' : 'Query All Catalogs'}</span>
+            <span>{fetchingAllProviders ? 'Checking...' : 'Check all models'}</span>
           </button>
 
           <button
             type="button"
             onClick={fetchConfig}
-            className="p-1.5 text-stone-500 hover:text-stone-900 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition"
-            title="Refresh status"
+            className="tm-btn tm-btn-secondary tm-btn-sm px-2"
+            title="Refresh"
+            aria-label="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -448,26 +449,26 @@ export default function AdminAISettings() {
       </div>
 
       {/* 2. Global Execution Control & System Status */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs">
+      <div className="tm-panel">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${config.enabled ? 'bg-emerald-500' : 'bg-stone-400'}`} />
               <h3 className="font-semibold text-stone-900 text-sm">
-                {config.enabled ? 'Ulendo AI Engine Operational' : 'Global Kill Switch Active (All AI Suppressed)'}
+                {config.enabled ? 'AI is on' : 'AI is switched off everywhere'}
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
-              <span>Active Provider: <strong className="text-stone-800 font-medium">{activeProvider?.name || config.activeProvider}</strong></span>
+              <span>Using <strong className="text-stone-800 font-medium">{activeProvider?.name || config.activeProvider}</strong></span>
               <span aria-hidden="true" className="text-stone-300">·</span>
               <span className="font-mono text-stone-600">{describeModel(activeProvider)}</span>
               <span aria-hidden="true" className="text-stone-300">·</span>
-              <span className="tabular-nums">{configuredCount} of {totalCount} providers configured</span>
+              <span className="tabular-nums">{configuredCount} of {totalCount} providers have a key</span>
             </div>
             <p className="text-xs text-stone-500 pt-0.5 max-w-2xl">
               {config.enabled
-                ? 'Ulendo AI is active across manager onboarding, listing generation, vision OCR, and guest inquiry tools.'
-                : 'All AI features, writing assistance buttons, and server endpoints are suppressed platform-wide.'}
+                ? 'Ulendo, the writing helper and document reading are available.'
+                : 'Ulendo, the writing helper and document reading are hidden for everyone.'}
             </p>
           </div>
 
@@ -476,14 +477,10 @@ export default function AdminAISettings() {
               type="button"
               onClick={handleToggleKillSwitch}
               disabled={saving}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs ${
-                config.enabled
-                  ? 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-300'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-              }`}
+              className={`tm-btn tm-btn-sm ${config.enabled ? 'tm-btn-danger' : 'tm-btn-primary'}`}
             >
               <Power className="w-3.5 h-3.5" />
-              <span>{config.enabled ? 'Trigger Kill Switch (Suppress AI)' : 'Re-enable AI Platform'}</span>
+              <span>{config.enabled ? 'Turn AI off' : 'Turn AI on'}</span>
             </button>
           </div>
         </div>
@@ -510,7 +507,7 @@ export default function AdminAISettings() {
                   }}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
                     isSelected && viewMode === 'focused'
-                      ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                      ? 'bg-stone-900 text-white border-stone-900'
                       : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
                   }`}
                 >
@@ -550,19 +547,19 @@ export default function AdminAISettings() {
               }`}
             >
               <TableProperties className="w-3.5 h-3.5" />
-              <span>Matrix</span>
+              <span>All</span>
             </button>
           </div>
         </div>
 
         {/* 4. Focused Provider Configuration Pane */}
         {viewMode === 'focused' && selectedProvider && (
-          <div className="bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-2xs space-y-6 animate-in fade-in duration-150">
+          <div className="tm-panel space-y-6 animate-in fade-in duration-150 min-w-0">
             {/* Top Bar for Selected Provider */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="font-serif font-bold text-lg text-stone-900">{selectedProvider.name}</h3>
+                  <h3 className="tm-h2">{selectedProvider.name}</h3>
                   <a
                     href={selectedProvider.website}
                     target="_blank"
@@ -570,33 +567,33 @@ export default function AdminAISettings() {
                     className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 text-xs"
                     title={`Open ${selectedProvider.name} developer portal`}
                   >
-                    <span>Developer Portal</span>
+                    <span>Provider website</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-stone-500 mt-1">
                   <span>Provider ID: <code className="font-mono text-stone-700">{selectedProviderId}</code></span>
                   <span aria-hidden="true" className="text-stone-300">·</span>
-                  <span>{selectedProvider.source === 'environment' ? 'Configured via Environment' : selectedProvider.isConfigured ? 'Manual key configured' : 'No API key set'}</span>
+                  <span>{selectedProvider.source === 'environment' ? 'Key set on the server' : selectedProvider.isConfigured ? 'Key saved here' : 'No key yet'}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Active Provider Button */}
                 {config.activeProvider === selectedProviderId ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 text-stone-800 border border-stone-200">
-                    <Check className="w-3.5 h-3.5 text-stone-800" />
-                    <span>Current Active Engine</span>
-                  </div>
+                  <span className="tm-tag tm-tag-good">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>In use</span>
+                  </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => handleSelectActiveProvider(selectedProviderId)}
                     disabled={saving}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white transition shadow-2xs cursor-pointer"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
-                    <span>Set as Active Engine</span>
+                    <span>Use this provider</span>
                   </button>
                 )}
 
@@ -605,30 +602,24 @@ export default function AdminAISettings() {
                   type="button"
                   disabled={saving}
                   onClick={() => handleToggleProviderEnabled(selectedProviderId, selectedProvider.enabled !== false)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border cursor-pointer ${
-                    selectedProvider.enabled !== false
-                      ? 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                      : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
-                  }`}
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   <Power className="w-3 h-3" />
-                  <span>{selectedProvider.enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                  <span>{selectedProvider.enabled !== false ? 'On' : 'Off'}</span>
                 </button>
               </div>
             </div>
 
             {/* Notice if provider is disabled */}
             {selectedProvider.enabled === false && (
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-600 flex items-center justify-between gap-3">
-                <span>
-                  <strong>Provider Disabled:</strong> {selectedProvider.name} is excluded from active routing, vision OCR, and fallback chains.
-                </span>
+              <div className="p-3 bg-stone-50 rounded-lg text-xs text-stone-600 flex flex-wrap items-center justify-between gap-3">
+                <span>{selectedProvider.name} is off, so it is never used.</span>
                 <button
                   type="button"
                   onClick={() => handleToggleProviderEnabled(selectedProviderId, false)}
-                  className="text-xs font-semibold text-stone-900 hover:underline shrink-0"
+                  className="tm-link text-xs shrink-0"
                 >
-                  Enable Provider
+                  Turn on
                 </button>
               </div>
             )}
@@ -638,12 +629,12 @@ export default function AdminAISettings() {
               {/* API Key */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <label className="font-semibold text-stone-700">
-                    API Key {selectedProvider.maskedKey && <span className="font-mono text-stone-400 font-normal">({selectedProvider.maskedKey})</span>}
+                  <label className="font-medium text-stone-700">
+                    API key {selectedProvider.maskedKey && <span className="font-mono text-stone-400 font-normal">({selectedProvider.maskedKey})</span>}
                   </label>
                   {selectedProvider.isConfigured && (
                     <span className="text-[11px] text-stone-500">
-                      {selectedProvider.source === 'environment' ? 'System Environment' : 'Database Stored'}
+                      {selectedProvider.source === 'environment' ? 'From the server' : 'Saved here'}
                     </span>
                   )}
                 </div>
@@ -661,18 +652,19 @@ export default function AdminAISettings() {
                       }}
                       placeholder={
                         selectedProvider.isConfigured
-                          ? (selectedProvider.source === 'environment' ? 'Loaded from system environment' : 'Enter new key to update...')
+                          ? (selectedProvider.source === 'environment' ? 'Set on the server' : 'Paste a new key to replace it')
                           : selectedProviderId === 'gemini'
                           ? 'Starts with AIzaSy...'
                           : 'Starts with sk-...'
                       }
-                      className="w-full bg-stone-50 border border-stone-200 rounded-lg pl-3 pr-9 py-2 text-xs font-mono text-stone-900 placeholder-stone-400 focus:bg-white focus:border-stone-900 outline-none transition"
+                      className="tm-input pr-9 font-mono text-xs"
                     />
                     <button
                       type="button"
                       onClick={() => setShowKey(prev => ({ ...prev, [selectedProviderId]: !prev[selectedProviderId] }))}
-                      className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
                       tabIndex={-1}
+                      aria-label={showKey[selectedProviderId] ? 'Hide key' : 'Show key'}
                     >
                       {showKey[selectedProviderId] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
@@ -683,9 +675,9 @@ export default function AdminAISettings() {
                       type="button"
                       disabled={saving}
                       onClick={() => handleSaveProvider(selectedProviderId)}
-                      className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition shrink-0"
+                      className="tm-btn tm-btn-primary tm-btn-sm shrink-0"
                     >
-                      Save Key
+                      Save key
                     </button>
                   )}
                 </div>
@@ -694,8 +686,8 @@ export default function AdminAISettings() {
               {/* Model Identifier */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <label className="font-semibold text-stone-700">
-                    Model Identifier <span className="font-normal text-stone-400">(Default: auto, the cheapest current model)</span>
+                  <label className="font-medium text-stone-700">
+                    Model <span className="font-normal text-stone-400">(auto picks the cheapest current one)</span>
                   </label>
                   {selectedProvider.model !== selectedProvider.defaultModel && (
                     <button
@@ -721,15 +713,15 @@ export default function AdminAISettings() {
                         handleSaveProvider(selectedProviderId);
                       }
                     }}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs font-mono text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition"
+                    className="tm-input font-mono text-xs"
                   />
                   <button
                     type="button"
                     disabled={saving || (modelInputs[selectedProviderId] === undefined || modelInputs[selectedProviderId] === selectedProvider.model)}
                     onClick={() => handleSaveProvider(selectedProviderId)}
-                    className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                    className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                   >
-                    Save Model
+                    Save model
                   </button>
                 </div>
                 {selectedProvider.resolvedModel && selectedProvider.resolvedModel !== selectedProvider.model && (
@@ -745,7 +737,7 @@ export default function AdminAISettings() {
             {selectedProvider.recommendedModels && selectedProvider.recommendedModels.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-stone-100">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-stone-700">Recommended Models</span>
+                  <span className="text-xs font-medium text-stone-700">Suggested models</span>
                   <button
                     type="button"
                     onClick={() => handleFetchLiveModelsForProvider(selectedProviderId)}
@@ -755,9 +747,9 @@ export default function AdminAISettings() {
                     {fetchingProviderModels[selectedProviderId] ? (
                       <Loader2 className="w-3 h-3 animate-spin text-stone-700" />
                     ) : (
-                      <Cpu className="w-3 h-3 text-stone-500" />
+                      <Search className="w-3 h-3 text-stone-500" />
                     )}
-                    <span>Browse Live Model Catalog</span>
+                    <span>See all models</span>
                   </button>
                 </div>
 
@@ -770,12 +762,12 @@ export default function AdminAISettings() {
                     }}
                     className={`text-xs px-3 py-1.5 rounded-lg border transition text-left cursor-pointer flex items-center gap-2 ${
                       (modelInputs[selectedProviderId] ?? selectedProvider.model) === 'auto'
-                        ? 'bg-stone-900 text-white border-stone-900 font-medium shadow-2xs'
-                        : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        ? 'bg-amber-50 text-stone-900 border-amber-700 font-medium'
+                        : 'bg-white hover:bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                     title="Always use the cheapest capable model of the newest generation"
                   >
-                    <span className="font-mono text-[11px]">Auto</span>
+                    <span className="text-[11px]">Auto</span>
                   </button>
                   {selectedProvider.recommendedModels.map((m, mIdx) => {
                     const isCurrent = (modelInputs[selectedProviderId] ?? selectedProvider.model) === m.id;
@@ -789,17 +781,15 @@ export default function AdminAISettings() {
                         }}
                         className={`text-xs px-3 py-1.5 rounded-lg border transition text-left cursor-pointer flex items-center gap-2 ${
                           isCurrent
-                            ? 'bg-stone-900 text-white border-stone-900 font-medium shadow-2xs'
-                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                            ? 'bg-amber-50 text-stone-900 border-amber-700 font-medium'
+                            : 'bg-white hover:bg-stone-50 text-stone-700 border-stone-200'
                         }`}
                         title={m.description}
                       >
-                        <span className="font-mono text-[11px]">{m.name}</span>
+                        <span className="text-[11px]">{m.name}</span>
                         {m.isSweetSpot && (
-                          <span className={`text-[10px] px-1 py-0.2 rounded font-medium ${
-                            isCurrent ? 'bg-stone-800 text-stone-200' : 'bg-amber-100 text-amber-900'
-                          }`}>
-                            Sweet Spot
+                          <span className="text-[10px] px-1 py-0.2 rounded font-medium bg-amber-100 text-amber-900">
+                            Best value
                           </span>
                         )}
                       </button>
@@ -811,15 +801,15 @@ export default function AdminAISettings() {
 
             {/* Live Model Catalog Explorer */}
             {showLiveModelsFor[selectedProviderId] && (
-              <div className="pt-4 border-t border-stone-200 space-y-3 bg-stone-50/60 p-4 rounded-xl border">
+              <div className="pt-4 border-t border-stone-200 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-stone-900">
-                      Live Models: {selectedProvider.name}
+                      All {selectedProvider.name} models
                     </span>
                     {liveModelsMap[selectedProviderId]?.source && (
                       <span className="text-[11px] text-stone-500">
-                        ({liveModelsMap[selectedProviderId].source === 'live_api' ? 'Live API' : 'Verified Catalog'}
+                        ({liveModelsMap[selectedProviderId].source === 'live_api' ? 'live list' : 'saved list'}
                         {liveModelsMap[selectedProviderId].latencyMs ? ` · ${liveModelsMap[selectedProviderId].latencyMs}ms` : ''})
                       </span>
                     )}
@@ -832,15 +822,16 @@ export default function AdminAISettings() {
                         type="text"
                         value={modelSearchQuery}
                         onChange={e => setModelSearchQuery(e.target.value)}
-                        placeholder="Filter models..."
-                        className="pl-8 pr-2.5 py-1 text-xs bg-white border border-stone-200 rounded-lg w-44 outline-none focus:border-stone-900"
+                        placeholder="Filter models"
+                        aria-label="Filter models"
+                        className="tm-input pl-8 py-1 text-xs w-44"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowLiveModelsFor(prev => ({ ...prev, [selectedProviderId]: false }))}
                       className="p-1 text-stone-400 hover:text-stone-700"
-                      title="Close live model catalog"
+                      title="Close" aria-label="Close"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -850,7 +841,7 @@ export default function AdminAISettings() {
                 {fetchingProviderModels[selectedProviderId] ? (
                   <div className="flex items-center gap-2 py-4 text-xs text-stone-500 justify-center">
                     <Loader2 className="w-4 h-4 animate-spin text-stone-600" />
-                    <span>Querying {selectedProvider.name} model endpoints...</span>
+                    <span>Getting {selectedProvider.name} models...</span>
                   </div>
                 ) : filteredLiveModels.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
@@ -861,34 +852,30 @@ export default function AdminAISettings() {
                           key={`live-m-${selectedProviderId}-${lm.id}`}
                           className={`p-2.5 rounded-lg border text-left flex flex-col justify-between gap-1.5 transition ${
                             isSelected
-                              ? 'bg-stone-900 text-white border-stone-900'
+                              ? 'bg-amber-50 border-amber-700'
                               : 'bg-white border-stone-200 hover:border-stone-300'
                           }`}
                         >
                           <div>
                             <div className="flex items-center justify-between gap-1">
-                              <span className={`text-xs font-mono font-medium truncate ${isSelected ? 'text-white' : 'text-stone-900'}`}>
+                              <span className="text-xs font-mono font-medium truncate text-stone-900">
                                 {lm.id}
                               </span>
                               <div className="flex items-center gap-1 shrink-0">
                                 {lm.isLatest && (
-                                  <span className={`text-[9px] px-1 py-0.2 rounded font-medium ${
-                                    isSelected ? 'bg-stone-800 text-stone-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                  }`}>
+                                  <span className="text-[10px] px-1 py-0.2 rounded font-medium bg-stone-100 text-stone-700">
                                     Latest
                                   </span>
                                 )}
                                 {lm.isSweetSpot && (
-                                  <span className={`text-[9px] px-1 py-0.2 rounded font-medium ${
-                                    isSelected ? 'bg-stone-800 text-stone-200' : 'bg-amber-50 text-amber-900 border border-amber-200'
-                                  }`}>
-                                    Sweet Spot
+                                  <span className="text-[10px] px-1 py-0.2 rounded font-medium bg-amber-100 text-amber-900">
+                                    Best value
                                   </span>
                                 )}
                               </div>
                             </div>
                             {lm.description && (
-                              <p className={`text-[11px] line-clamp-1 mt-0.5 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                              <p className="text-[11px] line-clamp-1 mt-0.5 text-stone-500">
                                 {lm.description}
                               </p>
                             )}
@@ -896,8 +883,8 @@ export default function AdminAISettings() {
 
                           <div className="pt-1 flex items-center justify-end">
                             {isSelected ? (
-                              <span className="text-[11px] text-emerald-300 flex items-center gap-1 font-medium">
-                                <Check className="w-3 h-3" /> Selected
+                              <span className="text-[11px] text-amber-800 flex items-center gap-1 font-medium">
+                                <Check className="w-3 h-3" /> In use
                               </span>
                             ) : (
                               <button
@@ -906,9 +893,9 @@ export default function AdminAISettings() {
                                   setModelInputs(prev => ({ ...prev, [selectedProviderId]: lm.id }));
                                   handleSaveProvider(selectedProviderId, lm.id);
                                 }}
-                                className="text-[11px] font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded transition cursor-pointer"
+                                className="tm-btn tm-btn-secondary tm-btn-sm"
                               >
-                                Use Model
+                                Use
                               </button>
                             )}
                           </div>
@@ -918,7 +905,7 @@ export default function AdminAISettings() {
                   </div>
                 ) : (
                   <p className="text-xs text-stone-500 py-3 text-center">
-                    No models matched the search query.
+                    No models match that filter.
                   </p>
                 )}
               </div>
@@ -928,9 +915,9 @@ export default function AdminAISettings() {
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-stone-100">
               <div className="text-xs text-stone-500">
                 {selectedProvider.rateLimitNotice ? (
-                  <span><strong>Rate Strategy:</strong> {selectedProvider.rateLimitNotice}</span>
+                  <span>{selectedProvider.rateLimitNotice}</span>
                 ) : (
-                  <span>Verified for Travel Malawi operations and listing drafting.</span>
+                  <span>Test the key before you rely on it.</span>
                 )}
               </div>
 
@@ -939,15 +926,15 @@ export default function AdminAISettings() {
                   type="button"
                   disabled={testingProvider === selectedProviderId || !selectedProvider.isConfigured}
                   onClick={() => handleRunTest(selectedProviderId)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg transition border border-stone-200 disabled:opacity-40 cursor-pointer"
-                  title={!selectedProvider.isConfigured ? 'Add an API key first to test connection' : 'Test inference connection'}
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
+                  title={!selectedProvider.isConfigured ? 'Add an API key first' : 'Send a short test request'}
                 >
                   {testingProvider === selectedProviderId ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Play className="w-3.5 h-3.5 text-stone-700" />
                   )}
-                  <span>Test Connection</span>
+                  <span>Test key</span>
                 </button>
               </div>
             </div>
@@ -956,16 +943,16 @@ export default function AdminAISettings() {
 
         {/* 5. Matrix Overview Mode (All Providers Table) */}
         {viewMode === 'matrix' && (
-          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-2xs">
+          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden min-w-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider text-[10px] font-semibold border-b border-stone-200">
+                <thead className="bg-stone-50 text-stone-600 text-xs font-medium border-b border-stone-200">
                   <tr>
                     <th className="py-3 px-4">Provider</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Key Configuration</th>
-                    <th className="py-3 px-4">Active Model</th>
-                    <th className="py-3 px-4 text-center">Engine Role</th>
+                    <th className="py-3 px-4">Key</th>
+                    <th className="py-3 px-4">Model</th>
+                    <th className="py-3 px-4 text-center">In use</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -990,7 +977,7 @@ export default function AdminAISettings() {
                             }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${isEnabled ? 'bg-emerald-500' : 'bg-stone-400'}`} />
-                            <span>{isEnabled ? 'Enabled' : 'Disabled'}</span>
+                            <span>{isEnabled ? 'On' : 'Off'}</span>
                           </button>
                         </td>
 
@@ -999,11 +986,11 @@ export default function AdminAISettings() {
                             <div className="space-y-0.5">
                               <div className="font-mono text-stone-800">{p.maskedKey || 'Configured'}</div>
                               <div className="text-[10px] text-stone-400">
-                                {p.source === 'environment' ? 'Environment variable' : 'Manual key'}
+                                {p.source === 'environment' ? 'From the server' : 'Saved here'}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-stone-400">No key provided</span>
+                            <span className="text-stone-400">No key</span>
                           )}
                         </td>
 
@@ -1013,27 +1000,27 @@ export default function AdminAISettings() {
 
                         <td className="py-3 px-4 text-center">
                           {isActive ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-900 text-white">
-                              <Check className="w-3 h-3" /> Active
+                            <span className="tm-tag tm-tag-good">
+                              <Check className="w-3 h-3" /> In use
                             </span>
                           ) : (
                             <button
                               type="button"
                               onClick={() => handleSelectActiveProvider(pid)}
-                              className="text-stone-600 hover:text-stone-900 text-[11px] font-medium underline cursor-pointer"
+                              className="tm-link text-[11px]"
                             >
-                              Set Active
+                              Use
                             </button>
                           )}
                         </td>
 
-                        <td className="py-3 px-4 text-right space-x-2">
+                        <td className="py-3 px-4 text-right whitespace-nowrap space-x-2">
                           {p.isConfigured && (
                             <button
                               type="button"
                               disabled={testingProvider === pid}
                               onClick={() => handleRunTest(pid)}
-                              className="px-2.5 py-1 text-[11px] font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 rounded transition"
+                              className="tm-btn tm-btn-quiet tm-btn-sm"
                             >
                               {testingProvider === pid ? 'Testing...' : 'Test'}
                             </button>
@@ -1044,9 +1031,9 @@ export default function AdminAISettings() {
                               setSelectedProviderId(pid);
                               setViewMode('focused');
                             }}
-                            className="px-2.5 py-1 text-[11px] font-medium text-stone-900 bg-stone-100 hover:bg-stone-200 rounded transition"
+                            className="tm-btn tm-btn-secondary tm-btn-sm"
                           >
-                            Configure
+                            Edit
                           </button>
                         </td>
                       </tr>
@@ -1075,10 +1062,10 @@ export default function AdminAISettings() {
                   <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                 )}
                 <span className="font-semibold text-sm">
-                  {testResult.success ? 'Connection Successful' : 'Connection Test Failed'}
+                  {testResult.success ? 'The key works' : 'The test failed'}
                 </span>
                 {testResult.latencyMs !== undefined && (
-                  <span className="font-mono text-stone-500 tabular-nums">({testResult.latencyMs}ms)</span>
+                  <span className="text-stone-500 tabular-nums">({testResult.latencyMs} ms)</span>
                 )}
               </div>
               <p className="text-stone-500">
@@ -1090,7 +1077,7 @@ export default function AdminAISettings() {
               type="button"
               onClick={() => setTestResult(null)}
               className="text-stone-400 hover:text-stone-700 p-1"
-              title="Dismiss result"
+              title="Dismiss" aria-label="Dismiss"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1098,11 +1085,11 @@ export default function AdminAISettings() {
 
           <div className="mt-3 pt-2 border-t border-stone-200/60">
             {testResult.success ? (
-              <p className="font-serif italic text-stone-700 bg-white p-3 rounded-lg border border-stone-200 leading-relaxed">
+              <p className="text-stone-700 leading-relaxed break-words">
                 "{testResult.sample}"
               </p>
             ) : (
-              <div className="font-mono text-red-700 bg-white p-3 rounded-lg border border-red-200 leading-relaxed">
+              <div className="text-red-700 leading-relaxed break-words">
                 {testResult.error}
               </div>
             )}
@@ -1110,27 +1097,15 @@ export default function AdminAISettings() {
         </div>
       )}
 
-      {/* 7. Architecture & Compliance Notes */}
-      <div className="pt-4 border-t border-stone-200 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-500">
-        <div>
-          <h4 className="font-semibold text-stone-800 mb-1">Server-Side Proxy Security</h4>
-          <p className="leading-relaxed">
-            API keys are saved in local server storage and never exposed to guest or manager browsers. Requests are securely proxied via server routes.
-          </p>
-        </div>
-        <div>
-          <h4 className="font-semibold text-stone-800 mb-1">Cost-Optimized Defaults</h4>
-          <p className="leading-relaxed">
-            In Auto mode each provider's live model catalog is checked every 6 hours and calls use the cheapest capable model of the newest generation. Retired models are skipped automatically.
-          </p>
-        </div>
-        <div>
-          <h4 className="font-semibold text-stone-800 mb-1">Global Kill Switch Guarantee</h4>
-          <p className="leading-relaxed">
-            Toggling the master switch instantly suppresses all AI endpoints, assistant buttons, and prompt generators platform-wide.
-          </p>
-        </div>
-      </div>
+      {/* 7. How it works (collapsed) */}
+      <details className="tm-divider pt-4 text-xs text-stone-600">
+        <summary className="cursor-pointer text-sm font-medium text-stone-800">How this works</summary>
+        <ul className="mt-2 list-disc pl-5 space-y-1.5 leading-relaxed marker:text-stone-400">
+          <li>Keys stay on the server and are never sent to anyone's browser.</li>
+          <li>Auto checks each provider's models every 6 hours and uses the cheapest current one. Retired models are skipped.</li>
+          <li>Turning AI off hides Ulendo, the writing helper and document reading for everyone straight away.</li>
+        </ul>
+      </details>
     </div>
   );
 }

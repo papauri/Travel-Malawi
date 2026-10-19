@@ -22,13 +22,24 @@ status: in-progress
 - [H-onboarding-3] DONE host emailed via new POST /api/admin/email-listing-status (body: email,name,hotelName,status,reason) from handleUpdateStatus only when status actually changes
 - [H-settings-1] sent to ui (HostStarterPack download 404)
 - [settings-20] P3 FIXED  src/lib/spam.ts:80 — substring spam-phrase match ('seo' in 'Seoul') → whole-word match
-status: done
 - [settings-21] P1 FIXED  server/docUtils.ts + server.ts /api/admin/docs/:id, /api/docs/:id — all docs readable by anyone → per-doc audience (public: concept-validation-survey, stay-owner-leaflet, host-onboarding-pack; host: property-listing-guide; admin: marketing-presentation, operations-starter-pack, platform-guide-uat; unset = admin), optionalAuth verifies token, non-visible docs answer 404; docs list stays admin/marketing-only
 - [H-settings-2] sent to ui (download links need token for admin/host docs); [H-settings-3] sent to ux (publicly routed pages whose docs are now restricted)
-status: done
 - [settings-22] P1 FIXED  scripts/test-scraped-reviews.ts:7,27,42 — fixtures named a real hotel (Sunbird Mount Soche) and real reserve camp → fictional "Example Lakeside Cottage / Safari Camp / City Hotel" (D1)
 - [settings-23] P1 LOGGED server/docUtils.ts + server/docs/* — checked with the D1 grep and a capitalised-name scan: no real property names/photos (only generic "lodge/cottage" wording and the fictional "Baobab Family Cottage" example); nothing to change (D1)
 - [H-orch-D1] DONE
 - [settings-24] P1 FIXED  src/hooks/useDocContent.ts:12 — /api/docs fetch sent no token and never re-ran after sign-in, so admin/host docs showed defaults → Bearer token sent when signed in, refetch on uid change
 - [settings-25] P1 FIXED  src/lib/reviewDates.ts:145-170 — URL heuristics hard-coded real properties (rosalyns-beach, soul-rebel, esthers-guest, /groups/malawitravel/rosalyn…) → property-agnostic rules (TripAdvisor /review- path; any Facebook /groups/*/permalink|posts/ path; Booking slug rule dropped, generic URLs unchanged) (D1)
+status: in-progress
+- [settings-26] P2 FIXED src/pages/AdminDashboard.tsx — nav chrome + Overview tab: kit panels/buttons/headings, eyebrows removed, partner doc card pair -> one list, wrapping action rows (D2)
+- [settings-27] P2 FIXED src/pages/AdminDashboard.tsx — Analytics tab + Properties header: kit panels/headings, 3 mode banners -> one line, header buttons wrap (tm-actions), plain table head (D2)
+- [settings-28] P2 FIXED src/pages/AdminDashboard.tsx — Properties tab: table only from xl (cards below, fixes row buttons running off container beside sidebar), kit buttons/tags/input, wrapping actions, sentence-case menu, nested strip + footer card removed (D2)
+- [settings-29] P2 FIXED src/pages/AdminDashboard.tsx — Users tab: kit heading/input/buttons/tags, header wraps, eyebrow labels and footer tint removed, modal buttons on kit (D2)
+- [settings-30] P2 FIXED src/pages/AdminDashboard.tsx — Bookings tab (table only from xl, cards below; kit tags/select/delete button) and Destinations tab (bulky rounded-2xl cards, dashed box, hover-only delete -> kit panels, plain list rows, one wrapping header) (D2)
+- [settings-31] P2 FIXED src/pages/AdminDashboard.tsx — Content tab (kit panel/labels/inputs, duplicate bottom Save removed), Settings sub-tabs, Assign-manager modal (kit form/buttons, no emoji), confirm titles in sentence case (D2)
+- [settings-32] P2 FIXED src/components/AdminLogs.tsx — terminal look removed: dark JSON block/amber-on-black avatar/dark badge -> light kit; kit header, buttons, inputs, tags, panels; explainer banner -> one line; eyebrows, rounded-2xl, shadows, mono (kept only on IDs/JSON) cleaned; wording simplified (D2)
+- [settings-33] P2 FIXED src/components/AdminTrafficMonitor.tsx — kit header/buttons/input/panels, filter pills wrap, table from xl (cards below), mono/eyebrows/shadow-2xl/blur removed (D2)
+- [settings-34] P2 FIXED AdminEmailSettings, AdminWhatsAppSettings, AdminDocsHub, AdminIcalMonitor, AdminReviewScraper, ReviewModal, DocEditorModal, Profile — hand-rolled inputs/primary buttons -> tm-input/tm-btn-primary (21), page/section headings -> tm-h1/tm-h2, shadow-xl/2xl, backdrop-blur, rounded-2xl/3xl, eyebrow caps and non-code mono removed; DocEditorModal dark header bar -> light (D2)
+- [settings-35] P2 LOGGED DocQuickEditButton — already clean (no D2 hits); remaining D2 hits (13) are font-mono on IDs, IPs, SMTP port, country prefix (legitimate)
+- [H-orch-D2] DONE
+- [settings-36] P2 FIXED src/components/ReviewModal.tsx:371 — neon emerald-400 icon on dark button removed, label 'Publish review' (D2)
 status: done

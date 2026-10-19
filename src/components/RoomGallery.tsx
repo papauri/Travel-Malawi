@@ -130,7 +130,7 @@ export default function RoomGallery({ images, altPrefix }: Props) {
                 e.stopPropagation();
                 scroll('left');
               }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/95 hover:bg-white text-stone-800 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex cursor-pointer"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/95 hover:bg-white text-stone-800 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex cursor-pointer"
               aria-label="Previous room photo"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -143,7 +143,7 @@ export default function RoomGallery({ images, altPrefix }: Props) {
                 e.stopPropagation();
                 scroll('right');
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/95 hover:bg-white text-stone-800 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/95 hover:bg-white text-stone-800 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex cursor-pointer"
               aria-label="Next room photo"
             >
               <ChevronRight className="w-5 h-5" />
@@ -168,7 +168,7 @@ export default function RoomGallery({ images, altPrefix }: Props) {
           </div>
 
           {/* Mobile Photo Counter Pill */}
-          <div className="absolute bottom-2.5 right-2.5 bg-stone-950/70 backdrop-blur-md text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm z-10 pointer-events-none md:hidden">
+          <div className="absolute bottom-2.5 right-2.5 bg-stone-950/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 z-10 pointer-events-none md:hidden">
             <Images className="h-2.5 w-2.5" />
             <span>{activeIndex + 1} / {images.length}</span>
           </div>

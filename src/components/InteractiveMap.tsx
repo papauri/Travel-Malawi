@@ -86,13 +86,13 @@ const createUserLiveLocationIcon = (label: string = 'You are here') => {
       <span class="absolute w-6 h-6 rounded-full bg-blue-500/35 animate-pulse"></span>
       
       <!-- Core Pulse Dot -->
-      <div class="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-xl flex items-center justify-center">
+      <div class="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
         <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
       </div>
       
       <!-- Tooltip Tag -->
-      <div class="absolute top-full mt-1.5 px-2 py-0.5 bg-blue-900/90 backdrop-blur-md text-white text-[10px] font-bold rounded-md shadow-md whitespace-nowrap border border-blue-700 pointer-events-none flex items-center gap-1">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <div class="absolute top-full mt-1.5 px-2 py-0.5 bg-blue-900/90 text-white text-[10px] font-bold rounded-md shadow-sm whitespace-nowrap border border-blue-700 pointer-events-none flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
         ${esc(label)}
       </div>
     </div>
@@ -214,7 +214,7 @@ const createOriginIcon = (label: string = 'Your Location') => {
   const html = `
     <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-full">
       <div class="relative flex items-center justify-center">
-        <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl ring-4 ring-white border border-blue-700">
+        <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-sm ring-4 ring-white border border-blue-700">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <circle cx="12" cy="12" r="3"/>
@@ -222,7 +222,7 @@ const createOriginIcon = (label: string = 'Your Location') => {
         </div>
         <div class="absolute -bottom-1 w-2 h-2 bg-blue-600 rotate-45"></div>
       </div>
-      <div class="absolute top-full mt-1.5 px-2.5 py-1 bg-blue-900/90 backdrop-blur text-white text-[11px] font-bold rounded-lg shadow-lg whitespace-nowrap border border-blue-700 pointer-events-none">${esc(label)}</div>
+      <div class="absolute top-full mt-1.5 px-2.5 py-1 bg-blue-900/90 text-white text-[11px] font-bold rounded-lg shadow-sm whitespace-nowrap border border-blue-700 pointer-events-none">${esc(label)}</div>
     </div>
   `;
 
@@ -253,7 +253,7 @@ const createLodgePinIcon = (lodge: LodgeMarker, isSelected: boolean) => {
     });
   }
 
-  const bgClasses = 'bg-white text-stone-900 border border-stone-300 hover:border-emerald-600 hover:bg-stone-900 hover:text-white shadow-md';
+  const bgClasses = 'bg-white text-stone-900 border border-stone-300 hover:border-emerald-600 hover:bg-stone-900 hover:text-white shadow-sm';
 
   const html = `
     <div class="relative flex flex-col items-center justify-center -translate-x-1/2 -translate-y-full cursor-pointer group">
@@ -282,12 +282,12 @@ export const createPopupHtml = (lodge: LodgeMarker) => {
   const imageHtml = safeUrl(lodge.image)
     ? `<div class="h-28 w-full bg-stone-100 overflow-hidden relative">
          <img src="${safeUrl(lodge.image)}" alt="${esc(lodge.name)}" class="w-full h-full object-cover" />
-         ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">${esc(lodge.category)}</span>` : ''}
+         ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 text-[10px] font-bold text-white uppercase tracking-wider">${esc(lodge.category)}</span>` : ''}
        </div>`
     : '';
 
   return `
-    <div class="w-64 overflow-hidden rounded-2xl bg-white text-stone-900 font-sans shadow-lg">
+    <div class="w-64 overflow-hidden rounded-2xl bg-white text-stone-900 font-sans shadow-sm">
       ${imageHtml}
       <div class="p-3.5 space-y-2">
         <div>
@@ -613,13 +613,13 @@ export default function InteractiveMap({
         iconCreateFunction: (cluster: any) => {
           const count = cluster.getChildCount();
           let size = 42;
-          let bgStyle = 'bg-stone-900 text-white ring-4 ring-white/90 border border-stone-700 shadow-xl';
+          let bgStyle = 'bg-stone-900 text-white ring-4 ring-white/90 border border-stone-700 shadow-sm';
           if (count >= 15) {
             size = 52;
-            bgStyle = 'bg-emerald-900 text-white ring-4 ring-emerald-400/50 border border-emerald-300 shadow-2xl';
+            bgStyle = 'bg-amber-700 text-white ring-4 ring-amber-500/30 border border-amber-600 shadow-sm';
           } else if (count >= 6) {
             size = 46;
-            bgStyle = 'bg-stone-900 text-emerald-300 ring-4 ring-stone-900/40 border border-stone-600 shadow-xl';
+            bgStyle = 'bg-stone-900 text-amber-300 ring-4 ring-stone-900/40 border border-stone-600 shadow-sm';
           }
 
           return L.divIcon({
@@ -974,7 +974,7 @@ export default function InteractiveMap({
 
         const badgeHtml = `
           <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <div class="px-2.5 py-1 bg-stone-900/95 text-white text-[11px] font-bold rounded-full shadow-2xl border border-blue-500/80 flex items-center gap-1.5 whitespace-nowrap backdrop-blur-md">
+            <div class="px-2.5 py-1 bg-stone-900/95 text-white text-[11px] font-bold rounded-full shadow-sm border border-blue-500/80 flex items-center gap-1.5 whitespace-nowrap">
               <span class="text-blue-400 font-extrabold flex items-center gap-1">
                 <span>${travelInfo.drivingTimeFormatted}</span>
               </span>
@@ -1103,8 +1103,8 @@ export default function InteractiveMap({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-inner isolate ${
-        isFullscreen ? 'fixed inset-4 z-[2000] shadow-2xl' : `${heightClass} z-0`
+      className={`relative overflow-hidden rounded-xl border border-stone-200 bg-stone-100 isolate ${
+        isFullscreen ? 'fixed inset-4 z-[2000] shadow-sm' : `${heightClass} z-0`
       } ${interactive && onMarkerChange ? 'pick-location-mode' : ''} ${className}`}
     >
       <div ref={containerRef} className="h-full w-full" />
@@ -1112,9 +1112,9 @@ export default function InteractiveMap({
       {/* Top-Left Offline & Cache Status Badge + Pin View Mode Toggle */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-2 pointer-events-auto">
         {isOffline ? (
-          <div className="bg-amber-900/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-xl backdrop-blur-md flex items-center gap-1.5 shadow-md border border-amber-700/60">
-            <WifiOff className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span>Offline · Using Cached Map</span>
+          <div className="bg-amber-900/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-sm border border-amber-700/60">
+            <WifiOff className="w-3.5 h-3.5 text-amber-300" />
+            <span>Offline, showing saved map</span>
           </div>
         ) : (
           <button
@@ -1122,7 +1122,7 @@ export default function InteractiveMap({
             onClick={handlePreloadMalawi}
             disabled={isPrefetching}
             title="Save map tiles for the safari and lake regions so they work without signal"
-            className="bg-white/95 hover:bg-stone-50 text-stone-700 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 backdrop-blur-md flex items-center gap-1.5 shadow-xs transition group"
+            className="bg-white/95 hover:bg-stone-50 text-stone-700 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 flex items-center gap-1.5 shadow-xs transition group"
           >
             {isPrefetching ? (
               <div className="w-3 h-3 border-2 border-stone-400 border-t-emerald-600 rounded-full animate-spin" />
@@ -1145,17 +1145,17 @@ export default function InteractiveMap({
             }}
             title={isPinExpanded ? 'Switch to compact pin' : 'Show hotel photo icon'}
             aria-label={isPinExpanded ? 'Switch to compact pin' : 'Show hotel photo icon'}
-            className="bg-white/95 hover:bg-stone-50 text-stone-800 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 backdrop-blur-md flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            className="bg-white/95 hover:bg-stone-50 text-stone-800 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
           >
             {isPinExpanded ? (
               <>
                 <MapPin className="w-3.5 h-3.5 text-stone-600" />
-                <span>Compact Pin</span>
+                <span>Small pin</span>
               </>
             ) : (
               <>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Hotel Photo</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Photo pin</span>
               </>
             )}
           </button>
@@ -1172,12 +1172,12 @@ export default function InteractiveMap({
             title={showUserLocation ? 'Hide My Location' : 'Show My Location'}
             aria-label={showUserLocation ? 'Hide my location' : 'Show my location'}
             aria-pressed={showUserLocation}
-            className={`p-2.5 rounded-xl border shadow-md transition-all flex items-center justify-center ${
+            className={`p-2.5 rounded-xl border shadow-sm transition-all flex items-center justify-center ${
               showUserLocation
                 ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-400/50 shadow-blue-500/20'
                 : isLocatingUser
                 ? 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
-                : 'bg-white/95 backdrop-blur-md text-stone-700 hover:text-blue-600 hover:bg-stone-50 border-stone-200/80'
+                : 'bg-white/95 text-stone-700 hover:text-blue-600 hover:bg-stone-50 border-stone-200/80'
             }`}
           >
             {isLocatingUser ? (
@@ -1195,7 +1195,7 @@ export default function InteractiveMap({
             onClick={handleCenterOnUser}
             title="Center on My Location"
             aria-label="Center on my location"
-            className="p-2 bg-white/95 backdrop-blur-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-xl border border-blue-200 shadow-md transition"
+            className="p-2 bg-white/95 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-xl border border-blue-200 shadow-sm transition"
           >
             <Locate className="h-4 w-4" />
           </button>
@@ -1208,13 +1208,13 @@ export default function InteractiveMap({
             onClick={handleCenterOnRoute}
             title="Fit Route (You to Stay)"
             aria-label="Fit route from you to the stay"
-            className="p-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl border border-emerald-700 shadow-md transition animate-pulse"
+            className="p-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl border border-emerald-700 shadow-sm transition"
           >
             <Route className="h-4 w-4" />
           </button>
         )}
 
-        <div className="flex flex-col bg-white/95 backdrop-blur-md rounded-xl border border-stone-200/80 shadow-md overflow-hidden">
+        <div className="flex flex-col bg-white/95 rounded-xl border border-stone-200/80 shadow-sm overflow-hidden">
           <button
             type="button"
             onClick={handleZoomIn}
@@ -1241,7 +1241,7 @@ export default function InteractiveMap({
             onClick={handleCenterOnPin}
             title="Center on Pin"
             aria-label="Center on pin"
-            className="p-2 bg-white/95 backdrop-blur-md text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-md transition"
+            className="p-2 bg-white/95 text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-sm transition"
           >
             <Locate className="h-4 w-4" />
           </button>
@@ -1253,10 +1253,10 @@ export default function InteractiveMap({
             onClick={() => setMapType(m => (m === 'streets' ? 'satellite' : 'streets'))}
             title={`Switch to ${mapType === 'streets' ? 'Satellite' : 'Streets'} view`}
             aria-label={`Switch to ${mapType === 'streets' ? 'satellite' : 'streets'} view`}
-            className={`p-2 rounded-xl border border-stone-200/80 shadow-md transition ${
+            className={`p-2 rounded-xl border border-stone-200/80 shadow-sm transition ${
               mapType === 'satellite'
                 ? 'bg-stone-900 text-white'
-                : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-stone-100'
+                : 'bg-white/95 text-stone-700 hover:bg-stone-100'
             }`}
           >
             <Layers className="h-4 w-4" />
@@ -1268,7 +1268,7 @@ export default function InteractiveMap({
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
           aria-label={isFullscreen ? 'Exit fullscreen map' : 'Fullscreen map'}
-          className="p-2 bg-white/95 backdrop-blur-md text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-md transition"
+          className="p-2 bg-white/95 text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-sm transition"
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
@@ -1277,7 +1277,7 @@ export default function InteractiveMap({
       {/* Distance Measurement & Route Travel Time Overlay (Desktop & Mobile) */}
       {showDistanceOverlay && showUserLocation && isValidLatLng(userLocation) && selectedLodge && travelInfo && (
         <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-md z-30 pointer-events-auto">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 shadow-2xl p-3.5 sm:p-4 space-y-3 text-stone-900 transition-all">
+          <div className="bg-white/95 rounded-2xl border border-stone-200/90 shadow-sm p-3.5 sm:p-4 space-y-3 text-stone-900 transition-all">
             {/* Header: Title, Category, and Actions */}
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1388,14 +1388,14 @@ export default function InteractiveMap({
       )}
 
       {touchScrollsPage && !(showDistanceOverlay && showUserLocation && selectedLodge) && (
-        <div className="absolute bottom-3 left-3 z-20 bg-stone-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-medium text-white pointer-events-none">
+        <div className="absolute bottom-3 left-3 z-20 bg-stone-900/80 px-2.5 py-1 rounded-lg text-[10px] font-medium text-white pointer-events-none">
           Use two fingers to move the map
         </div>
       )}
 
       {interactive && onMarkerChange && (
-        <div className="absolute bottom-3 left-3 z-20 bg-stone-900/85 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] font-medium text-white shadow-md pointer-events-none flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <div className="absolute bottom-3 left-3 z-20 bg-stone-900/85 px-3 py-1.5 rounded-lg text-[11px] font-medium text-white shadow-sm pointer-events-none flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
           Click map or drag marker to set exact location
         </div>
       )}

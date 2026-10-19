@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, LogOut, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Eye, LogOut } from 'lucide-react';
 
 export default function ShadowBanner() {
   const { isShadowing, shadowedUser, actualUser, exitShadowMode } = useAuth();
@@ -10,49 +10,33 @@ export default function ShadowBanner() {
   const targetName = shadowedUser.displayName || shadowedUser.email || 'Property Manager';
 
   return (
-    <aside 
-      aria-label="Active shadow mode notice" 
-      className="sticky top-0 z-[110] bg-stone-950 text-stone-100 border-b border-stone-800 shadow-md px-3 sm:px-6 py-2 transition-all"
+    <aside
+      aria-label="Viewing as another user"
+      className="sticky top-0 z-[110] border-b border-amber-200 bg-amber-50 px-4 py-2 text-amber-900 sm:px-6"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative flex items-center justify-center p-1.5 rounded-lg bg-stone-800 text-emerald-400 shrink-0">
-            <Eye className="w-4 h-4 text-emerald-400" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-200">
-                Shadow Mode Active
-              </span>
-              <span className="text-[10px] bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full border border-stone-700">
-                Manager Perspective
-              </span>
-            </div>
-            <p className="text-xs text-stone-300 truncate">
-              Viewing as <strong className="text-white">{targetName}</strong>
-              {shadowedUser.email && <span className="text-stone-400 font-mono text-[11px] ml-1">({shadowedUser.email})</span>}
-              {actualUser?.email && (
-                <span className="hidden md:inline text-stone-400 ml-2">
-                  · Shadowed by {actualUser.email}
-                </span>
-              )}
-            </p>
-          </div>
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Eye className="h-4 w-4 shrink-0 text-amber-800" aria-hidden="true" />
+          <p className="min-w-0 truncate text-sm">
+            You're viewing the site as <strong className="font-semibold">{targetName}</strong>
+            {shadowedUser.email && shadowedUser.email !== targetName && (
+              <span className="ml-1 text-amber-800/80">({shadowedUser.email})</span>
+            )}
+            {actualUser?.email && (
+              <span className="ml-2 hidden text-amber-800/80 md:inline">· signed in as {actualUser.email}</span>
+            )}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => exitShadowMode()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-stone-100 text-stone-950 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
-            title="Restore your administrator session"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Exit Shadow Mode</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => exitShadowMode()}
+          className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
+          title="Go back to your own admin account"
+        >
+          <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Back to my account</span>
+        </button>
       </div>
     </aside>
   );

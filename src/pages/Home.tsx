@@ -1357,7 +1357,7 @@ export default function Home() {
         </motion.div>
 
         {/* Scrims for text legibility */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-stone-950/70 via-stone-950/40 to-stone-950/85" />
+        <div className="absolute inset-0 z-10 bg-stone-950/60" />
         <div className="absolute inset-0 z-10 bg-radial-[at_center_center] from-transparent via-stone-950/30 to-stone-950/80" />
 
         <div className="relative z-20 w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center my-auto">
@@ -1382,15 +1382,15 @@ export default function Home() {
           transition={{ duration: 0.7, delay: 0.35 }}
           className="relative z-20 hidden lg:flex items-center justify-center gap-3 text-[11px] text-stone-300/85 mt-6 px-4"
         >
-          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 backdrop-blur-md border border-stone-700/40">
+          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <ShieldCheck className="h-3 w-3 text-stone-300" />
             <span>Zero booking fees</span>
           </li>
-          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 backdrop-blur-md border border-stone-700/40">
+          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <MessageCircle className="h-3 w-3 text-stone-300" />
             <span>Direct host communication</span>
           </li>
-          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 backdrop-blur-md border border-stone-700/40">
+          <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <Smartphone className="h-3 w-3 text-stone-300" />
             <span>Pay directly at property</span>
           </li>
@@ -1403,7 +1403,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={`relative bg-[#FBF9F5]/98 backdrop-blur-xl rounded-2xl md:rounded-full p-2 sm:p-2.5 md:p-1.5
+          className={`relative bg-[#FBF9F5]/98 rounded-2xl md:rounded-full p-2 sm:p-2.5 md:p-1.5
                      shadow-[0_20px_45px_-12px_rgba(28,25,23,0.18)] border border-stone-200/90 ring-1 ring-stone-900/5
                      w-full transition-all ${
                        showRecentSearches || showGuestDropdown ? 'z-50' : 'z-30'
@@ -1437,7 +1437,7 @@ export default function Home() {
 
               {/* Where to Dropdown */}
               {showRecentSearches && (
-                <div className="absolute left-0 top-full mt-2 w-full min-w-[280px] sm:min-w-[340px] bg-[#FBF9F5] rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden z-[100]">
+                <div className="absolute left-0 top-full mt-2 w-full min-w-[280px] sm:min-w-[340px] bg-[#FBF9F5] rounded-2xl shadow-sm border border-stone-200/90 overflow-hidden z-[100]">
                   <div className="p-3 space-y-3">
                     {/* 1. Live Suggestions when typing */}
                     {searchLocation.trim() && searchSuggestions.length > 0 ? (
@@ -1698,7 +1698,7 @@ export default function Home() {
               </button>
 
               {showGuestDropdown && (
-                <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-[#FBF9F5] rounded-2xl shadow-2xl ring-1 ring-stone-200 p-2 z-[100]">
+                <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-[#FBF9F5] rounded-2xl shadow-sm ring-1 ring-stone-200 p-2 z-[100]">
                   {(!searchCheckIn || !searchCheckOut) && (
                     <div className="mb-2 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2">
                       <div className="text-[11px] text-amber-900 leading-tight">
@@ -1845,7 +1845,7 @@ export default function Home() {
                         className="absolute inset-0 w-full h-full object-cover transition duration-700 ease-out group-hover:scale-105"
                       />
                       {index === 0 && !hasPromotedFeatures ? (
-                        <span className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em] shadow-md">
+                        <span className="absolute top-3.5 left-3.5 bg-white/95 text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em] shadow-md">
                           Best rated
                         </span>
                       ) : null}
@@ -2336,7 +2336,7 @@ export default function Home() {
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 group-open:rotate-180 transition-transform shrink-0 ${isPriceFiltered ? 'text-stone-300' : 'text-stone-400'}`} />
                   </summary>
-                  <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white border border-stone-200 rounded-xl shadow-xl z-50 p-3.5">
+                  <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white border border-stone-200 rounded-xl shadow-sm z-50 p-3.5">
                     <PriceRangeFilter
                       currency={currency}
                       minPrice={priceRange[0]}
@@ -2370,7 +2370,7 @@ export default function Home() {
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 group-open:rotate-180 transition-transform shrink-0 ${activeAmenities.length > 0 ? 'text-stone-300' : 'text-stone-400'}`} />
                   </summary>
-                  <div className="absolute left-0 mt-2 w-60 bg-white border border-stone-200 rounded-xl shadow-xl z-50 p-2.5 flex flex-col gap-1">
+                  <div className="absolute left-0 mt-2 w-60 bg-white border border-stone-200 rounded-xl shadow-sm z-50 p-2.5 flex flex-col gap-1">
                     {COMMON_AMENITIES.map((amenity, aIdx) => {
                       const isActive = activeAmenities.includes(amenity);
                       return (
@@ -2488,7 +2488,7 @@ export default function Home() {
 
 
 
-        {/* Header for results with seamlessly blended View Mode Switch */}
+        {/* Header for results with View Mode Switch */}
         <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-6 gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-sm font-bold text-stone-900">
@@ -2502,7 +2502,7 @@ export default function Home() {
             </span>
           </div>
 
-          {/* Seamless View Mode Segmented Switch (blends into the header bar without covering content on mobile) */}
+          {/* View Mode Segmented Switch (blends into the header bar without covering content on mobile) */}
           <div className="flex items-center bg-stone-100 p-1 rounded-full border border-stone-200/90 shadow-2xs">
             <button
               type="button"
@@ -2700,7 +2700,7 @@ export default function Home() {
                     ref={mapStaysListRef}
                     className="order-2 lg:order-1 h-[520px] sm:h-[560px] lg:h-[600px] xl:h-[650px] overflow-y-auto overscroll-contain pr-0 lg:pr-1 space-y-3 scrollbar-slim touch-pan-y"
                   >
-                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xs py-2 px-1 border-b border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs">
+                    <div className="sticky top-0 z-10 bg-white/95 py-2 px-1 border-b border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs">
                       <span>
                         Showing <strong>{lodgeMarkers.length}</strong> {lodgeMarkers.length === 1 ? 'stay' : 'stays'} on map
                       </span>
@@ -2762,7 +2762,7 @@ export default function Home() {
                                     <MapPin className="w-5 h-5" />
                                   </div>
                                 )}
-                                <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/85 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider">
+                                <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/85 text-[9px] font-bold text-white uppercase tracking-wider">
                                   {categoryLabel}
                                 </span>
                               </div>

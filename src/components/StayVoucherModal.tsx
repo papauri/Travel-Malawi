@@ -3,18 +3,16 @@ import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, 
+  MapPin, X, Users, Phone, Zap, Droplets, Wifi, 
   Monitor, CheckCircle2, ClipboardList, UtensilsCrossed, Copy, Eye, 
-  QrCode, Lock, Unlock, Printer, KeyRound, CreditCard, ExternalLink,
-  MessageCircle, Check
+  QrCode, Lock, Unlock, Printer, KeyRound, CreditCard,
+  Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { Booking, Hotel, RoomType } from '../types';
-import { formatMoney } from '../lib/booking';
 import { formatDateStr, toDateStr } from '../lib/dates';
-import SmartImage from './SmartImage';
 import PriceDisplay from '../components/PriceDisplay';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
@@ -51,11 +49,11 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
       setIsUnlocked(true);
       setPinError(false);
       localStorage.setItem(`voucher_unlocked_${booking.id}`, 'true');
-      toast.success('Voucher credentials unlocked!');
+      toast.success('Stay details shown');
     } else {
       setPinError(true);
       setPinInput('');
-      toast.error('Incorrect PIN. Please check your message thread.');
+      toast.error('That PIN did not match. Check your messages from the host.');
     }
   };
 
@@ -99,11 +97,22 @@ Total Price: ${booking.currency || 'MWK'} ${Number(booking.total || 0).toLocaleS
 Host Contact: ${hotel.contactPhone || hotel.managerPhone || 'via Travel Malawi chat'}`;
     navigator.clipboard.writeText(text);
     setCopiedSummary(true);
-    toast.success('Voucher summary copied to clipboard!');
+    toast.success('Voucher details copied');
     setTimeout(() => setCopiedSummary(false), 2000);
   };
 
+
   if (typeof document === 'undefined') return null;
+
+  const iconBtn = 'p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer';
+  const callLink = 'tm-btn tm-btn-secondary tm-btn-sm shrink-0';
+  const infra = hotel.infrastructure;
+  const infraRows = infra ? [
+    infra.powerSource && infra.powerSource !== 'None' ? { icon: Zap, label: 'Power', value: infra.powerSource } : null,
+    infra.waterSource ? { icon: Droplets, label: 'Water', value: infra.waterSource } : null,
+    infra.internetSource && infra.internetSource !== 'None' ? { icon: Wifi, label: 'Internet', value: infra.internetSource } : null,
+    infra.workspaceSetup && infra.workspaceSetup !== 'None' ? { icon: Monitor, label: 'Workspace', value: infra.workspaceSetup } : null,
+  ].filter(Boolean) as { icon: typeof Zap; label: string; value: string }[] : [];
 
   return createPortal(
     <AnimatePresence>
@@ -111,455 +120,315 @@ Host Contact: ${hotel.contactPhone || hotel.managerPhone || 'via Travel Malawi c
         <div
           key="stay-voucher-modal-portal-root"
           data-lenis-prevent="true"
-          className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 bg-stone-900/60 backdrop-blur-sm text-center print:p-0 print:bg-white"
+          className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 bg-stone-900/60 text-center print:p-0 print:bg-white"
         >
           <motion.div
             ref={scrollIsolationRef}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-2xl my-auto bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[88dvh] relative overscroll-contain text-left print:max-h-none print:shadow-none print:rounded-none"
+            exit={{ opacity: 0, scale: 0.97, y: 12 }}
+            className="w-full max-w-2xl my-auto bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[88dvh] relative overscroll-contain text-left print:max-h-none print:shadow-none print:rounded-none"
             data-lenis-prevent="true"
           >
-            {/* Header / Ticket Top */}
-            <div className="bg-stone-900 text-white p-6 relative shrink-0">
-              <div className="absolute top-4 right-4 flex items-center gap-1.5 print:hidden">
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="p-2 text-stone-300 hover:text-white hover:bg-stone-800 rounded-full transition cursor-pointer"
-                  title="Print / Save Voucher as PDF"
-                >
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-stone-200 flex items-start justify-between gap-3 shrink-0">
+              <div className="min-w-0">
+                <p className="tm-muted">Stay voucher</p>
+                <h2 className="tm-h1 break-words">{hotel.name}</h2>
+                <p className="tm-muted flex items-center gap-1 mt-1">
+                  <MapPin className="w-4 h-4 shrink-0" /> <span className="truncate">{hotel.location}</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 print:hidden">
+                <button type="button" onClick={handlePrint} className={iconBtn} title="Print or save as PDF" aria-label="Print voucher">
                   <Printer className="w-5 h-5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCopySummary}
-                  className="p-2 text-stone-300 hover:text-white hover:bg-stone-800 rounded-full transition cursor-pointer"
-                  title="Copy Voucher Summary"
-                >
-                  {copiedSummary ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+                <button type="button" onClick={handleCopySummary} className={iconBtn} title="Copy voucher details" aria-label="Copy voucher details">
+                  {copiedSummary ? <Check className="w-5 h-5 text-emerald-700" /> : <Copy className="w-5 h-5" />}
                 </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-2 text-stone-400 hover:text-white hover:bg-stone-800 rounded-full transition z-10 cursor-pointer"
-                  title="Close Voucher"
-                >
+                <button type="button" onClick={onClose} className={iconBtn} title="Close" aria-label="Close voucher">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                <span className="font-serif font-bold tracking-wide text-stone-200">Travel Malawi Digital Voucher</span>
-                <span className="hidden sm:inline-block text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border border-emerald-500/30">
-                  Verified Booking
-                </span>
-              </div>
-              
-              <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-2 pr-24 leading-tight">
-                {hotel.name}
-              </h2>
-              <div className="flex items-center gap-1.5 text-stone-400 text-sm">
-                <MapPin className="w-4 h-4 text-emerald-400" /> {hotel.location}
-              </div>
             </div>
 
-            {/* Scrollable Content */}
-            <div data-lenis-prevent="true" className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6 sm:space-y-7 flex-1 scrollbar-slim">
-              
-              {/* Payment Status & Details */}
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-6 h-6" />
+            {/* Scrollable content */}
+            <div data-lenis-prevent="true" className="overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-5 flex-1 min-w-0 scrollbar-slim">
+
+              {/* Status + reference */}
+              <div className="space-y-2">
+                <div className="tm-actions">
+                  <span className="tm-tag tm-tag-good"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmed · pay on arrival</span>
+                  <span className="tm-tag font-mono">Ref #{bookingRef}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <h4 className="font-bold text-emerald-900 text-base sm:text-lg">Confirmed — Payment on Arrival</h4>
-                    <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-md">
-                      REF: #{bookingRef}
-                    </span>
-                  </div>
-                  <p className="text-emerald-700 text-sm leading-relaxed">
-                    Show this digital voucher when you arrive at reception. Settle the balance of <strong className="text-emerald-950"><PriceDisplay amount={booking.total ?? 0} currency={booking.currency} /></strong> directly with the property.
-                  </p>
-                </div>
+                <p className="text-sm text-stone-600">
+                  Show this voucher at reception and pay <strong className="text-stone-900"><PriceDisplay amount={booking.total ?? 0} currency={booking.currency} /></strong> to the property.
+                </p>
               </div>
 
-              {/* Stay Info Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4 border border-stone-100">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
-                  <p className="font-bold text-stone-900 text-sm sm:text-base">{formatDateStr(booking.checkIn)}</p>
-                  <p className="text-[11px] text-stone-500">From 2:00 PM</p>
+              {/* Stay details */}
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 text-sm">
+                <div className="min-w-0">
+                  <dt className="tm-muted">Check-in</dt>
+                  <dd className="font-semibold text-stone-900">{formatDateStr(booking.checkIn)}</dd>
+                  <dd className="text-xs text-stone-500">From 2:00 PM</dd>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4 border border-stone-100">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-out</p>
-                  <p className="font-bold text-stone-900 text-sm sm:text-base">{formatDateStr(booking.checkOut)}</p>
-                  <p className="text-[11px] text-stone-500">Until 10:30 AM</p>
+                <div className="min-w-0">
+                  <dt className="tm-muted">Check-out</dt>
+                  <dd className="font-semibold text-stone-900">{formatDateStr(booking.checkOut)}</dd>
+                  <dd className="text-xs text-stone-500">Until 10:30 AM</dd>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4 border border-stone-100">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Guests</p>
-                  <p className="font-bold text-stone-900 text-sm sm:text-base">{booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'}</p>
-                  <p className="text-[11px] text-stone-500 truncate">{booking.guestName}</p>
+                <div className="min-w-0">
+                  <dt className="tm-muted">Guests</dt>
+                  <dd className="font-semibold text-stone-900">{booking.guests} {booking.guests === 1 ? 'guest' : 'guests'}</dd>
+                  <dd className="text-xs text-stone-500 truncate">{booking.guestName}</dd>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4 border border-stone-100">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Reserved Room</p>
-                  <p className="font-bold text-stone-900 text-sm sm:text-base truncate" title={booking.room?.name || 'Room'}>
-                    {booking.room?.name || 'Standard Room'}
-                  </p>
-                  <p className="text-[11px] text-stone-500">{booking.quantity || 1} unit(s)</p>
+                <div className="min-w-0">
+                  <dt className="tm-muted">Room</dt>
+                  <dd className="font-semibold text-stone-900 truncate" title={booking.room?.name || 'Room'}>{booking.room?.name || 'Standard Room'}</dd>
+                  <dd className="text-xs text-stone-500">{booking.quantity || 1} unit(s)</dd>
                 </div>
-              </div>
+              </dl>
 
-              {/* Express Reception Check-In QR Pass */}
-              <div className="bg-stone-900 text-white rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5 sm:gap-6 border border-stone-800">
-                <div className="p-3 bg-white rounded-xl shrink-0 shadow-sm">
+              {/* Check-in QR */}
+              <div className="tm-divider pt-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
+                <div className="p-2 bg-white rounded-lg border border-stone-200 shrink-0">
                   <QRCode value={checkInQrData} size={110} level="M" />
                 </div>
-                <div className="flex-1 text-center sm:text-left space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold tracking-wide">
-                    <QrCode className="w-3.5 h-3.5" /> Express Check-in Pass
-                  </div>
-                  <h3 className="font-serif font-bold text-lg text-white">
-                    Show at Reception Desk or Security Gate
-                  </h3>
-                  <p className="text-xs text-stone-300 leading-relaxed">
-                    Property staff can scan this verified QR code with any phone or tablet to instantly validate your reservation, verify your room assignment, and log your arrival.
-                  </p>
+                <div className="text-center sm:text-left min-w-0">
+                  <h3 className="tm-h2">Check-in code</h3>
+                  <p className="tm-muted mt-1">Staff scan this at reception or the gate to find your booking.</p>
                 </div>
               </div>
 
-              {/* Arrival PIN Pass (Displayed when unlocked or on arrival day) */}
+              {/* Arrival PIN (shown when unlocked or on arrival day) */}
               {isUnlockedEffective && booking.arrivalPin && (
-                <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-                      <KeyRound className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Security Gate &amp; Access Pass</span>
-                      <h4 className="font-bold text-stone-900 text-base">Arrival / Security Gate PIN</h4>
-                      <p className="text-xs text-stone-600 mt-0.5">
-                        Present this 4-digit code at property entrance or security gate for express entry.
-                      </p>
+                <div className="tm-divider pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <KeyRound className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <h3 className="tm-h2">Arrival PIN</h3>
+                      <p className="tm-muted">Give this code at the entrance or gate.</p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-4 py-2.5 rounded-xl border border-amber-200 shadow-2xs">
-                    <code className="text-2xl font-mono font-extrabold text-stone-900 tracking-wider">
-                      {booking.arrivalPin}
-                    </code>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <code className="text-2xl font-mono font-semibold text-stone-900 tracking-wider">{booking.arrivalPin}</code>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(booking.arrivalPin || '');
                         setCopiedPin(true);
-                        toast.success('Arrival PIN copied!');
+                        toast.success('PIN copied');
                         setTimeout(() => setCopiedPin(false), 2000);
                       }}
-                      className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                      title="Copy Arrival PIN"
+                      className={iconBtn}
+                      title="Copy PIN"
+                      aria-label="Copy arrival PIN"
                     >
-                      {copiedPin ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                      {copiedPin ? <Check className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Arrival PIN Lock Screen (When before arrival date and not yet unlocked) */}
+              {/* PIN entry (before arrival day, not yet unlocked) */}
               {isLocked && (
-                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 sm:p-8 text-center relative overflow-hidden shrink-0">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-amber-400" />
-                  <div className="w-14 h-14 bg-white rounded-2xl shadow-xs border border-stone-200 flex items-center justify-center mx-auto mb-3">
-                    <Lock className="w-7 h-7 text-amber-500" />
-                  </div>
-                  <h3 className="font-serif font-bold text-xl sm:text-2xl text-stone-900 mb-2">Property Credentials Gated</h3>
-                  <p className="text-stone-500 max-w-md mx-auto mb-5 text-xs sm:text-sm leading-relaxed">
-                    Enter the 4-digit Arrival PIN sent by your host in chat or 24h arrival email. These credentials (Wi-Fi QR, daily board &amp; team contacts) will also unlock automatically on your check-in date ({formatDateStr(booking.checkIn)}).
+                <div className="tm-divider pt-5 text-center">
+                  <Lock className="w-6 h-6 text-amber-800 mx-auto mb-2" />
+                  <h3 className="tm-h2">Enter your arrival PIN</h3>
+                  <p className="tm-muted max-w-md mx-auto mt-1 mb-4">
+                    Your host sent a 4-digit PIN by chat or email. Wi-Fi, contacts and the daily board open with it, or on {formatDateStr(booking.checkIn)}.
                   </p>
-                  
                   <form onSubmit={handleUnlock} className="flex flex-col items-center gap-3">
                     <input
                       type="text"
+                      inputMode="numeric"
                       maxLength={4}
                       value={pinInput}
                       onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
                       placeholder="• • • •"
-                      className={`text-center text-3xl tracking-[1em] indent-[1em] font-mono w-48 py-2.5 bg-white border-2 rounded-xl outline-none transition-colors ${pinError ? 'border-red-500 text-red-500' : 'border-stone-200 focus:border-amber-500'}`}
+                      aria-label="Arrival PIN"
+                      className={`tm-input text-center text-2xl tracking-[0.8em] indent-[0.8em] font-mono w-44 ${pinError ? 'border-red-500 text-red-700' : ''}`}
                     />
-                    {pinError && <p className="text-red-500 text-xs font-bold uppercase tracking-wider">Incorrect PIN</p>}
-                    <button 
-                      type="submit"
-                      disabled={pinInput.length !== 4}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition disabled:opacity-50 text-sm cursor-pointer shadow-xs"
-                    >
-                      <Unlock className="w-4 h-4" /> Unlock Voucher Details
+                    {pinError && <p className="text-red-700 text-sm">That PIN didn't match. Check your messages and try again.</p>}
+                    <button type="submit" disabled={pinInput.length !== 4} className="tm-btn tm-btn-primary">
+                      <Unlock className="w-4 h-4" /> Show stay details
                     </button>
                   </form>
                 </div>
               )}
 
-              {/* Locked Features Wrapper */}
               {!isLocked && (
-                <div className="space-y-6">
-
-                  {/* Payment Methods & Deposit Info (Malawi Rails) */}
+                <>
+                  {/* Payment details (Malawi rails) */}
                   {hotel.depositInfo && (hotel.depositInfo.airtelMoneyNumber || hotel.depositInfo.mpambaNumber || hotel.depositInfo.bankName || hotel.depositInfo.instructions) && (
-                    <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CreditCard className="w-5 h-5 text-emerald-600" />
-                        <h4 className="font-bold text-stone-900 text-sm uppercase tracking-wide">
-                          Payment Rails &amp; Deposit Details
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="tm-divider pt-5">
+                      <h3 className="tm-h2 flex items-center gap-2 mb-3"><CreditCard className="w-5 h-5 text-stone-500" /> How to pay</h3>
+                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                         {hotel.depositInfo.airtelMoneyNumber && (
-                          <div className="bg-white p-3 rounded-xl border border-stone-200/80">
-                            <span className="font-bold text-red-600 block mb-0.5">Airtel Money</span>
-                            <span className="font-mono font-bold text-stone-800 text-sm">{hotel.depositInfo.airtelMoneyNumber}</span>
-                            {hotel.depositInfo.airtelMoneyName && (
-                              <p className="text-stone-500 text-[11px] mt-0.5">Name: {hotel.depositInfo.airtelMoneyName}</p>
-                            )}
+                          <div className="min-w-0">
+                            <dt className="tm-muted">Airtel Money</dt>
+                            <dd className="font-semibold text-stone-900 tabular-nums break-words">{hotel.depositInfo.airtelMoneyNumber}</dd>
+                            {hotel.depositInfo.airtelMoneyName && <dd className="text-xs text-stone-500">{hotel.depositInfo.airtelMoneyName}</dd>}
                           </div>
                         )}
-
                         {hotel.depositInfo.mpambaNumber && (
-                          <div className="bg-white p-3 rounded-xl border border-stone-200/80">
-                            <span className="font-bold text-emerald-600 block mb-0.5">TNM Mpamba</span>
-                            <span className="font-mono font-bold text-stone-800 text-sm">{hotel.depositInfo.mpambaNumber}</span>
-                            {hotel.depositInfo.mpambaName && (
-                              <p className="text-stone-500 text-[11px] mt-0.5">Name: {hotel.depositInfo.mpambaName}</p>
-                            )}
+                          <div className="min-w-0">
+                            <dt className="tm-muted">TNM Mpamba</dt>
+                            <dd className="font-semibold text-stone-900 tabular-nums break-words">{hotel.depositInfo.mpambaNumber}</dd>
+                            {hotel.depositInfo.mpambaName && <dd className="text-xs text-stone-500">{hotel.depositInfo.mpambaName}</dd>}
                           </div>
                         )}
-
                         {hotel.depositInfo.bankName && (
-                          <div className="sm:col-span-2 bg-white p-3 rounded-xl border border-stone-200/80">
-                            <span className="font-bold text-blue-600 block mb-0.5">Bank Transfer</span>
-                            <p className="text-stone-800 font-medium">
+                          <div className="sm:col-span-2 min-w-0">
+                            <dt className="tm-muted">Bank transfer</dt>
+                            <dd className="text-stone-800 break-words">
                               <strong>{hotel.depositInfo.bankName}</strong>
-                              {hotel.depositInfo.bankAccountNumber && <> · Acc: <span className="font-mono font-bold">{hotel.depositInfo.bankAccountNumber}</span></>}
+                              {hotel.depositInfo.bankAccountNumber && <> · Acc: <span className="font-semibold tabular-nums">{hotel.depositInfo.bankAccountNumber}</span></>}
                               {hotel.depositInfo.bankAccountName && <> ({hotel.depositInfo.bankAccountName})</>}
                               {hotel.depositInfo.bankBranch && <> · Branch: {hotel.depositInfo.bankBranch}</>}
-                            </p>
+                            </dd>
                           </div>
                         )}
-                      </div>
-
+                      </dl>
                       {hotel.depositInfo.instructions && (
-                        <p className="mt-3 text-xs text-stone-500 italic bg-white p-2.5 rounded-lg border border-stone-100">
-                          📌 {hotel.depositInfo.instructions}
-                        </p>
+                        <p className="mt-3 text-sm text-stone-600 break-words">{hotel.depositInfo.instructions}</p>
                       )}
                     </div>
                   )}
 
-                  {/* Daily Board */}
+                  {/* Daily board */}
                   {hotel.dailyBoard && (hotel.dailyBoard.activities || hotel.dailyBoard.dishOfTheDay || hotel.dailyBoard.notes) && (
-                    <div className="bg-emerald-900 text-white rounded-2xl p-5 sm:p-6 shadow-md relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                        <ClipboardList className="w-32 h-32" />
-                      </div>
-                      <h3 className="font-serif font-bold text-xl mb-4 flex items-center gap-2 relative z-10">
-                        <ClipboardList className="w-5 h-5 text-emerald-400" /> Host's Daily Board
-                      </h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                    <div className="tm-divider pt-5">
+                      <h3 className="tm-h2 flex items-center gap-2 mb-3"><ClipboardList className="w-5 h-5 text-stone-500" /> Today at the property</h3>
+                      <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                         {hotel.dailyBoard.activities && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5">Today's Activities</p>
-                            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-emerald-100">{hotel.dailyBoard.activities}</p>
+                          <div className="min-w-0">
+                            <dt className="tm-muted">Activities</dt>
+                            <dd className="text-stone-800 whitespace-pre-wrap break-words">{hotel.dailyBoard.activities}</dd>
                           </div>
                         )}
                         {hotel.dailyBoard.dishOfTheDay && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-1.5">
-                              <UtensilsCrossed className="w-3 h-3" /> Dish of the Day
-                            </p>
-                            <p className="text-xs sm:text-sm font-semibold text-white">{hotel.dailyBoard.dishOfTheDay}</p>
+                          <div className="min-w-0">
+                            <dt className="tm-muted flex items-center gap-1"><UtensilsCrossed className="w-3.5 h-3.5" /> Dish of the day</dt>
+                            <dd className="font-semibold text-stone-900 break-words">{hotel.dailyBoard.dishOfTheDay}</dd>
                           </div>
                         )}
                         {hotel.dailyBoard.notes && (
-                          <div className="md:col-span-2 mt-2 pt-3 border-t border-emerald-800/60">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1">Important Notes</p>
-                            <p className="text-xs text-emerald-50 leading-relaxed whitespace-pre-wrap">{hotel.dailyBoard.notes}</p>
+                          <div className="md:col-span-2 min-w-0">
+                            <dt className="tm-muted">Notes</dt>
+                            <dd className="text-stone-800 whitespace-pre-wrap break-words">{hotel.dailyBoard.notes}</dd>
                           </div>
                         )}
-                      </div>
+                      </dl>
                     </div>
                   )}
 
-                  {/* Guest WiFi */}
+                  {/* Guest Wi-Fi */}
                   {hotel.infrastructure?.shareWifiVoucher && hotel.adminWifiVoucherEnabled !== false && hotel.infrastructure.wifiSSID && (
-                    <div>
-                      <h3 className="font-serif font-bold text-lg text-stone-900 mb-3 flex items-center gap-2">
-                        <Wifi className="w-5 h-5 text-indigo-600" /> Guest WiFi Access
-                      </h3>
-                      
+                    <div className="tm-divider pt-5">
+                      <h3 className="tm-h2 flex items-center gap-2 mb-3"><Wifi className="w-5 h-5 text-stone-500" /> Guest Wi-Fi</h3>
                       {!showWifi ? (
-                        <button 
-                          type="button"
-                          onClick={() => setShowWifi(true)}
-                          className="w-full py-3.5 border-2 border-indigo-100 bg-indigo-50/70 hover:bg-indigo-100/70 rounded-2xl flex items-center justify-center gap-2 text-indigo-700 font-semibold transition text-sm cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" /> Reveal WiFi Password &amp; QR
+                        <button type="button" onClick={() => setShowWifi(true)} className="tm-btn tm-btn-secondary">
+                          <Eye className="w-4 h-4" /> Show Wi-Fi password
                         </button>
                       ) : (
-                        <div className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-xs relative overflow-hidden">
-                          <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start relative z-10">
-                            <div className="shrink-0 bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs">
-                              <QRCode 
-                                value={`WIFI:S:${hotel.infrastructure.wifiSSID};T:WPA;P:${hotel.infrastructure.wifiPassword || ''};;`} 
-                                size={110} 
-                                level="M"
-                              />
-                            </div>
-                            
-                            <div className="flex-1 w-full text-center sm:text-left space-y-3">
-                              <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-0.5">Network (SSID)</p>
-                                <p className="font-bold text-base text-stone-900">{hotel.infrastructure.wifiSSID}</p>
-                              </div>
-                              
-                              {hotel.infrastructure.wifiPassword && (
-                                <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-0.5">Password</p>
-                                  <div className="flex items-center justify-center sm:justify-start gap-2">
-                                    <code className="font-mono bg-stone-100 px-3 py-1.5 rounded-lg text-stone-900 font-bold tracking-wide text-sm">
-                                      {hotel.infrastructure.wifiPassword}
-                                    </code>
-                                    <button 
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(hotel.infrastructure.wifiPassword || '');
-                                        setCopiedWifi(true);
-                                        toast.success('WiFi password copied!');
-                                        setTimeout(() => setCopiedWifi(false), 2000);
-                                      }}
-                                      className="p-1.5 text-stone-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
-                                      title="Copy Password"
-                                    >
-                                      {copiedWifi ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              <p className="text-xs text-stone-500 flex items-center justify-center sm:justify-start gap-1">
-                                <QrCode className="w-3.5 h-3.5" /> Scan QR with phone camera to auto-connect
-                              </p>
-                            </div>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+                          <div className="shrink-0 p-2 rounded-lg border border-stone-200 bg-white">
+                            <QRCode
+                              value={`WIFI:S:${hotel.infrastructure.wifiSSID};T:WPA;P:${hotel.infrastructure.wifiPassword || ''};;`}
+                              size={110}
+                              level="M"
+                            />
                           </div>
+                          <dl className="flex-1 w-full min-w-0 text-center sm:text-left space-y-2 text-sm">
+                            <div>
+                              <dt className="tm-muted">Network</dt>
+                              <dd className="font-semibold text-stone-900 break-words">{hotel.infrastructure.wifiSSID}</dd>
+                            </div>
+                            {hotel.infrastructure.wifiPassword && (
+                              <div>
+                                <dt className="tm-muted">Password</dt>
+                                <dd className="flex items-center justify-center sm:justify-start gap-2">
+                                  <code className="font-mono bg-stone-100 px-2.5 py-1 rounded-md text-stone-900 break-all">{hotel.infrastructure.wifiPassword}</code>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(hotel.infrastructure.wifiPassword || '');
+                                      setCopiedWifi(true);
+                                      toast.success('Password copied');
+                                      setTimeout(() => setCopiedWifi(false), 2000);
+                                    }}
+                                    className={iconBtn}
+                                    title="Copy password"
+                                    aria-label="Copy Wi-Fi password"
+                                  >
+                                    {copiedWifi ? <CheckCircle2 className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4" />}
+                                  </button>
+                                </dd>
+                              </div>
+                            )}
+                            <p className="tm-muted flex items-center justify-center sm:justify-start gap-1">
+                              <QrCode className="w-3.5 h-3.5" /> Scan with your phone camera to connect.
+                            </p>
+                          </dl>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Infrastructure */}
-                  {hotel.infrastructure && (
-                    <div>
-                      <h3 className="font-serif font-bold text-lg text-stone-900 mb-3 flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-emerald-600" /> Verified Property Infrastructure
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        {hotel.infrastructure.powerSource && hotel.infrastructure.powerSource !== 'None' && (
-                          <div className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                              <Zap className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Power</p>
-                              <p className="text-xs font-semibold text-stone-900">{hotel.infrastructure.powerSource}</p>
+                  {/* Facilities */}
+                  {infraRows.length > 0 && (
+                    <div className="tm-divider pt-5">
+                      <h3 className="tm-h2 mb-3">Facilities</h3>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                        {infraRows.map(({ icon: Icon, label, value }) => (
+                          <div key={label} className="flex items-start gap-2 min-w-0">
+                            <Icon className="w-4 h-4 text-stone-500 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <dt className="tm-muted">{label}</dt>
+                              <dd className="font-medium text-stone-900 break-words">{value}</dd>
                             </div>
                           </div>
-                        )}
-                        {hotel.infrastructure.waterSource && (
-                          <div className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                              <Droplets className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Water</p>
-                              <p className="text-xs font-semibold text-stone-900">{hotel.infrastructure.waterSource}</p>
-                            </div>
-                          </div>
-                        )}
-                        {hotel.infrastructure.internetSource && hotel.infrastructure.internetSource !== 'None' && (
-                          <div className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                            <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
-                              <Wifi className="w-4 h-4 text-sky-600" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Internet</p>
-                              <p className="text-xs font-semibold text-stone-900">{hotel.infrastructure.internetSource}</p>
-                            </div>
-                          </div>
-                        )}
-                        {hotel.infrastructure.workspaceSetup && hotel.infrastructure.workspaceSetup !== 'None' && (
-                          <div className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                              <Monitor className="w-4 h-4 text-indigo-600" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">WFH</p>
-                              <p className="text-xs font-semibold text-stone-900">{hotel.infrastructure.workspaceSetup}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        ))}
+                      </dl>
                     </div>
                   )}
 
-                  {/* On-site Team & Contact */}
+                  {/* Host & on-site team */}
                   {(hotel.crew && hotel.crew.length > 0) || hotel.contactPhone ? (
-                    <div>
-                      <h3 className="font-serif font-bold text-lg text-stone-900 mb-3 flex items-center gap-2">
-                        <Users className="w-5 h-5 text-emerald-600" /> Host &amp; On-site Team
-                      </h3>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="tm-divider pt-5">
+                      <h3 className="tm-h2 flex items-center gap-2 mb-2"><Users className="w-5 h-5 text-stone-500" /> Contacts</h3>
+                      <ul className="divide-y divide-stone-100">
                         {hotel.contactPhone && (
-                          <div className="border border-stone-200 rounded-xl p-3.5 flex items-center justify-between bg-white">
-                            <div>
-                              <p className="font-bold text-stone-900 text-sm">{hotel.name} Desk</p>
-                              <p className="text-xs text-stone-500">General Enquiries</p>
+                          <li className="py-2.5 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-stone-900 text-sm truncate">{hotel.name} desk</p>
+                              <p className="tm-muted">General questions</p>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <a
-                                href={`tel:${hotel.contactPhone}`}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition"
-                              >
-                                <Phone className="w-3.5 h-3.5" /> Call
-                              </a>
-                            </div>
-                          </div>
+                            <a href={`tel:${hotel.contactPhone}`} className={callLink}>
+                              <Phone className="w-3.5 h-3.5" /> Call
+                            </a>
+                          </li>
                         )}
-
                         {hotel.crew?.map((member, mIdx) => (
-                          <div key={`${member.id || 'crew'}-${mIdx}`} className="border border-stone-200 rounded-xl p-3.5 flex items-center justify-between bg-white">
-                            <div>
-                              <p className="font-bold text-stone-900 text-sm">{member.name}</p>
-                              <p className="text-xs text-stone-500">{member.role}</p>
+                          <li key={`${member.id || 'crew'}-${mIdx}`} className="py-2.5 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-stone-900 text-sm truncate">{member.name}</p>
+                              <p className="tm-muted truncate">{member.role}</p>
                             </div>
                             {member.phone && (
-                              <a 
-                                href={`tel:${member.phone}`} 
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition"
-                              >
+                              <a href={`tel:${member.phone}`} className={callLink}>
                                 <Phone className="w-3.5 h-3.5" /> Call
                               </a>
                             )}
-                          </div>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </div>
                   ) : null}
-
-                </div>
-              )} {/* End Locked Features Wrapper */}
+                </>
+              )}
             </div>
           </motion.div>
         </div>

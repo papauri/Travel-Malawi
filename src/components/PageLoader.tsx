@@ -41,7 +41,7 @@ export default function PageLoader() {
           animate={{ scaleX: progress / 100, opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
           style={{ transformOrigin: '0% 50%' }}
-          className="fixed top-0 left-0 right-0 h-[2.5px] z-[9999] pointer-events-none bg-gradient-to-r from-amber-600 via-amber-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+          className="fixed top-0 left-0 right-0 h-[2.5px] z-[9999] pointer-events-none bg-amber-600"
         />
       )}
 
@@ -54,7 +54,7 @@ export default function PageLoader() {
           transition={{ type: 'spring', stiffness: 450, damping: 32 }}
           className="fixed top-0 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none"
         >
-          <div className="bg-stone-950/90 text-stone-100 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-stone-800 flex items-center gap-3">
+          <div className="bg-stone-900 text-stone-100 px-4 py-2 rounded-full shadow-sm border border-stone-800 flex items-center gap-3">
             <div className="relative w-5 h-5 flex items-center justify-center">
               {/* Rotating Ambient Ring */}
               <motion.div
@@ -66,7 +66,7 @@ export default function PageLoader() {
             </div>
 
             <div className="flex items-center gap-1.5 pr-1">
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.25em]">
+              <span className="text-[10px] font-bold text-amber-400">
                 Ulendo
               </span>
               <span className="text-stone-600 text-xs">&bull;</span>

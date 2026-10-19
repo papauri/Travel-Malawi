@@ -28,6 +28,73 @@ body {
   overscroll-behavior-y: auto;
 }
 
+/* ── Design kit (agents/directives/D2-minimal-human-ui.md) ───────────────────
+   One look everywhere: warm paper, stone ink, one clay accent. Use these
+   instead of hand-rolled class strings so every screen stays consistent. */
+@utility tm-page {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+}
+@utility tm-h1 {
+  @apply font-serif text-2xl sm:text-3xl font-semibold text-stone-900 tracking-tight;
+}
+@utility tm-h2 {
+  @apply font-serif text-lg sm:text-xl font-semibold text-stone-900;
+}
+@utility tm-lead {
+  @apply text-sm sm:text-base text-stone-600 max-w-prose;
+}
+@utility tm-muted {
+  @apply text-sm text-stone-500;
+}
+@utility tm-panel {
+  @apply rounded-xl border border-stone-200 bg-white p-4 sm:p-5;
+}
+@utility tm-divider {
+  @apply border-t border-stone-200;
+}
+@utility tm-btn {
+  @apply inline-flex min-h-10 max-w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:pointer-events-none disabled:opacity-50;
+}
+@utility tm-btn-primary {
+  @apply bg-stone-900 text-stone-50 hover:bg-stone-800;
+}
+@utility tm-btn-secondary {
+  @apply border border-stone-300 bg-white text-stone-800 hover:bg-stone-50;
+}
+@utility tm-btn-quiet {
+  @apply text-stone-700 hover:bg-stone-100;
+}
+@utility tm-btn-danger {
+  @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
+}
+@utility tm-btn-sm {
+  @apply min-h-8 px-3 py-1.5 text-xs;
+}
+@utility tm-label {
+  @apply mb-1 block text-sm font-medium text-stone-700;
+}
+@utility tm-input {
+  @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-700/20;
+}
+@utility tm-tag {
+  @apply inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700;
+}
+@utility tm-tag-good {
+  @apply bg-emerald-50 text-emerald-800;
+}
+@utility tm-tag-warn {
+  @apply bg-amber-50 text-amber-800;
+}
+@utility tm-tag-bad {
+  @apply bg-red-50 text-red-700;
+}
+@utility tm-link {
+  @apply font-medium text-amber-800 underline-offset-2 hover:underline;
+}
+@utility tm-actions {
+  @apply flex flex-wrap items-center gap-2;
+}
+
 /* The scroll area inside a dialog. The platform scrollbar is a heavy grey
    slab against a white panel, so it gets a slimmer treatment here only. */
 .scrollbar-slim {

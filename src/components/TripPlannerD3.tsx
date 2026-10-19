@@ -571,7 +571,7 @@ export default function TripPlannerD3({ hotels }: Props) {
       .join('div')
       .attr(
         'class',
-        'planner-tooltip absolute hidden bg-stone-900 text-white text-xs p-3.5 rounded-2xl shadow-xl z-30 pointer-events-none transition-all duration-150 border border-stone-800'
+        'planner-tooltip absolute hidden bg-stone-900 text-white text-xs p-3.5 rounded-2xl shadow-sm z-30 pointer-events-none transition-all duration-150 border border-stone-800'
       );
 
     // Nodes container
@@ -611,7 +611,7 @@ export default function TripPlannerD3({ hotels }: Props) {
             </div>
             <div class="mt-2 pt-2 border-t border-stone-800 flex items-center justify-between gap-3 text-[11px]">
               <span class="text-stone-400">Direct booking • 0% Commission</span>
-              <span class="text-emerald-400 font-semibold">Open stay &rarr;</span>
+              <span class="text-amber-400 font-semibold">Open stay &rarr;</span>
             </div>
           `
           )
@@ -878,7 +878,7 @@ Plan and book direct at: https://ulendomalawi.com/`;
               onClick={copyItinerarySummary}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition shadow-xs cursor-pointer"
             >
-              {copiedShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+              {copiedShare ? <Check className="w-3.5 h-3.5 text-amber-500" /> : <Share2 className="w-3.5 h-3.5" />}
               <span>{copiedShare ? 'Copied Itinerary!' : 'Share Trip Plan'}</span>
             </button>
           </div>
@@ -1007,7 +1007,7 @@ Plan and book direct at: https://ulendomalawi.com/`;
                     <div className="flex items-start gap-4 min-w-0 flex-1">
                       {/* Stop Number Circle */}
                       <div
-                        className="w-10 h-10 rounded-2xl text-white font-bold font-mono flex items-center justify-center shrink-0 shadow-xs"
+                        className="w-10 h-10 rounded-2xl text-white font-bold tabular-nums flex items-center justify-center shrink-0 shadow-xs"
                         style={{ backgroundColor: reg.color }}
                       >
                         {index + 1}
@@ -1124,13 +1124,13 @@ Plan and book direct at: https://ulendomalawi.com/`;
                         <span>
                           {hotel.name} &rarr; {nextHotel.name}
                         </span>
-                        <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-stone-200 text-[11px] text-emerald-800 inline-flex items-center gap-1">
+                        <span className="tabular-nums font-bold bg-white px-2 py-0.5 rounded border border-stone-200 text-[11px] text-emerald-800 inline-flex items-center gap-1">
                           <Clock className="w-3 h-3 text-emerald-700" />
                           <span>
                             {leg.time} · {leg.distanceKm} km
                           </span>
                         </span>
-                        <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="tabular-nums text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
                           {leg.highway}
                         </span>
                         <span className="text-stone-600 text-[11px] hidden sm:inline">

@@ -1027,11 +1027,11 @@ export default function AdminDashboard() {
       <div className="w-full lg:w-60 xl:w-64 shrink-0 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:flex lg:flex-col min-w-0">
         <div className="flex items-center justify-between px-1 lg:px-2 pb-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0">
               <Shield className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 leading-tight">Admin</h1>
+              <h1 className="tm-h1 leading-tight">Admin</h1>
               <p className="text-stone-500 text-xs sm:text-sm font-medium truncate mt-0.5">
                 {isGlobalAdmin(user) ? 'Global Admin' : isMarketing(user) ? 'Marketing' : 'Platform Management'}
               </p>
@@ -1057,11 +1057,11 @@ export default function AdminDashboard() {
           {isMobileMenuOpen && (
             <div 
               id="mobile-admin-drawer"
-              className="mt-2 p-2.5 bg-white rounded-2xl border border-stone-200 shadow-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
+              className="mt-2 p-2.5 bg-white rounded-xl border border-stone-200 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
             >
               <div className="flex items-center justify-between px-2 pt-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Select Section</span>
-                <span className="text-[11px] text-stone-400 font-medium">{adminTabs.length} sections</span>
+                <span className="text-xs font-medium text-stone-500">Sections</span>
+                <span className="text-xs text-stone-400">{adminTabs.length}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-[55vh] overflow-y-auto pr-1">
                 {adminTabs.map(tab => {
@@ -1076,7 +1076,7 @@ export default function AdminDashboard() {
                       }}
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left min-h-[44px] ${
                         isSelected
-                          ? 'bg-stone-900 text-white shadow-2xs'
+                          ? 'bg-stone-900 text-white'
                           : 'text-stone-700 hover:bg-stone-100'
                       }`}
                     >
@@ -1089,7 +1089,7 @@ export default function AdminDashboard() {
 
               {/* Team Resources inside mobile drawer */}
               <div className="pt-2 border-t border-stone-100 space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Partner Resources</span>
+                <span className="text-xs font-medium text-stone-500 px-2 block">Partner resources</span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   <Link
                     to="/concept-validation"
@@ -1158,9 +1158,9 @@ export default function AdminDashboard() {
                   key={`desk-tab-${tab.id}`}
                   ref={isSelected ? activeTabRef : undefined}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition cursor-pointer min-h-[36px] text-left min-w-0 ${
+                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer min-h-[36px] text-left min-w-0 ${
                     isSelected
-                      ? 'bg-stone-900 text-white font-semibold shadow-xs'
+                      ? 'bg-stone-900 text-white font-semibold'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/80'
                   }`}
                 >
@@ -1182,8 +1182,8 @@ export default function AdminDashboard() {
 
           {/* Partner Resources */}
           <div className="pt-3 border-t border-stone-200/70 space-y-1 w-full min-w-0 pb-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">
-              Partner Resources
+            <span className="text-xs font-medium text-stone-500 px-3 block">
+              Partner resources
             </span>
             <Link
               to="/concept-validation"
@@ -1228,14 +1228,14 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
-              <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Platform Overview</h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Key operational metrics and quick links to partner outreach materials.</p>
+              <h2 className="tm-h1">Overview</h2>
+              <p className="tm-muted mt-0.5">Key numbers and partner documents.</p>
             </div>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <button
                 onClick={() => setActiveTab('properties')}
-                className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-stone-500 text-xs font-medium">Total Properties</span>
@@ -1247,7 +1247,7 @@ export default function AdminDashboard() {
               
               <button
                 onClick={() => setActiveTab('users')}
-                className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-stone-500 text-xs font-medium">Total Users</span>
@@ -1262,7 +1262,7 @@ export default function AdminDashboard() {
               
               <button
                 onClick={() => setActiveTab('bookings')}
-                className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-stone-500 text-xs font-medium">Total Bookings</span>
@@ -1278,7 +1278,7 @@ export default function AdminDashboard() {
                   setHotelStatusFilter('pending');
                   setCurrentHotelPage(1);
                 }}
-                className={`p-4 rounded-xl border shadow-2xs text-left transition cursor-pointer ${
+                className={`rounded-xl border p-4 min-w-0 text-left transition cursor-pointer ${
                   stats.pendingProperties > 0 
                     ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' 
                     : 'bg-white border-stone-200 hover:border-stone-300'
@@ -1301,29 +1301,18 @@ export default function AdminDashboard() {
             </div>
 
             {/* Active Visitors Summary */}
-            <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-2xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-serif font-bold text-base text-stone-900">
-                      Live Visitors
-                    </h3>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    Current visitors browsing stays and pages across the platform.
-                  </p>
+            <div className="tm-panel min-w-0 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-stone-100">
+                <div className="min-w-0">
+                  <h3 className="tm-h2">Live visitors</h3>
+                  <p className="tm-muted mt-0.5">Who is browsing right now.</p>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => setActiveTab('traffic')}
-                  className="text-xs text-stone-700 hover:text-stone-900 font-medium inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition cursor-pointer self-start sm:self-auto"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
-                  <span>View All Visitors</span>
+                  <span>All visitors</span>
                   <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
                 </button>
               </div>
@@ -1332,105 +1321,52 @@ export default function AdminDashboard() {
             </div>
 
             {/* Partner Outreach & Guides */}
-            <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-2xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
-                <div>
-                  <h3 className="font-serif font-bold text-base text-stone-900">
-                    Partner Materials &amp; Guides
-                  </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    Printable resources for partner onboarding and feedback collection
-                  </p>
-                </div>
+            <div className="tm-panel min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
+                <h3 className="tm-h2">Partner documents</h3>
                 <button
                   type="button"
                   onClick={() => setActiveTab('docs')}
-                  className="text-xs text-stone-600 hover:text-stone-900 font-medium inline-flex items-center gap-1 cursor-pointer transition hover:underline"
+                  className="tm-link cursor-pointer text-sm"
                 >
-                  <span>All Documents (6)</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+                  All documents
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                {/* Concept Survey Card */}
-                <div className="border border-stone-200 bg-stone-50/50 rounded-lg p-4 flex flex-col justify-between gap-3 hover:border-stone-300 transition">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-xs font-semibold text-stone-900">
-                        Concept Validation Survey
-                      </h4>
-                      <span className="text-[11px] text-stone-400">PDF · Web</span>
+              <ul className="divide-y divide-stone-200 border-t border-stone-200">
+                {[
+                  { title: 'Concept validation survey', desc: 'Partner feedback questionnaire.', to: '/concept-validation', doc: 'concept-validation-survey' },
+                  { title: 'Stay owner leaflet', desc: 'One-page flyer for new hosts.', to: '/stay-owner-leaflet', doc: 'stay-owner-leaflet' },
+                ].map(d => (
+                  <li key={d.doc} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-stone-900 truncate">{d.title}</p>
+                      <p className="tm-muted truncate">{d.desc}</p>
                     </div>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      Partner feedback questionnaire with preview dashboard visuals.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200/70 flex-wrap">
-                    <Link
-                      to="/concept-validation"
-                      target="_blank"
-                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-800 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
-                      <span>View &amp; Print</span>
-                    </Link>
-                    <a
-                      href="/api/admin/docs/concept-validation-survey?format=html&download=1"
-                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <Download className="w-3.5 h-3.5 text-stone-400" />
-                      <span>Download HTML</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Stay Owner Leaflet Card */}
-                <div className="border border-stone-200 bg-stone-50/50 rounded-lg p-4 flex flex-col justify-between gap-3 hover:border-stone-300 transition">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-xs font-semibold text-stone-900">
-                        Stay Owner Acquisition Leaflet
-                      </h4>
-                      <span className="text-[11px] text-stone-400">Flyer · Brochure</span>
+                    <div className="tm-actions">
+                      <Link to={d.to} target="_blank" className="tm-btn tm-btn-secondary tm-btn-sm">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>View and print</span>
+                      </Link>
+                      <a href={`/api/admin/docs/${d.doc}?format=html&download=1`} className="tm-btn tm-btn-quiet tm-btn-sm">
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </a>
                     </div>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      One-page host flyer covering 0% launch commission and direct payouts.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200/70 flex-wrap">
-                    <Link
-                      to="/stay-owner-leaflet"
-                      target="_blank"
-                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-800 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
-                      <span>View &amp; Print</span>
-                    </Link>
-                    <a
-                      href="/api/admin/docs/stay-owner-leaflet?format=html&download=1"
-                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <Download className="w-3.5 h-3.5 text-stone-400" />
-                      <span>Download HTML</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {isGlobalAdmin(user) && (
-              <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-2xs flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-stone-900 text-sm">Premium Listing Plans</h4>
-                  <p className="text-stone-500 text-xs mt-0.5">Enable or disable premium plan selection during host onboarding.</p>
+              <div className="tm-panel min-w-0 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-medium text-stone-900">Premium listing plans</h4>
+                  <p className="tm-muted mt-0.5">Let hosts pick a premium plan when they sign up.</p>
                 </div>
                 <button
                   onClick={handleTogglePremium}
                   disabled={togglingPremium}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${premiumEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${premiumEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${premiumEnabled ? 'translate-x-6' : 'translate-x-1'}`}
@@ -1450,31 +1386,31 @@ export default function AdminDashboard() {
         {activeTab === 'analytics' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
-              <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Analytics &amp; Performance</h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Platform growth velocity, dual-currency direct booking volume, and featured property management.</p>
+              <h2 className="tm-h1">Analytics</h2>
+              <p className="tm-muted mt-0.5">Bookings, growth and featured stays.</p>
             </div>
 
             {/* Platform Telemetry & Dual-Currency Revenue Strip */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="tm-panel min-w-0">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Confirmed Direct Volume</span>
+                  <span className="text-stone-500 text-xs font-medium">Confirmed volume</span>
                   <TrendingUp className="w-4 h-4 text-emerald-700" />
                 </div>
                 <p className="text-xl font-serif font-bold text-stone-900 tabular-nums">
                   MK {stats.revenueMWK.toLocaleString()}
                 </p>
                 <div className="flex items-center justify-between mt-1 text-[11px]">
-                  <span className="font-mono font-semibold text-emerald-800">
+                  <span className="font-semibold text-emerald-800">
                     + USD ${stats.revenueUSD.toLocaleString()}
                   </span>
                   <span className="text-stone-400">0% platform fee</span>
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="tm-panel min-w-0">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Reservation Pipeline</span>
+                  <span className="text-stone-500 text-xs font-medium">Reservations</span>
                   <CalendarRange className="w-4 h-4 text-stone-400" />
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -1490,9 +1426,9 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="tm-panel min-w-0">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Room Inventory &amp; Units</span>
+                  <span className="text-stone-500 text-xs font-medium">Rooms</span>
                   <Building2 className="w-4 h-4 text-stone-400" />
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -1508,9 +1444,9 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="tm-panel min-w-0">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Host &amp; Channel Sync</span>
+                  <span className="text-stone-500 text-xs font-medium">Hosts</span>
                   <CalendarSync className="w-4 h-4 text-emerald-700" />
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -1529,8 +1465,8 @@ export default function AdminDashboard() {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {/* Bookings Trend Chart */}
-              <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-2xs flex flex-col h-full">
-                <h3 className="font-serif font-bold text-stone-900 text-base mb-0.5">Booking Volume</h3>
+              <div className="tm-panel min-w-0 flex flex-col h-full">
+                <h3 className="tm-h2 mb-0.5">Booking Volume</h3>
                 <p className="text-xs text-stone-500 mb-4">Confirmed bookings over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1555,8 +1491,8 @@ export default function AdminDashboard() {
               </div>
 
               {/* Users Growth Chart */}
-              <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-2xs flex flex-col h-full">
-                <h3 className="font-serif font-bold text-stone-900 text-base mb-0.5">User Sign-Ups</h3>
+              <div className="tm-panel min-w-0 flex flex-col h-full">
+                <h3 className="tm-h2 mb-0.5">User Sign-Ups</h3>
                 <p className="text-xs text-stone-500 mb-4">New user accounts over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1581,8 +1517,8 @@ export default function AdminDashboard() {
               </div>
 
               {/* Property Growth Chart */}
-              <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-2xs flex flex-col h-full">
-                <h3 className="font-serif font-bold text-stone-900 text-base mb-0.5">Property Listings</h3>
+              <div className="tm-panel min-w-0 flex flex-col h-full">
+                <h3 className="tm-h2 mb-0.5">Property Listings</h3>
                 <p className="text-xs text-stone-500 mb-4">New properties onboarded over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1603,28 +1539,28 @@ export default function AdminDashboard() {
             </div>
 
             {/* Featured Stays Manager */}
-            <div className="bg-white rounded-xl border border-stone-200 p-5 shadow-2xs space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-stone-100">
-                <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-lg">Manage Featured Stays</h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    Controls "The ones guests go back to" shown on the explore page.
+            <div className="tm-panel min-w-0 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                <div className="min-w-0">
+                  <h3 className="tm-h2">Featured stays</h3>
+                  <p className="tm-muted mt-0.5">
+                    Shown on the explore page under "The ones guests go back to".
                   </p>
                 </div>
-                <div className="flex items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200 shrink-0 text-xs">
+                <div className="flex max-w-full flex-wrap items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200 text-xs">
                   <button
                     onClick={() => saveFeaturedMode('auto')}
                     disabled={savingFeaturedMode}
                     className={`px-3 py-1.5 font-medium rounded-md transition cursor-pointer ${featuredMode === 'auto' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'}`}
                   >
-                    Auto-Fill
+                    Auto-fill
                   </button>
                   <button
                     onClick={() => saveFeaturedMode('manual')}
                     disabled={savingFeaturedMode}
                     className={`px-3 py-1.5 font-medium rounded-md transition cursor-pointer ${featuredMode === 'manual' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'}`}
                   >
-                    Strict Manual
+                    Manual only
                   </button>
                   <button
                     onClick={() => saveFeaturedMode('disabled')}
@@ -1636,30 +1572,20 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {featuredMode === 'disabled' && (
-                <div className="p-3 bg-stone-50 border border-stone-200 text-stone-600 text-xs rounded-lg">
-                  <strong>Section Disabled:</strong> The featured stays carousel is currently hidden from the home page.
-                </div>
-              )}
-              {featuredMode === 'manual' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-lg">
-                  <strong>Strict Manual Mode:</strong> Displays only properties explicitly marked as Featured below (up to 3).
-                </div>
-              )}
-              {featuredMode === 'auto' && (
-                <div className="p-3 bg-stone-50 border border-stone-200 text-stone-700 text-xs rounded-lg">
-                  <strong>Auto-Fill Active:</strong> Featured properties are shown first, remaining slots auto-filled with highest-rated stays.
-                </div>
-              )}
+              <p className="tm-muted">
+                {featuredMode === 'disabled' && 'The featured section is hidden from the home page.'}
+                {featuredMode === 'manual' && 'Only stays marked Featured below are shown (up to 3).'}
+                {featuredMode === 'auto' && 'Featured stays come first; open slots fill with the highest-rated stays.'}
+              </p>
 
               <div className="overflow-x-auto border border-stone-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider text-[10px] font-semibold border-b border-stone-200">
+                  <thead className="bg-stone-50 text-stone-500 text-xs font-medium border-b border-stone-200">
                     <tr>
                       <th className="py-2.5 px-4">Property</th>
                       <th className="py-2.5 px-4">Location</th>
                       <th className="py-2.5 px-4">Bookings</th>
-                      <th className="py-2.5 px-4 text-right">Featured Status</th>
+                      <th className="py-2.5 px-4 text-right">Featured</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 text-stone-700">
@@ -1670,13 +1596,13 @@ export default function AdminDashboard() {
                             <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-stone-100">
                               <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                             </div>
-                            <span className="font-semibold text-stone-900">{hotel.name}</span>
+                            <span className="font-medium text-stone-900 truncate">{hotel.name}</span>
                           </div>
                         </td>
                         <td className="py-2.5 px-4 text-stone-500">
                           {hotel.location}
                         </td>
-                        <td className="py-2.5 px-4 font-mono tabular-nums text-stone-800">
+                        <td className="py-2.5 px-4 tabular-nums text-stone-800">
                           {bookings}
                         </td>
                         <td className="py-2.5 px-4 text-right">
@@ -1705,9 +1631,9 @@ export default function AdminDashboard() {
                 </table>
               </div>
               
-              <div className="px-4 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 rounded-b-lg">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500">
                 <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono">{featuredCandidateStats.length === 0 ? 0 : (currentFeaturedPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentFeaturedPage * itemsPerPage, featuredCandidateStats.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{featuredCandidateStats.length}</span> properties
+                  Showing <span className="font-semibold text-stone-900 tabular-nums">{featuredCandidateStats.length === 0 ? 0 : (currentFeaturedPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(currentFeaturedPage * itemsPerPage, featuredCandidateStats.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{featuredCandidateStats.length}</span> properties
                 </div>
                 {featuredCandidateStats.length > itemsPerPage && (
                   <Pagination
@@ -1726,20 +1652,20 @@ export default function AdminDashboard() {
         {activeTab === 'properties' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Header & Inline Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-              <div>
-                <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Properties</h2>
-                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-                  Review, approve, and manage partner listings across Malawi.
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200">
+              <div className="min-w-0">
+                <h2 className="tm-h1">Properties</h2>
+                <p className="tm-muted mt-0.5">
+                  Review, approve and manage listings.
                 </p>
               </div>
               
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="tm-actions">
                 <button
                   type="button"
                   onClick={handleRunGlobalIcalSync}
                   disabled={syncingAllFeeds}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 rounded-lg text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                   title={`${totalIcalFeedsCount} external iCal feeds connected across ${propertiesWithIcal.length} properties`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 text-stone-500 ${syncingAllFeeds ? 'animate-spin' : ''}`} />
@@ -1761,11 +1687,11 @@ export default function AdminDashboard() {
             </div>
 
             {/* Unified Filter & Search Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                 {[
                   { id: 'all', label: 'All', count: stats.totalProperties },
-                  { id: 'pending', label: 'Pending Review', count: stats.pendingProperties, highlight: stats.pendingProperties > 0 },
+                  { id: 'pending', label: 'Pending', count: stats.pendingProperties, highlight: stats.pendingProperties > 0 },
                   { id: 'approved', label: 'Live', count: stats.approvedProperties },
                   { id: 'rejected', label: 'Unpublished', count: stats.rejectedProperties },
                 ].map(pill => {
@@ -1780,7 +1706,7 @@ export default function AdminDashboard() {
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 ${
                         isSelected
-                          ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                          ? 'bg-stone-900 text-white font-semibold'
                           : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
                       }`}
                     >
@@ -1799,14 +1725,14 @@ export default function AdminDashboard() {
                 })}
               </div>
 
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-64 min-w-0">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
                 <input
                   type="text"
-                  placeholder="Search property, city, or host..."
+                  placeholder="Search property, city or host"
                   value={hotelSearch}
                   onChange={e => { setHotelSearch(e.target.value); setCurrentHotelPage(1); }}
-                  className="pl-8 pr-7 py-1.5 border border-stone-200 bg-white rounded-lg text-xs focus:outline-none focus:border-stone-900 w-full"
+                  className="tm-input pl-8 pr-7"
                 />
                 {hotelSearch && (
                   <button
@@ -1821,10 +1747,10 @@ export default function AdminDashboard() {
             </div>
 
             {/* Clean Property Directory (Table on md+, Stacked Cards on <md) */}
-            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-visible">
+            <div className="rounded-xl border border-stone-200 bg-white">
               {visibleHotels.length === 0 ? (
-                <div className="p-10 text-center text-stone-500 text-xs">
-                  No properties found matching your filter.
+                <div className="p-10 text-center tm-muted">
+                  No properties match this filter.
                 </div>
               ) : (() => {
                 const pageHotels = visibleHotels.slice(
@@ -1835,23 +1761,20 @@ export default function AdminDashboard() {
                 const renderStatusBadge = (hotel: Hotel) => {
                   if (!hotel.status || hotel.status === 'approved') {
                     return (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="tm-tag tm-tag-good whitespace-nowrap shrink-0">
                         Live
                       </span>
                     );
                   }
                   if (hotel.status === 'pending') {
                     return (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span className="tm-tag tm-tag-warn whitespace-nowrap shrink-0">
                         Pending
                       </span>
                     );
                   }
                   return (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0" />
+                    <span className="tm-tag whitespace-nowrap shrink-0">
                       Rejected
                     </span>
                   );
@@ -1862,7 +1785,7 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => setOpenHotelMenuId(openHotelMenuId === menuKey ? null : menuKey)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition cursor-pointer whitespace-nowrap"
+                      className="tm-btn tm-btn-secondary tm-btn-sm gap-1"
                       aria-label="More property actions"
                     >
                       <span>More</span>
@@ -1876,7 +1799,7 @@ export default function AdminDashboard() {
                           onClick={() => setOpenHotelMenuId(null)}
                         />
                         <div
-                          className={`absolute right-0 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                          className={`absolute right-0 w-56 bg-white rounded-xl shadow-sm border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
                             openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                           }`}
                         >
@@ -1895,7 +1818,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                <span>Assign / Change Host</span>
+                                <span>Assign or change host</span>
                               </button>
 
                               <button
@@ -1953,7 +1876,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <Mail className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                <span>Resend Onboarding Details Email (SMTP)</span>
+                                <span>Resend onboarding email</span>
                               </button>
                               <div className="my-1 border-t border-stone-100" />
                             </>
@@ -1972,7 +1895,7 @@ export default function AdminDashboard() {
                           >
                             <span className="flex items-center gap-2">
                               <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                              <span>Get / Manage Reviews</span>
+                              <span>Manage reviews</span>
                             </span>
                             {(hotel.reviews?.length || hotel.reviewsSummary?.count || 0) > 0 && (
                               <span className="text-[10px] font-semibold bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
@@ -1991,7 +1914,7 @@ export default function AdminDashboard() {
                           >
                             <span className="flex items-center gap-2">
                               <Star className={`w-3.5 h-3.5 shrink-0 ${hotel.featured ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
-                              <span>{hotel.featured ? 'Remove from Featured' : 'Feature on Home'}</span>
+                              <span>{hotel.featured ? 'Remove from featured' : 'Feature on home'}</span>
                             </span>
                             {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                           </button>
@@ -2014,7 +1937,7 @@ export default function AdminDashboard() {
                           >
                             <span className="flex items-center gap-2">
                               <MessageSquare className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                              <span>{hotel.adminChatEnabled === false ? 'Enable Guest Chat' : 'Disable Guest Chat'}</span>
+                              <span>{hotel.adminChatEnabled === false ? 'Turn on guest chat' : 'Turn off guest chat'}</span>
                             </span>
                             {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                           </button>
@@ -2028,7 +1951,7 @@ export default function AdminDashboard() {
                           >
                             <span className="flex items-center gap-2">
                               <ExternalLink className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                              <span>View Public Page</span>
+                              <span>View public page</span>
                             </span>
                           </a>
 
@@ -2045,7 +1968,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
                               >
                                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span>Approve Listing</span>
+                                <span>Approve listing</span>
                               </button>
                               <button
                                 type="button"
@@ -2056,7 +1979,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <X className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                <span>Reject Listing</span>
+                                <span>Reject listing</span>
                               </button>
                             </>
                           )}
@@ -2071,7 +1994,7 @@ export default function AdminDashboard() {
                               className="w-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
                             >
                               <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                              <span>Move to Pending</span>
+                              <span>Move to pending</span>
                             </button>
                           )}
 
@@ -2085,7 +2008,7 @@ export default function AdminDashboard() {
                               className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
                             >
                               <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>Approve Listing</span>
+                              <span>Approve listing</span>
                             </button>
                           )}
 
@@ -2101,7 +2024,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                <span>Delete Listing</span>
+                                <span>Delete listing</span>
                               </button>
                             </>
                           )}
@@ -2113,14 +2036,14 @@ export default function AdminDashboard() {
 
                 return (
                   <>
-                    {/* Desktop & Laptop Native Table (md+) — Guaranteed Zero Overlap */}
-                    <div className="hidden md:block">
+                    {/* Wide screens: table. Below xl the sidebar leaves too little width, so rows stack as cards. */}
+                    <div className="hidden xl:block">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
                             <th className="py-2.5 pl-4 pr-3 rounded-tl-xl">Property</th>
-                            <th className="py-2.5 px-3 whitespace-nowrap">Rooms &amp; Rates</th>
-                            <th className="hidden xl:table-cell py-2.5 px-3 whitespace-nowrap">Host / Manager</th>
+                            <th className="py-2.5 px-3 whitespace-nowrap">Rooms and rates</th>
+                            <th className="hidden 2xl:table-cell py-2.5 px-3 whitespace-nowrap">Host</th>
                             <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
                             <th className="py-2.5 pl-3 pr-4 text-right whitespace-nowrap rounded-tr-xl">Actions</th>
                           </tr>
@@ -2204,7 +2127,7 @@ export default function AdminDashboard() {
                                           </span>
                                         )}
                                         {/* Inline Host info on md/lg screens where dedicated Host column is hidden */}
-                                        <span className="xl:hidden inline-flex items-center gap-1 text-stone-500 truncate max-w-[190px]">
+                                        <span className="2xl:hidden inline-flex items-center gap-1 text-stone-500 truncate max-w-[190px]">
                                           <span>·</span>
                                           <span className="truncate">Host: {hostDisplay || 'Unassigned'}</span>
                                           {(isAdmin(user) || isMarketing(user)) && (
@@ -2235,7 +2158,7 @@ export default function AdminDashboard() {
                                       ? 'Entire place'
                                       : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
                                   </div>
-                                  <div className="text-[11px] text-stone-500 font-mono mt-0.5">
+                                  <div className="text-[11px] text-stone-500 tabular-nums mt-0.5">
                                     {minPriceMwk > 0 || minPriceUsd > 0 ? (
                                       <>
                                         {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
@@ -2249,7 +2172,7 @@ export default function AdminDashboard() {
                                 </td>
 
                                 {/* Col 3: Host / Manager (xl+) */}
-                                <td className="hidden xl:table-cell py-3 px-3 align-middle max-w-[180px]">
+                                <td className="hidden 2xl:table-cell py-3 px-3 align-middle max-w-[180px]">
                                   <div className="text-stone-800 truncate font-medium" title={hostDisplay || 'Unassigned'}>
                                     {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
                                   </div>
@@ -2282,7 +2205,7 @@ export default function AdminDashboard() {
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap shrink-0"
+                                        className="tm-btn tm-btn-primary tm-btn-sm shrink-0"
                                       >
                                         Approve
                                       </button>
@@ -2291,14 +2214,14 @@ export default function AdminDashboard() {
                                     <button
                                       type="button"
                                       onClick={() => setInspectingHotel(hotel)}
-                                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer whitespace-nowrap shrink-0"
+                                      className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                                     >
                                       Review
                                     </button>
 
                                     <Link
                                       to={`/admin/hotel/${hotel.id}`}
-                                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition whitespace-nowrap shrink-0"
+                                      className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                                     >
                                       Edit
                                     </Link>
@@ -2314,7 +2237,7 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Mobile & Small Screen Stacked Card List (<md) */}
-                    <div className="md:hidden divide-y divide-stone-100">
+                    <div className="xl:hidden divide-y divide-stone-100">
                       {pageHotels.map((hotel, index) => {
                         const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
                         const minPriceUsd = hotelRooms.length > 0
@@ -2365,17 +2288,17 @@ export default function AdminDashboard() {
                             </div>
 
                             {/* Middle Info Strip: Rooms & Rates + Host */}
-                            <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
+                            <div className="grid grid-cols-2 gap-3 text-xs">
                               <div className="min-w-0">
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">
-                                  Rooms &amp; Rates
+                                <span className="text-xs text-stone-500 block">
+                                  Rooms and rates
                                 </span>
                                 <div className="font-medium text-stone-900 truncate mt-0.5">
                                   {hotel.stayType === 'entire_place'
                                     ? 'Entire place'
                                     : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
                                 </div>
-                                <div className="text-[11px] text-stone-500 font-mono truncate">
+                                <div className="text-[11px] text-stone-500 tabular-nums truncate">
                                   {minPriceMwk > 0 || minPriceUsd > 0 ? (
                                     <>
                                       {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
@@ -2388,8 +2311,8 @@ export default function AdminDashboard() {
                               </div>
 
                               <div className="min-w-0">
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">
-                                  Host / Manager
+                                <span className="text-xs text-stone-500 block">
+                                  Host
                                 </span>
                                 <div className="text-stone-800 font-medium truncate mt-0.5">
                                   {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
@@ -2440,12 +2363,12 @@ export default function AdminDashboard() {
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1.5 ml-auto">
+                              <div className="tm-actions ml-auto">
                                 {hotel.status === 'pending' && (
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap"
+                                    className="tm-btn tm-btn-primary tm-btn-sm"
                                   >
                                     Approve
                                   </button>
@@ -2454,14 +2377,14 @@ export default function AdminDashboard() {
                                 <button
                                   type="button"
                                   onClick={() => setInspectingHotel(hotel)}
-                                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer whitespace-nowrap"
+                                  className="tm-btn tm-btn-secondary tm-btn-sm"
                                 >
                                   Review
                                 </button>
 
                                 <Link
                                   to={`/admin/hotel/${hotel.id}`}
-                                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition whitespace-nowrap"
+                                  className="tm-btn tm-btn-secondary tm-btn-sm"
                                 >
                                   Edit
                                 </Link>
@@ -2478,9 +2401,9 @@ export default function AdminDashboard() {
               })()}
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-200 p-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500">
               <div>
-                Showing <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length === 0 ? 0 : (currentHotelPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentHotelPage * itemsPerPage, visibleHotels.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length}</span> properties
+                Showing <span className="font-semibold text-stone-900 tabular-nums">{visibleHotels.length === 0 ? 0 : (currentHotelPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(currentHotelPage * itemsPerPage, visibleHotels.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{visibleHotels.length}</span> properties
               </div>
               {visibleHotels.length > itemsPerPage && (
                 <Pagination
@@ -2496,21 +2419,21 @@ export default function AdminDashboard() {
         {/* ===================== USERS TAB ===================== */}
         {activeTab === 'users' && canViewTab('users') && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">User Accounts &amp; Roles</h2>
-                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Manage platform accounts, administrative permissions, and password recovery.</p>
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-stone-200">
+              <div className="min-w-0">
+                <h2 className="tm-h1">Users</h2>
+                <p className="tm-muted mt-0.5">Accounts, roles and password resets.</p>
               </div>
-              
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                <div className="relative">
+
+              <div className="tm-actions">
+                <div className="relative min-w-0">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
                   <input
                     type="text"
-                    placeholder="Search users..."
+                    placeholder="Search users"
                     value={userSearch}
                     onChange={e => { setUserSearch(e.target.value); setCurrentUserPage(1); }}
-                    className="pl-8 pr-3 py-1.5 border border-stone-200 bg-white rounded-lg text-xs focus:outline-none focus:border-stone-900 w-full sm:w-56"
+                    className="tm-input pl-8 sm:w-56"
                   />
                 </div>
 
@@ -2518,16 +2441,16 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setShowQuickResetModal(true)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-semibold hover:bg-stone-800 transition shrink-0 shadow-2xs cursor-pointer"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
                     <Key className="h-3.5 w-3.5" />
-                    <span>Reset Password</span>
+                    <span>Reset password</span>
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-visible flex flex-col">
+            <div className="rounded-xl border border-stone-200 bg-white flex flex-col">
               {(() => {
                 const pageUsers = visibleUsers.slice(
                   (currentUserPage - 1) * itemsPerPage,
@@ -2537,22 +2460,22 @@ export default function AdminDashboard() {
                 const renderRoleBadges = (rolesList: string[]) => (
                   <div className="flex flex-wrap items-center gap-1.5">
                     {rolesList.includes('global_admin') && (
-                      <span className="bg-stone-900 text-white px-2 py-0.5 rounded text-[11px] font-medium tracking-wide whitespace-nowrap">
+                      <span className="tm-tag bg-stone-900 text-white whitespace-nowrap">
                         Global Admin
                       </span>
                     )}
                     {rolesList.includes('admin') && !rolesList.includes('global_admin') && (
-                      <span className="bg-amber-50 text-amber-900 border border-amber-200/60 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                      <span className="tm-tag tm-tag-warn whitespace-nowrap">
                         Admin
                       </span>
                     )}
                     {rolesList.includes('marketing') && (
-                      <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                      <span className="tm-tag whitespace-nowrap">
                         Marketing
                       </span>
                     )}
                     {rolesList.includes('hotel_manager') && (
-                      <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                      <span className="tm-tag whitespace-nowrap">
                         Manager
                       </span>
                     )}
@@ -2569,7 +2492,7 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => setOpenUserMenuId(openUserMenuId === menuKey ? null : menuKey)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer whitespace-nowrap"
+                      className="tm-btn tm-btn-secondary tm-btn-sm gap-1.5"
                       aria-label="User actions"
                     >
                       <span>Actions</span>
@@ -2582,11 +2505,11 @@ export default function AdminDashboard() {
                           className="fixed inset-0 z-30"
                           onClick={() => setOpenUserMenuId(null)}
                         />
-                        <div className={`absolute right-0 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                        <div className={`absolute right-0 w-52 bg-white rounded-xl shadow-sm border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
                           openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                         }`}>
-                          <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                            Toggle Role
+                          <div className="px-3 py-1 text-xs text-stone-500">
+                            Roles
                           </div>
 
                           <button
@@ -2597,7 +2520,7 @@ export default function AdminDashboard() {
                             }}
                             className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
                           >
-                            <span>Host / Property Manager</span>
+                            <span>Host / property manager</span>
                             {rolesList.includes('hotel_manager') && (
                               <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                             )}
@@ -2654,8 +2577,8 @@ export default function AdminDashboard() {
                           {(isAdmin(user) || isMarketing(user)) && (
                             <>
                               <div className="my-1 border-t border-stone-100" />
-                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Onboarding &amp; Account
+                              <div className="px-3 py-1 text-xs text-stone-500">
+                                Account
                               </div>
 
                               {u.email && (
@@ -2669,7 +2592,7 @@ export default function AdminDashboard() {
                                   title="Resend partner onboarding credentials and listing access details via SMTP"
                                 >
                                   <Mail className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                  <span>Resend Onboarding Details</span>
+                                  <span>Resend onboarding email</span>
                                 </button>
                               )}
 
@@ -2683,7 +2606,7 @@ export default function AdminDashboard() {
                                   className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                                 >
                                   <Key className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                  <span>Reset Password</span>
+                                  <span>Reset password</span>
                                 </button>
                               )}
 
@@ -2701,7 +2624,7 @@ export default function AdminDashboard() {
                                   }`}
                                 >
                                   <Shield className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                  <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}</span>
+                                  <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore access' : 'Revoke access'}</span>
                                 </button>
                               )}
 
@@ -2717,7 +2640,7 @@ export default function AdminDashboard() {
                                     className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
                                   >
                                     <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                    <span>Delete Profile</span>
+                                    <span>Delete profile</span>
                                   </button>
                                 </>
                               )}
@@ -2735,7 +2658,7 @@ export default function AdminDashboard() {
                     <div className="hidden md:block min-h-[300px]">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="border-b border-stone-200 bg-stone-50/80 text-[11px] font-semibold text-stone-500">
+                          <tr className="border-b border-stone-200 bg-stone-50 text-xs font-medium text-stone-500">
                             <th className="px-4 py-3 rounded-tl-xl">User</th>
                             <th className="px-4 py-3 whitespace-nowrap">Joined</th>
                             <th className="px-4 py-3">Roles</th>
@@ -2750,16 +2673,16 @@ export default function AdminDashboard() {
                             return (
                               <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
                                 <td className="px-4 py-3.5 min-w-0">
-                                  <p className="font-semibold text-stone-900 flex items-center gap-2 text-xs sm:text-sm">
+                                  <p className="font-medium text-stone-900 flex items-center gap-2 text-sm min-w-0">
                                     <span className="truncate max-w-[240px]">{u.displayName || 'No Name'}</span>
                                     {(u.status === 'suspended' || u.accessRevoked) && (
-                                      <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
+                                      <span className="tm-tag tm-tag-bad shrink-0">
                                         Suspended
                                       </span>
                                     )}
                                   </p>
                                   <p className="text-xs text-stone-500 truncate max-w-[260px]">{u.email}</p>
-                                  <p className="text-[11px] text-stone-400 mt-0.5 font-mono truncate max-w-[260px]">{u.uid}</p>
+                                  <p className="text-[11px] text-stone-400 mt-0.5 font-mono truncate max-w-[260px]" title="User ID">{u.uid}</p>
                                 </td>
                                 <td className="px-4 py-3.5 text-xs text-stone-600 whitespace-nowrap">
                                   {new Date(u.createdAt).toLocaleDateString()}
@@ -2800,7 +2723,7 @@ export default function AdminDashboard() {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="font-semibold text-stone-900 text-sm truncate">{u.displayName || 'No Name'}</p>
                                   {(u.status === 'suspended' || u.accessRevoked) && (
-                                    <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="tm-tag tm-tag-bad shrink-0">
                                       Suspended
                                     </span>
                                   )}
@@ -2829,9 +2752,9 @@ export default function AdminDashboard() {
                 );
               })()}
               
-              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0 rounded-b-xl">
+              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
                 <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono">{visibleUsers.length === 0 ? 0 : (currentUserPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentUserPage * itemsPerPage, visibleUsers.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{visibleUsers.length}</span> users
+                  Showing <span className="font-semibold text-stone-900 tabular-nums">{visibleUsers.length === 0 ? 0 : (currentUserPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(currentUserPage * itemsPerPage, visibleUsers.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{visibleUsers.length}</span> users
                 </div>
                 {visibleUsers.length > itemsPerPage && (
                   <Pagination
@@ -2850,14 +2773,14 @@ export default function AdminDashboard() {
                 open={showQuickResetModal}
                 onClose={() => { setShowQuickResetModal(false); setQuickResetEmail(''); }}
                 size="sm"
-                title="Send Password Reset"
-                description="Send a secure password recovery email to any registered user or manager."
+                title="Send password reset"
+                description="Email a reset link to a registered user."
                 footer={
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => { setShowQuickResetModal(false); setQuickResetEmail(''); }}
-                      className="flex-1 py-2.5 rounded-xl border border-stone-200 text-stone-600 font-semibold text-sm hover:bg-stone-50 transition"
+                      className="tm-btn tm-btn-secondary flex-1"
                     >
                       Cancel
                     </button>
@@ -2865,9 +2788,9 @@ export default function AdminDashboard() {
                       type="submit"
                       form="admin-quick-reset-form"
                       disabled={sendingQuickReset || !quickResetEmail.trim()}
-                      className="flex-1 py-2.5 rounded-xl bg-stone-900 text-white font-semibold text-sm hover:bg-stone-800 disabled:opacity-50 transition shadow-sm"
+                      className="tm-btn tm-btn-primary flex-1"
                     >
-                      {sendingQuickReset ? 'Sending…' : 'Send Link'}
+                      {sendingQuickReset ? 'Sending…' : 'Send link'}
                     </button>
                   </div>
                 }
@@ -2926,16 +2849,16 @@ export default function AdminDashboard() {
         {activeTab === 'bookings' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Platform Bookings</h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Live traveller reservations, check-in dates, and itinerary statuses.</p>
+              <h2 className="tm-h1">Bookings</h2>
+              <p className="tm-muted mt-0.5">All reservations across properties.</p>
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col">
-              {/* Desktop & Laptop Table (md+) */}
-              <div className="hidden md:block overflow-x-auto">
+            <div className="rounded-xl border border-stone-200 bg-white overflow-hidden flex flex-col">
+              {/* Table from xl; below that the sidebar leaves too little width, so rows stack. */}
+              <div className="hidden xl:block overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-stone-200 bg-stone-50/80 text-[11px] font-semibold text-stone-500">
+                    <tr className="border-b border-stone-200 bg-stone-50 text-xs font-medium text-stone-500">
                       <th className="px-4 py-3 whitespace-nowrap">Ref</th>
                       <th className="px-4 py-3">Property</th>
                       <th className="px-4 py-3">Guest</th>
@@ -2959,15 +2882,15 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3.5 text-xs text-stone-600 whitespace-nowrap">
                             {b.checkIn} <br/>to {b.checkOut}
                           </td>
-                          <td className="px-4 py-3.5 text-xs font-mono font-semibold text-stone-900 whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs font-semibold text-stone-900 whitespace-nowrap">
                             {b.total ? (b.currency === 'USD' ? `$${Number(b.total).toLocaleString()}` : `MK ${Number(b.total).toLocaleString()}`) : '—'}
                           </td>
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border whitespace-nowrap ${
-                              b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' :
-                              b.status === 'rejected' ? 'bg-rose-50 text-rose-800 border-rose-200/70' :
-                              b.status === 'cancelled' ? 'bg-stone-100 text-stone-700 border-stone-200' :
-                              'bg-amber-50 text-amber-800 border-amber-200/70'
+                            <span className={`tm-tag capitalize whitespace-nowrap ${
+                              b.status === 'confirmed' ? 'tm-tag-good' :
+                              b.status === 'rejected' ? 'tm-tag-bad' :
+                              b.status === 'cancelled' ? '' :
+                              'tm-tag-warn'
                             }`}>
                               {b.status}
                             </span>
@@ -2977,7 +2900,7 @@ export default function AdminDashboard() {
                               <select
                                 value={b.status}
                                 onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
-                                className="bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-medium rounded-lg focus:outline-none focus:border-stone-900 block py-1.5 px-2.5 shadow-2xs transition cursor-pointer max-w-[125px]"
+                                className="tm-input w-auto! max-w-[125px] py-1.5! text-xs cursor-pointer"
                               >
                                 <option value="pending">Pending</option>
                                 <option value="confirmed">Confirmed</option>
@@ -2988,7 +2911,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={() => setBookingToDelete(b)}
                                 className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer shrink-0"
-                                title="Permanently Delete Booking"
+                                title="Delete booking" aria-label="Delete booking"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                               </button>
@@ -3000,7 +2923,7 @@ export default function AdminDashboard() {
                     {bookings.length === 0 && (
                       <tr>
                         <td colSpan={7} className="px-6 py-12 text-center text-stone-500">
-                          No bookings recorded on the platform.
+                          No bookings yet.
                         </td>
                       </tr>
                     )}
@@ -3009,7 +2932,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Mobile Stacked Card List (<md) */}
-              <div className="md:hidden divide-y divide-stone-100">
+              <div className="xl:hidden divide-y divide-stone-100">
                 {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
                   const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
                   return (
@@ -3019,36 +2942,36 @@ export default function AdminDashboard() {
                           <h3 className="text-sm font-semibold text-stone-900 truncate">{hotelName}</h3>
                           <p className="text-[11px] font-mono text-stone-500 mt-0.5">Ref: {b.reference || 'N/A'}</p>
                         </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border whitespace-nowrap shrink-0 ${
-                          b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' :
-                          b.status === 'rejected' ? 'bg-rose-50 text-rose-800 border-rose-200/70' :
-                          b.status === 'cancelled' ? 'bg-stone-100 text-stone-700 border-stone-200' :
-                          'bg-amber-50 text-amber-800 border-amber-200/70'
+                        <span className={`tm-tag capitalize whitespace-nowrap shrink-0 ${
+                          b.status === 'confirmed' ? 'tm-tag-good' :
+                          b.status === 'rejected' ? 'tm-tag-bad' :
+                          b.status === 'cancelled' ? '' :
+                          'tm-tag-warn'
                         }`}>
                           {b.status}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
+                      <div className="grid grid-cols-2 gap-3 text-xs">
                         <div className="min-w-0">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Guest</span>
+                          <span className="text-xs text-stone-500 block">Guest</span>
                           <div className="font-medium text-stone-900 truncate mt-0.5">{b.guestName}</div>
                           <div className="text-[11px] text-stone-500 truncate">{b.guestEmail || 'No Email'}</div>
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Stay &amp; Total</span>
+                          <span className="text-xs text-stone-500 block">Stay and total</span>
                           <div className="text-[11px] text-stone-700 truncate mt-0.5">{b.checkIn} → {b.checkOut}</div>
-                          <div className="text-xs font-mono font-semibold text-stone-900 mt-0.5">
+                          <div className="text-xs font-semibold text-stone-900 mt-0.5">
                             {b.total ? (b.currency === 'USD' ? `$${Number(b.total).toLocaleString()}` : `MK ${Number(b.total).toLocaleString()}`) : '—'}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <select
                           value={b.status}
                           onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
-                          className="flex-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-medium rounded-lg focus:outline-none focus:border-stone-900 py-1.5 px-2.5 shadow-2xs transition cursor-pointer"
+                          className="tm-input flex-1 min-w-0 py-1.5! text-xs cursor-pointer"
                         >
                           <option value="pending">Pending</option>
                           <option value="confirmed">Confirmed</option>
@@ -3058,8 +2981,8 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           onClick={() => setBookingToDelete(b)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/60 rounded-lg transition cursor-pointer shrink-0"
-                          title="Permanently Delete Booking"
+                          className="tm-btn tm-btn-danger tm-btn-sm shrink-0"
+                          title="Delete booking"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                           <span>Delete</span>
@@ -3070,14 +2993,14 @@ export default function AdminDashboard() {
                 })}
                 {bookings.length === 0 && (
                   <div className="px-6 py-12 text-center text-stone-500 text-xs">
-                    No bookings recorded on the platform.
+                    No bookings yet.
                   </div>
                 )}
               </div>
               
-              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
+              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
                 <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono">{bookings.length === 0 ? 0 : (currentBookingPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentBookingPage * itemsPerPage, bookings.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{bookings.length}</span> bookings
+                  Showing <span className="font-semibold text-stone-900 tabular-nums">{bookings.length === 0 ? 0 : (currentBookingPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(currentBookingPage * itemsPerPage, bookings.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{bookings.length}</span> bookings
                 </div>
                 {bookings.length > itemsPerPage && (
                   <Pagination
@@ -3095,55 +3018,55 @@ export default function AdminDashboard() {
         {/* ===================== DESTINATIONS TAB ===================== */}
         {activeTab === 'destinations' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-stone-200">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Popular Destinations</h2>
-                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Manage curated destinations displayed on the explore portal and home page.</p>
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-stone-200">
+              <div className="min-w-0">
+                <h2 className="tm-h1">Popular destinations</h2>
+                <p className="tm-muted mt-0.5">Places shown on the explore page and home page.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2.5 bg-white px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
-                  <span className="text-xs font-semibold text-stone-700">Manual Override</span>
+              <div className="tm-actions">
+                <label className="flex items-center gap-2.5 text-sm font-medium text-stone-700">
+                  <span>Choose the list myself</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={manualDestinationsEnabled}
                     onClick={() => setManualDestinationsEnabled(!manualDestinationsEnabled)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${manualDestinationsEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${manualDestinationsEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
                   >
                     <span
                       className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${manualDestinationsEnabled ? 'translate-x-4.5' : 'translate-x-0.5'}`}
                     />
                   </button>
-                </div>
+                </label>
                 <button
                   onClick={saveDestinations}
                   disabled={savingDestinations}
-                  className="bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer"
+                  className="tm-btn tm-btn-primary"
                 >
-                  {savingDestinations ? 'Saving...' : 'Save Changes'}
+                  {savingDestinations ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
             </div>
 
             {!manualDestinationsEnabled && (
-              <div className="bg-stone-50 border border-stone-200 text-stone-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2">
-                <span className="font-semibold text-stone-900">Dynamic Mode:</span>
-                <span>Home page surfaces popular destinations dynamically calculated from active listings and bookings.</span>
-              </div>
+              <p className="tm-muted">The home page picks popular destinations from live listings and bookings.</p>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Custom Destinations Manager */}
-              <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs flex flex-col h-full">
-                <h3 className="font-bold text-stone-900 text-lg mb-2">Active Popular List</h3>
-                <p className="text-sm text-stone-500 mb-6">
-                  These destinations will be shown exactly as listed when Manual Mode is enabled.
+              <div className="tm-panel min-w-0 flex flex-col h-full">
+                <h3 className="tm-h2 mb-1">Your list</h3>
+                <p className="tm-muted mb-4">
+                  Shown exactly as listed when you choose the list yourself.
                 </p>
 
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-2 mb-4">
                   <input
                     type="text"
                     value={newDestination}
                     onChange={e => setNewDestination(e.target.value)}
                     placeholder="E.g. Cape Maclear"
-                    className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                    className="tm-input min-w-0 flex-1"
                     onKeyDown={e => {
                       if (e.key === 'Enter' && newDestination.trim() && !customDestinations.includes(newDestination.trim())) {
                         setCustomDestinations([...customDestinations, newDestination.trim()]);
@@ -3158,7 +3081,7 @@ export default function AdminDashboard() {
                         setNewDestination('');
                       }
                     }}
-                    className="bg-stone-900 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-stone-800 transition"
+                    className="tm-btn tm-btn-primary shrink-0"
                   >
                     Add
                   </button>
@@ -3166,12 +3089,12 @@ export default function AdminDashboard() {
 
                 <div className="flex flex-col gap-2 flex-1">
                   {customDestinations.map((dest, i) => (
-                    <div key={`custom-dest-${dest}-${i}`} className="flex items-center justify-between bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 group">
-                      <span className="font-bold text-stone-900">{i + 1}. {dest}</span>
+                    <div key={`custom-dest-${dest}-${i}`} className="flex items-center justify-between gap-2 border-b border-stone-100 py-2.5 group">
+                      <span className="font-medium text-stone-900 truncate">{i + 1}. {dest}</span>
                       <button
                         type="button"
                         onClick={() => setCustomDestinations(customDestinations.filter(d => d !== dest))}
-                        className="text-stone-400 hover:text-red-500 transition opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 cursor-pointer"
+                        className="text-stone-400 hover:text-red-600 transition shrink-0 p-1 rounded-md hover:bg-red-50 cursor-pointer"
                         title={`Remove ${dest}`}
                         aria-label={`Remove ${dest}`}
                       >
@@ -3180,25 +3103,26 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {customDestinations.length === 0 && (
-                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-stone-200 rounded-2xl p-6 text-center text-stone-500">
-                      List is empty.<br/>Add destinations above.
+                    <div className="flex-1 flex items-center justify-center p-6 text-center tm-muted"
+                    >
+                      No destinations yet. Add one above.
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Data-driven Recommendations */}
-              <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs flex flex-col h-full max-h-[600px]">
-                <h3 className="font-bold text-stone-900 text-lg mb-2">Performance Data</h3>
-                <p className="text-sm text-stone-500 mb-6">
-                  Calculated from live platform data (Bookings carry more weight). Click to add to your custom list.
+              <div className="tm-panel min-w-0 flex flex-col h-full max-h-[600px]">
+                <h3 className="tm-h2 mb-1">Suggestions</h3>
+                <p className="tm-muted mb-4">
+                  Ranked from live listings and bookings. Add any to your list.
                 </p>
                 
                 <div className="overflow-y-auto pr-2 space-y-2 flex-1 scrollbar-slim">
                   {destinationStats.map((stat, sIdx) => (
-                    <div key={`dest-stat-${stat.location}-${sIdx}`} className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition">
-                      <div>
-                        <p className="font-bold text-stone-900">{stat.location}</p>
+                    <div key={`dest-stat-${stat.location}-${sIdx}`} className="flex items-center justify-between gap-2 py-2.5 border-b border-stone-100">
+                      <div className="min-w-0">
+                        <p className="font-medium text-stone-900 truncate">{stat.location}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">
                           <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {stat.listings}</span>
                           <span className="flex items-center gap-1"><CalendarRange className="w-3 h-3" /> {stat.bookings}</span>
@@ -3211,14 +3135,14 @@ export default function AdminDashboard() {
                           }
                         }}
                         disabled={customDestinations.includes(stat.location)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                       >
                         {customDestinations.includes(stat.location) ? 'Added' : 'Add'}
                       </button>
                     </div>
                   ))}
                   {destinationStats.length === 0 && (
-                    <p className="text-stone-500 text-center py-6">No destination data yet.</p>
+                    <p className="tm-muted text-center py-6">No destination data yet.</p>
                   )}
                 </div>
               </div>
@@ -3229,142 +3153,132 @@ export default function AdminDashboard() {
         {/* ===================== CONTENT TAB ===================== */}
         {activeTab === 'content' && (
           <div className="space-y-6 animate-in fade-in duration-200 pb-20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-              <div>
-                <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Content &amp; Legal</h2>
-                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-                  Platform domain, footer contact details, social links, and legal policies.
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200">
+              <div className="min-w-0">
+                <h2 className="tm-h1">Content and legal</h2>
+                <p className="tm-muted mt-0.5">
+                  Domain, footer contact, social links and policies.
                 </p>
               </div>
               <button
                 onClick={handleSaveContent}
                 disabled={savingContent}
-                className="bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer self-start sm:self-auto"
+                className="tm-btn tm-btn-primary"
               >
-                {savingContent ? 'Saving…' : 'Save Changes'}
+                {savingContent ? 'Saving…' : 'Save changes'}
               </button>
             </div>
             
-            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-5 space-y-6">
+            <div className="tm-panel min-w-0 space-y-6">
               <div>
-                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Domain &amp; Footer Contact</h3>
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Domain and footer contact</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Platform Domain</label>
+                    <label className="tm-label">Platform domain</label>
                     <input
                       type="url"
                       value={contentSettings.platformDomain || ''}
                       onChange={e => setContentSettings({...contentSettings, platformDomain: e.target.value})}
                       placeholder="https://ulendomalawi.com"
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
-                    <p className="text-[11px] text-stone-400 mt-1">Used across outbound emails and partner guides.</p>
+                    <p className="tm-muted mt-1 text-xs">Used in emails and partner guides.</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Support Email</label>
+                    <label className="tm-label">Support email</label>
                     <input
                       type="email"
                       value={contentSettings.contactEmail || ''}
                       onChange={e => setContentSettings({...contentSettings, contactEmail: e.target.value})}
                       placeholder="info@ulendomalawi.com"
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
-                    <p className="text-[11px] text-stone-400 mt-1">Displayed in website footer and receipts.</p>
+                    <p className="tm-muted mt-1 text-xs">Shown in the footer and on receipts.</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Support Phone</label>
+                    <label className="tm-label">Support phone</label>
                     <input
                       type="text"
                       value={contentSettings.contactPhone || ''}
                       onChange={e => setContentSettings({...contentSettings, contactPhone: e.target.value})}
                       placeholder="+265 99 123 4567"
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
-                    <p className="text-[11px] text-stone-400 mt-1">Leave blank to hide from footer.</p>
+                    <p className="tm-muted mt-1 text-xs">Leave blank to hide it from the footer.</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Social Media Links</h3>
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Social links</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Facebook URL</label>
+                    <label className="tm-label">Facebook URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialFacebook || ''}
                       onChange={e => setContentSettings({...contentSettings, socialFacebook: e.target.value})}
                       placeholder="https://facebook.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Instagram URL</label>
+                    <label className="tm-label">Instagram URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialInstagram || ''}
                       onChange={e => setContentSettings({...contentSettings, socialInstagram: e.target.value})}
                       placeholder="https://instagram.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">X / Twitter URL</label>
+                    <label className="tm-label">X / Twitter URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialTwitter || ''}
                       onChange={e => setContentSettings({...contentSettings, socialTwitter: e.target.value})}
                       placeholder="https://twitter.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Legal Policies (Markdown Supported)</h3>
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Legal policies (Markdown works)</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Privacy Policy</label>
+                    <label className="tm-label">Privacy policy</label>
                     <textarea
                       value={contentSettings.privacyPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, privacyPolicy: e.target.value})}
                       rows={5}
-                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      placeholder="Leave blank to use the default text"
+                      className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Terms of Service</label>
+                    <label className="tm-label">Terms of service</label>
                     <textarea
                       value={contentSettings.termsOfService || ''}
                       onChange={e => setContentSettings({...contentSettings, termsOfService: e.target.value})}
                       rows={5}
-                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      placeholder="Leave blank to use the default text"
+                      className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Refund Policy</label>
+                    <label className="tm-label">Refund policy</label>
                     <textarea
                       value={contentSettings.refundPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, refundPolicy: e.target.value})}
                       rows={5}
-                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
+                      placeholder="Leave blank to use the default text"
+                      className="tm-input"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="flex justify-end pt-2 border-t border-stone-100">
-                <button
-                  onClick={handleSaveContent}
-                  disabled={savingContent}
-                  className="bg-stone-900 hover:bg-stone-800 text-white px-5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer"
-                >
-                  {savingContent ? 'Saving…' : 'Save Content'}
-                </button>
               </div>
             </div>
           </div>
@@ -3388,7 +3302,7 @@ export default function AdminDashboard() {
         {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
         {activeTab === 'settings' && canViewTab('settings') && (
           <div className="space-y-6">
-            <div className="flex items-center gap-5 sm:gap-8 border-b border-stone-200/90 pb-0 w-full overflow-x-auto no-scrollbar" role="tablist">
+            <div className="flex items-center gap-5 sm:gap-8 border-b border-stone-200 pb-0 w-full max-w-full overflow-x-auto no-scrollbar" role="tablist">
               <button
                 type="button"
                 role="tab"
@@ -3401,7 +3315,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <CalendarSync className="w-3.5 h-3.5 shrink-0" />
-                <span>iCal &amp; Channel Manager</span>
+                <span>iCal and channels</span>
               </button>
               <button
                 type="button"
@@ -3415,7 +3329,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                <span>WhatsApp Messaging</span>
+                <span>WhatsApp</span>
               </button>
               <button
                 type="button"
@@ -3429,7 +3343,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <Mail className="w-3.5 h-3.5 shrink-0" />
-                <span>Email &amp; SMTP</span>
+                <span>Email</span>
               </button>
             </div>
 
@@ -3486,7 +3400,7 @@ export default function AdminDashboard() {
 
         <ConfirmDialog
           isOpen={!!hotelToDelete}
-          title="Delete Property Listing"
+          title="Delete property listing"
           message={`Are you sure you want to permanently delete "${hotelToDelete?.name}"? All associated room types, inventory, and configurations will be permanently deleted from the database. This action cannot be undone.`}
           confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete listing"}
           cancelText="Cancel"
@@ -3499,7 +3413,7 @@ export default function AdminDashboard() {
 
         <ConfirmDialog
           isOpen={!!bookingToDelete}
-          title="Delete Booking"
+          title="Delete booking"
           message={`Are you sure you want to permanently delete booking Ref #${bookingToDelete?.reference || bookingToDelete?.id?.slice(0, 8)} for ${bookingToDelete?.guestName}? Room availability will be restored and any automated reminders will be cancelled.`}
           confirmText={isDeletingBooking ? "Deleting..." : "Yes, delete booking"}
           cancelText="Cancel"
@@ -3512,7 +3426,7 @@ export default function AdminDashboard() {
 
         <ConfirmDialog
           isOpen={!!userToDelete}
-          title="Delete User Profile"
+          title="Delete user profile"
           message={`Are you sure you want to permanently delete the profile for ${userToDelete?.email || userToDelete?.displayName || userToDelete?.uid}? This will remove all their access and data.`}
           confirmText={isDeletingUser ? "Deleting..." : "Yes, delete user"}
           cancelText="Cancel"
@@ -3525,9 +3439,9 @@ export default function AdminDashboard() {
 
         <ConfirmDialog
           isOpen={!!resetEmailTarget}
-          title="Reset Password"
+          title="Reset password"
           message={`Send a password reset email to ${resetEmailTarget}?`}
-          confirmText="Send Reset Link"
+          confirmText="Send reset link"
           cancelText="Cancel"
           isDestructive={false}
           onConfirm={async () => {
@@ -3565,12 +3479,12 @@ export default function AdminDashboard() {
 
         {/* Assign / Reassign Manager Modal */}
         {hotelToAssignManager && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-stone-200 space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 animate-in fade-in duration-150">
+            <div className="tm-panel max-w-lg w-full max-h-[90vh] overflow-y-auto sm:p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-stone-100">
                 <div>
-                  <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
-                    Assign Property Manager
+                  <h3 className="tm-h2">
+                    Assign property manager
                   </h3>
                   <p className="text-xs text-stone-500 mt-0.5">
                     {hotelToAssignManager.name}
@@ -3587,8 +3501,8 @@ export default function AdminDashboard() {
 
               <div className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-stone-700 font-semibold mb-1">
-                    Select Registered Host / User
+                  <label className="tm-label">
+                    Registered host or user
                   </label>
                   <select
                     value={assignManagerSelectedUid}
@@ -3601,18 +3515,18 @@ export default function AdminDashboard() {
                         setAssignManagerCustomName(matched.displayName || matched.email?.split('@')[0] || '');
                       }
                     }}
-                    className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900 cursor-pointer"
+                    className="tm-input cursor-pointer"
                   >
-                    <option value="">-- Choose registered user or enter details below --</option>
-                    <option value="unassigned">⚠️ Unassigned (Managed by platform admins only)</option>
-                    <optgroup label="Registered Hosts &amp; Managers">
+                    <option value="">Choose a user, or enter details below</option>
+                    <option value="unassigned">Unassigned (platform admins only)</option>
+                    <optgroup label="Hosts and managers">
                       {users.filter(u => userRoles(u).includes('hotel_manager')).map(u => (
                         <option key={`mgr-${u.uid}`} value={u.uid}>
                           {u.displayName || 'Unnamed'} ({u.email})
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Other Registered Accounts">
+                    <optgroup label="Other accounts">
                       {users.filter(u => !userRoles(u).includes('hotel_manager')).map(u => (
                         <option key={`usr-${u.uid}`} value={u.uid}>
                           {u.displayName || 'User'} ({u.email}) [{userRoles(u).join(', ')}]
@@ -3624,53 +3538,53 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
-                    <label className="block text-stone-600 font-medium mb-1">
-                      Manager Display Name
+                    <label className="tm-label">
+                      Manager name
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. Kondwani Phiri"
                       value={assignManagerCustomName}
                       onChange={(e) => setAssignManagerCustomName(e.target.value)}
-                      className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-stone-600 font-medium mb-1">
-                      Manager Direct Email
+                    <label className="tm-label">
+                      Manager email
                     </label>
                     <input
                       type="email"
                       placeholder="manager@lodge.mw"
                       value={assignManagerCustomEmail}
                       onChange={(e) => setAssignManagerCustomEmail(e.target.value)}
-                      className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                      className="tm-input"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-stone-600 font-medium mb-1">
-                    Property Owner / Holding Entity Email (Optional)
+                  <label className="tm-label">
+                    Owner email (optional)
                   </label>
                   <input
                     type="email"
                     placeholder="owner@company.mw"
                     value={assignManagerOwnerEmail}
                     onChange={(e) => setAssignManagerOwnerEmail(e.target.value)}
-                    className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                    className="tm-input"
                   />
-                  <p className="text-[11px] text-stone-400 mt-1">
-                    If the property owner is separate from the day-to-day manager, they will also have management access.
+                  <p className="tm-muted mt-1 text-xs">
+                    A separate owner also gets management access.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+              <div className="tm-actions justify-end pt-3 border-t border-stone-100">
                 <button
                   type="button"
                   onClick={() => setHotelToAssignManager(null)}
-                  className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium transition cursor-pointer"
+                  className="tm-btn tm-btn-quiet"
                 >
                   Cancel
                 </button>
@@ -3678,9 +3592,9 @@ export default function AdminDashboard() {
                   type="button"
                   disabled={isAssigningManager}
                   onClick={handleSaveManagerAssignment}
-                  className="bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="tm-btn tm-btn-primary"
                 >
-                  {isAssigningManager ? 'Saving...' : 'Save Assignment'}
+                  {isAssigningManager ? 'Saving...' : 'Save assignment'}
                 </button>
               </div>
             </div>

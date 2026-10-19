@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SlidersHorizontal, Check, X, Tag, Coffee, ShieldCheck, Loader2, ArrowRight } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 import { PropertyCategory, PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 
@@ -67,22 +67,19 @@ export default function LinkDescriptionModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/50 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-sm border border-stone-200 flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-stone-100 bg-stone-50/50">
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-stone-100">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-stone-100 text-stone-700 border border-stone-200">
-              <SlidersHorizontal className="h-5 w-5" />
-            </span>
             <div>
-              <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
-                Link Description to Amenities & Category
+              <h3 className="tm-h2">
+                Match amenities and category
               </h3>
               <p className="text-xs text-stone-500">
                 {aiPowered
-                  ? 'Analyzed by Ulendo AI using Malawian hospitality intelligence'
-                  : 'Analyzed using Malawian property matching intelligence'}
+                  ? 'Ulendo read your description. Check the picks before applying.'
+                  : 'Picked from your description. Check them before applying.'}
               </p>
             </div>
           </div>
@@ -100,21 +97,18 @@ export default function LinkDescriptionModal({
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-stone-500">
               <Loader2 className="h-8 w-8 animate-spin text-stone-900" />
-              <p className="text-sm font-medium">Analyzing property description with Ulendo AI…</p>
-              <p className="text-xs text-stone-400">Detecting common amenities and fitting categories</p>
+              <p className="text-sm font-medium">Reading your description…</p>
             </div>
           ) : !analysis ? (
             <div className="py-8 text-center text-stone-500 text-sm">
-              No description text provided to analyze. Please write a description first.
+              Write a description first, then try again.
             </div>
           ) : (
             <>
               {/* Reasoning Card */}
               {analysis.reasoning && (
-                <div className="rounded-xl border border-stone-200 bg-stone-50 p-3.5 text-xs text-stone-700 flex items-start gap-2.5">
-                  <SlidersHorizontal className="h-4 w-4 text-stone-500 shrink-0 mt-0.5" />
+                <div className="rounded-lg bg-stone-50 p-3 text-xs text-stone-700">
                   <div>
-                    <span className="font-semibold text-stone-900">Ulendo Assessment: </span>
                     {analysis.reasoning}
                   </div>
                 </div>
@@ -123,11 +117,10 @@ export default function LinkDescriptionModal({
               {/* Befitting Categories */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="h-3.5 w-3.5 text-stone-400" />
-                    <span>Befitting Property Categories</span>
+                  <label className="text-sm font-medium text-stone-700">
+                    Category
                   </label>
-                  <span className="text-[11px] text-stone-400">Tap to select or deselect</span>
+                  <span className="text-[11px] text-stone-400">Tap to choose</span>
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
@@ -140,9 +133,9 @@ export default function LinkDescriptionModal({
                         key={category}
                         type="button"
                         onClick={() => toggleCategory(category)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
                           isSelected
-                            ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                            ? 'bg-stone-900 text-white border-stone-900'
                             : isSuggested
                             ? 'bg-amber-50 text-stone-800 border-amber-300 hover:border-stone-400'
                             : 'bg-stone-50 text-stone-500 border-stone-200 hover:border-stone-300'
@@ -151,7 +144,7 @@ export default function LinkDescriptionModal({
                         {isSelected && <Check className="h-3 w-3" />}
                         <span>{category}</span>
                         {isSuggested && !isSelected && (
-                          <span className="text-[10px] text-amber-700 font-semibold uppercase">Suggested</span>
+                          <span className="text-[10px] text-amber-800 font-medium">suggested</span>
                         )}
                       </button>
                     );
@@ -162,23 +155,22 @@ export default function LinkDescriptionModal({
               {/* Matched Common Amenities */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <Coffee className="h-3.5 w-3.5 text-stone-400" />
-                    <span>Matched Common Amenities ({selectedAmens.length} selected)</span>
+                  <label className="text-sm font-medium text-stone-700">
+                    Amenities ({selectedAmens.length} selected)
                   </label>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedAmens(COMMON_AMENITIES.filter(a => (analysis.matchedAmenities || []).includes(a)))}
-                      className="text-[11px] font-semibold text-stone-500 hover:text-stone-900 cursor-pointer"
+                      className="tm-link text-[11px]"
                     >
-                      Reset to detected
+                      Reset
                     </button>
                     <span className="text-stone-300">|</span>
                     <button
                       type="button"
                       onClick={() => setSelectedAmens([])}
-                      className="text-[11px] font-semibold text-stone-500 hover:text-stone-900 cursor-pointer"
+                      className="tm-link text-[11px]"
                     >
                       Clear all
                     </button>
@@ -186,8 +178,8 @@ export default function LinkDescriptionModal({
                 </div>
 
                 {analysis.matchedAmenities.length === 0 ? (
-                  <p className="text-xs text-stone-400 italic bg-stone-50 p-3 rounded-xl border border-stone-100">
-                    No common amenities explicitly found in description. You can still check any below.
+                  <p className="tm-muted">
+                    No amenities found in the description. You can add them on the form.
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -198,9 +190,9 @@ export default function LinkDescriptionModal({
                           key={amenity}
                           type="button"
                           onClick={() => toggleAmenity(amenity)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
                             isSelected
-                              ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                              ? 'bg-stone-900 text-white border-stone-900'
                               : 'bg-stone-50 text-stone-500 border-stone-200 hover:border-stone-400'
                           }`}
                         >
@@ -216,8 +208,8 @@ export default function LinkDescriptionModal({
               {/* Custom Perks Detected */}
               {analysis.customAmenities && analysis.customAmenities.length > 0 && (
                 <div>
-                  <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-                    Extra Unique Perks Detected
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Other extras found
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {analysis.customAmenities.map(custom => {
@@ -227,10 +219,10 @@ export default function LinkDescriptionModal({
                           key={custom}
                           type="button"
                           onClick={() => toggleCustom(custom)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 ${
                             isSelected
-                              ? 'bg-emerald-800 text-white border-emerald-800'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              ? 'bg-stone-900 text-white border-stone-900'
+                              : 'bg-stone-50 text-stone-500 border-stone-200 hover:border-stone-400'
                           }`}
                         >
                           {isSelected && <Check className="h-3 w-3" />}
@@ -246,15 +238,15 @@ export default function LinkDescriptionModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-stone-100 bg-stone-50/70">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-stone-100">
           <p className="text-xs text-stone-500">
             {selectedCats.length} category • {selectedAmens.length + selectedCustom.length} amenities
           </p>
-          <div className="flex items-center gap-2">
+          <div className="tm-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-200/60 rounded-xl transition cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               Cancel
             </button>
@@ -262,10 +254,9 @@ export default function LinkDescriptionModal({
               type="button"
               disabled={loading || !analysis}
               onClick={handleApply}
-              className="px-5 py-2 text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition shadow-2xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="tm-btn tm-btn-primary tm-btn-sm"
             >
-              <span>Apply to Property</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <span>Apply</span>
             </button>
           </div>
         </div>

@@ -361,7 +361,7 @@ export default function LocationPicker({
 
           {/* Search Dropdown / Autocomplete Results */}
           {showSearchResults && searchQuery.trim().length >= 2 && (
-            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl scrollbar-slim">
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-sm scrollbar-slim">
               {totalResultsCount === 0 && !isSearching ? (
                 <div className="p-4 text-center text-sm text-stone-500">
                   No places found for "{searchQuery}". You can click anywhere on the map below or paste coordinates.

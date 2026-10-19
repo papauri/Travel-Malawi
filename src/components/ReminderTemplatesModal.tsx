@@ -171,7 +171,7 @@ export default function ReminderTemplatesModal({
         throw new Error(data.error || 'Failed to dispatch email reminder.');
       }
 
-      toast.success(`Email reminder sent successfully to ${booking.guestEmail}!`, {
+      toast.success(`Email reminder sent to ${booking.guestEmail}`, {
         icon: '✉️',
       });
       onReminderSent?.();
@@ -199,7 +199,7 @@ export default function ReminderTemplatesModal({
         updatedAt: Date.now(),
       });
       booking.guestWhatsapp = cleanNum;
-      toast.success('Guest WhatsApp number saved to booking!');
+      toast.success('WhatsApp number saved to the booking');
     } catch (err: any) {
       console.error('Failed to save guest WhatsApp:', err);
       toast.error('Could not save WhatsApp number to booking.');
@@ -248,9 +248,9 @@ export default function ReminderTemplatesModal({
 
       if (data.isDirect && data.directLink) {
         window.open(data.directLink, '_blank');
-        toast.success('Opened WhatsApp with template message ready!');
+        toast.success('WhatsApp opened with the message ready');
       } else {
-        toast.success(`WhatsApp reminder sent to ${targetPhone}!`, {
+        toast.success(`WhatsApp reminder sent to ${targetPhone}`, {
           icon: '💬',
         });
       }
@@ -278,7 +278,7 @@ export default function ReminderTemplatesModal({
     } else {
       window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
     }
-    toast.success('Opened WhatsApp with formatted message!');
+    toast.success('WhatsApp opened with the message ready');
   };
 
   // 5. Schedule Reminder for Future
@@ -323,7 +323,7 @@ export default function ReminderTemplatesModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to schedule reminder');
 
-      toast.success(`Reminder scheduled successfully via ${channel === 'whatsapp' ? 'WhatsApp' : 'Email'}!`);
+      toast.success(`Reminder scheduled by ${channel === 'whatsapp' ? 'WhatsApp' : 'email'}`);
       onReminderSent?.();
       onClose();
     } catch (err: any) {
@@ -337,7 +337,7 @@ export default function ReminderTemplatesModal({
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(`${editedSubject}\n\n${editedBody}`);
     setCopied(true);
-    toast.success('Copied reminder message to clipboard!');
+    toast.success('Reminder copied');
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -345,16 +345,16 @@ export default function ReminderTemplatesModal({
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Manager Email Reminders & Templates"
+      title="Send a reminder"
       size="3xl"
     >
       <div className="space-y-6">
         {/* Booking context summary header */}
-        <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-bold text-stone-900 text-sm">{booking.guestName}</span>
+        <div className="bg-stone-50 rounded-lg px-3 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs min-w-0">
+          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0">
+            <span className="font-semibold text-stone-900 text-sm break-words">{booking.guestName}</span>
             <span className="text-stone-400">·</span>
-            <span className="font-mono bg-stone-200/80 px-2 py-0.5 rounded text-stone-700 font-bold">
+            <span className="font-mono bg-stone-200/80 px-2 py-0.5 rounded text-stone-700 font-semibold">
               #{templateVars.bookingRef}
             </span>
             <span className="text-stone-400">·</span>
@@ -367,7 +367,7 @@ export default function ReminderTemplatesModal({
 
           <div className="flex items-center gap-2">
             <span className="text-stone-500">Arrival PIN:</span>
-            <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+            <span className="font-mono font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
               {templateVars.arrivalPin}
             </span>
           </div>
@@ -376,11 +376,11 @@ export default function ReminderTemplatesModal({
         {/* Categories bar */}
         <div className="flex items-center gap-2 border-b border-stone-200 pb-3 overflow-x-auto">
           {[
-            { id: 'all', label: 'All Templates' },
+            { id: 'all', label: 'All' },
             { id: 'arrival', label: 'Arrival & PIN' },
-            { id: 'stay', label: 'Stay & Amenities' },
-            { id: 'payment', label: 'Deposit & Payment' },
-            { id: 'departure', label: 'Departure & Feedback' },
+            { id: 'stay', label: 'During the stay' },
+            { id: 'payment', label: 'Deposit & payment' },
+            { id: 'departure', label: 'Departure & feedback' },
           ].map(cat => (
             <button
               key={cat.id}
@@ -388,7 +388,7 @@ export default function ReminderTemplatesModal({
               onClick={() => setActiveCategory(cat.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                 activeCategory === cat.id
-                  ? 'bg-stone-900 text-white shadow-xs'
+                  ? 'bg-stone-900 text-white'
                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
@@ -397,13 +397,13 @@ export default function ReminderTemplatesModal({
           ))}
         </div>
 
-        {/* 2-Column Layout: Templates List on left, Editor on right */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Templates list (left) and editor (right) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-w-0">
           
           {/* Templates list (5 cols) */}
-          <div className="md:col-span-5 space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
-              Select Ready Template
+          <div className="md:col-span-5 space-y-1 max-h-[480px] overflow-y-auto pr-1 min-w-0">
+            <h4 className="tm-label">
+              Pick a template
             </h4>
             {filteredTemplates.map(template => {
               const isSelected = template.id === selectedTemplateId;
@@ -412,21 +412,17 @@ export default function ReminderTemplatesModal({
                   key={template.id}
                   type="button"
                   onClick={() => setSelectedTemplateId(template.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-1.5 cursor-pointer ${
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors flex flex-col gap-1 cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-50/60 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
-                      : 'bg-white border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                      ? 'bg-amber-50 ring-1 ring-amber-700/30'
+                      : 'hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-stone-900 line-clamp-1">
+                    <span className="text-xs font-semibold text-stone-900 line-clamp-1 min-w-0">
                       {template.title}
                     </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-stone-100 text-stone-600'
-                    }`}>
+                    <span className="tm-tag shrink-0">
                       {template.badge}
                     </span>
                   </div>
@@ -438,14 +434,14 @@ export default function ReminderTemplatesModal({
             })}
           </div>
 
-          {/* Template Compose & Dispatch (7 cols) */}
-          <div className="md:col-span-7 bg-white border border-stone-200 rounded-2xl p-5 space-y-4 flex flex-col justify-between shadow-xs">
+          {/* Compose and send */}
+          <div className="md:col-span-7 space-y-4 flex flex-col justify-between min-w-0 md:border-l md:border-stone-200 md:pl-6">
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-emerald-600" />
-                  <h4 className="text-sm font-bold text-stone-900">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="w-4 h-4 text-stone-500 shrink-0" />
+                  <h4 className="text-sm font-semibold text-stone-900 truncate">
                     {currentTemplate.title}
                   </h4>
                 </div>
@@ -455,7 +451,7 @@ export default function ReminderTemplatesModal({
                     type="button"
                     onClick={() => setActiveView('compose')}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                      activeView === 'compose' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                      activeView === 'compose' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500 hover:text-stone-900'
                     }`}
                   >
                     Edit
@@ -464,10 +460,10 @@ export default function ReminderTemplatesModal({
                     type="button"
                     onClick={() => setActiveView('preview')}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                      activeView === 'preview' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                      activeView === 'preview' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500 hover:text-stone-900'
                     }`}
                   >
-                    HTML Preview
+                    Preview
                   </button>
                 </div>
               </div>
@@ -476,8 +472,8 @@ export default function ReminderTemplatesModal({
               {true ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Recipient Email Address
+                    <label className="tm-label">
+                      Guest email
                     </label>
                     <input
                       type="email"
@@ -485,25 +481,24 @@ export default function ReminderTemplatesModal({
                       readOnly
                       title="Reminders go to the email on the booking. Edit the booking to change it."
                       placeholder="No email on this booking"
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-stone-900 font-medium"
+                      className="tm-input bg-stone-50"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-emerald-850 flex items-center gap-1">
-                        <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                        Guest WhatsApp Number
+                      <label className="text-sm font-medium text-stone-700 flex items-center gap-1">
+                        Guest WhatsApp
                       </label>
                       {recipientWhatsapp.trim() && recipientWhatsapp.trim() !== (booking.guestWhatsapp || '') && (
                         <button
                           type="button"
                           onClick={handleSaveGuestWhatsapp}
                           disabled={savingWhatsappNumber}
-                          className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-0.5 cursor-pointer"
+                          className="tm-link text-xs inline-flex items-center gap-0.5 cursor-pointer"
                         >
                           <Save className="w-2.5 h-2.5" />
-                          {savingWhatsappNumber ? 'Saving...' : 'Save to Booking'}
+                          {savingWhatsappNumber ? 'Saving...' : 'Save to booking'}
                         </button>
                       )}
                     </div>
@@ -512,14 +507,14 @@ export default function ReminderTemplatesModal({
                       value={recipientWhatsapp}
                       onChange={e => setRecipientWhatsapp(e.target.value)}
                       placeholder="Include country code"
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-emerald-600 font-medium text-stone-900"
+                      className="tm-input"
                     />
                   </div>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Recipient Email Address
+                  <label className="tm-label">
+                    Guest email
                   </label>
                   <input
                     type="email"
@@ -527,7 +522,7 @@ export default function ReminderTemplatesModal({
                     readOnly
                     title="Reminders go to the email on the booking. Edit the booking to change it."
                     placeholder="No email on this booking"
-                    className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-stone-900 font-medium"
+                    className="tm-input bg-stone-50"
                   />
                 </div>
               )}
@@ -536,22 +531,22 @@ export default function ReminderTemplatesModal({
                 <>
                   {/* Subject line */}
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Email Subject
+                    <label className="tm-label">
+                      Email subject
                     </label>
                     <input
                       type="text"
                       value={editedSubject}
                       onChange={e => setEditedSubject(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-stone-900 font-medium text-stone-900"
+                      className="tm-input"
                     />
                   </div>
 
                   {/* Message body */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-stone-700">
-                        Email Message Body (Variables Auto-Filled)
+                      <label className="text-sm font-medium text-stone-700">
+                        Message
                       </label>
                       <button
                         type="button"
@@ -566,12 +561,12 @@ export default function ReminderTemplatesModal({
                       rows={9}
                       value={editedBody}
                       onChange={e => setEditedBody(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 rounded-xl text-xs font-sans leading-relaxed text-stone-800 focus:outline-none focus:border-stone-900 resize-none"
+                      className="tm-input leading-relaxed resize-none"
                     />
                   </div>
                 </>
               ) : (
-                <div className="border border-stone-200 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto p-4 bg-stone-50">
+                <div className="border border-stone-200 rounded-lg overflow-hidden max-h-[300px] overflow-y-auto p-4 bg-stone-50 break-words">
                   <div 
                     dangerouslySetInnerHTML={{ __html: htmlPreview }} 
                     className="prose prose-sm max-w-none"
@@ -580,47 +575,47 @@ export default function ReminderTemplatesModal({
               )}
             </div>
 
-            {/* Action dispatch buttons */}
+            {/* Send buttons */}
             <div className="pt-4 border-t border-stone-100 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {/* Send Email Now button */}
+              <div className="tm-actions">
+                {/* Send email now */}
                 <button
                   type="button"
                   onClick={handleSendEmailNow}
                   disabled={sendingEmail || !booking.guestEmail}
-                  className="flex-1 min-w-[150px] py-2.5 bg-stone-900 hover:bg-black text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="tm-btn tm-btn-primary flex-1 min-w-[150px]"
                 >
                   {sendingEmail ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  {sendingEmail ? 'Dispatching...' : 'Send Email Now'}
+                  {sendingEmail ? 'Sending...' : 'Send email'}
                 </button>
 
-                {/* WhatsApp buttons (ONLY rendered if WhatsApp is enabled in Admin Portal) */}
+                {/* WhatsApp buttons */}
                 {true && (
                   <>
                     <button
                       type="button"
                       onClick={handleSendWhatsAppNow}
                       disabled={sendingWhatsapp || !recipientWhatsapp.trim()}
-                      className="flex-1 min-w-[150px] py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
-                      title={recipientWhatsapp.trim() ? 'Send template via WhatsApp' : 'Please provide guest WhatsApp number'}
+                      className="tm-btn tm-btn-secondary flex-1 min-w-[150px]"
+                      title={recipientWhatsapp.trim() ? 'Send template via WhatsApp' : 'Add the guest WhatsApp number first'}
                     >
                       {sendingWhatsapp ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
                         <MessageSquare className="w-4 h-4" />
                       )}
-                      {sendingWhatsapp ? 'Dispatching...' : 'Send WhatsApp Now'}
+                      {sendingWhatsapp ? 'Sending...' : 'Send WhatsApp'}
                     </button>
 
                     <button
                       type="button"
                       onClick={handleOpenWhatsApp}
-                      className="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-                      title="Open chat directly in WhatsApp Web or Mobile"
+                      className="tm-btn tm-btn-quiet"
+                      title="Open the chat in WhatsApp"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       wa.me
@@ -629,14 +624,14 @@ export default function ReminderTemplatesModal({
                 )}
               </div>
 
-              {/* Schedule option row */}
+              {/* Schedule */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-stone-100">
                 {true && (
-                  <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl shrink-0">
+                  <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg shrink-0">
                     <button
                       type="button"
                       onClick={() => setScheduleChannel('email')}
-                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                         scheduleChannel === 'email' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500 hover:text-stone-900'
                       }`}
                     >
@@ -645,8 +640,8 @@ export default function ReminderTemplatesModal({
                     <button
                       type="button"
                       onClick={() => setScheduleChannel('whatsapp')}
-                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
-                        scheduleChannel === 'whatsapp' ? 'bg-white text-emerald-800 shadow-2xs' : 'text-stone-500 hover:text-stone-900'
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                        scheduleChannel === 'whatsapp' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500 hover:text-stone-900'
                       }`}
                     >
                       WhatsApp
@@ -658,14 +653,14 @@ export default function ReminderTemplatesModal({
                   type="datetime-local"
                   value={scheduledDateTime}
                   onChange={e => setScheduledDateTime(e.target.value)}
-                  className="bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs flex-1"
+                  className="tm-input flex-1 min-w-0"
                 />
                 
                 <button
                   type="button"
                   onClick={handleScheduleReminder}
                   disabled={scheduling || !scheduledDateTime}
-                  className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40 shrink-0 cursor-pointer"
+                  className="tm-btn tm-btn-secondary shrink-0"
                 >
                   {scheduling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
                   Schedule {scheduleChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}

@@ -97,30 +97,30 @@ export function CallModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70"
         >
           {incomingCall ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mb-6 animate-pulse">
+            <div className="bg-white rounded-xl border border-stone-200 p-6 sm:p-8 max-w-sm w-full shadow-sm flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-stone-100 text-stone-700 rounded-full flex items-center justify-center mb-5">
                 {incomingCall.type === 'video' ? <Video size={32} /> : <Phone size={32} />}
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Incoming Call
+              <h3 className="tm-h2 mb-1">
+                Incoming call
               </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-8">
-                {incomingCall.callerName} is calling...
+              <p className="tm-muted mb-6 break-words">
+                {incomingCall.callerName} is calling
               </p>
-              <div className="flex gap-4 w-full">
+              <div className="flex gap-3 w-full">
                 <button
                   onClick={() => onReject(incomingCall)}
-                  className="flex-1 py-3 px-4 rounded-xl font-medium text-white bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                  className="tm-btn tm-btn-danger flex-1"
                 >
                   <PhoneOff size={20} />
                   Decline
                 </button>
                 <button
                   onClick={() => onAnswer(incomingCall)}
-                  className="flex-1 py-3 px-4 rounded-xl font-medium text-white bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                  className="tm-btn flex-1 bg-emerald-700 text-white hover:bg-emerald-800"
                 >
                   {incomingCall.type === 'video' ? <Video size={20} /> : <Phone size={20} />}
                   Accept
@@ -128,15 +128,15 @@ export function CallModal({
               </div>
             </div>
           ) : activeCall ? (
-            <div className="relative w-full max-w-4xl aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
+            <div className="relative w-full max-w-4xl aspect-video bg-stone-900 rounded-xl overflow-hidden shadow-sm flex items-center justify-center">
               {/* Network Quality Indicator */}
               {activeCall.status === 'connected' && networkQuality !== 'unknown' && (
-                <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 bg-gray-900/60 backdrop-blur-md rounded-full border border-gray-700/50">
-                  {networkQuality === 'excellent' && <SignalHigh size={16} className="text-green-400" />}
-                  {networkQuality === 'good' && <SignalMedium size={16} className="text-emerald-400" />}
-                  {networkQuality === 'fair' && <SignalLow size={16} className="text-yellow-400" />}
-                  {networkQuality === 'poor' && <SignalZero size={16} className="text-red-500" />}
-                  <span className="text-xs font-medium text-white capitalize">{networkQuality} Connection</span>
+                <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 bg-stone-900/70 rounded-lg border border-stone-700/50">
+                  {networkQuality === 'excellent' && <SignalHigh size={16} className="text-stone-100" />}
+                  {networkQuality === 'good' && <SignalMedium size={16} className="text-stone-200" />}
+                  {networkQuality === 'fair' && <SignalLow size={16} className="text-amber-300" />}
+                  {networkQuality === 'poor' && <SignalZero size={16} className="text-red-400" />}
+                  <span className="text-xs font-medium text-white capitalize">{networkQuality} connection</span>
                 </div>
               )}
 
@@ -150,16 +150,16 @@ export function CallModal({
               
               {activeCall.type === 'audio' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                  <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                    <Phone size={40} className="text-gray-400 animate-pulse" />
+                  <div className="w-20 h-20 bg-stone-800 rounded-full flex items-center justify-center mb-4">
+                    <Phone size={36} className="text-stone-300" />
                   </div>
-                  <h3 className="text-xl font-medium">{activeCall.status === 'ringing' ? 'Ringing...' : 'Connected'}</h3>
+                  <h3 className="text-xl font-medium">{activeCall.status === 'ringing' ? 'Ringing' : 'Connected'}</h3>
                 </div>
               )}
 
               {/* Local Video */}
               {activeCall.type === 'video' && (
-                <div className="absolute top-4 right-4 w-48 aspect-video bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-gray-700">
+                <div className="absolute top-4 right-4 w-28 sm:w-48 aspect-video bg-stone-800 rounded-lg overflow-hidden shadow-sm border border-stone-700">
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -171,11 +171,11 @@ export function CallModal({
               )}
 
               {/* Controls */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 bg-gray-900/80 backdrop-blur-md rounded-full border border-gray-700">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2.5 bg-stone-900/85 rounded-xl border border-stone-700">
                 <button
                   onClick={toggleSpeaker}
                   className={`p-3 rounded-full transition-colors ${
-                    !isSpeakerOn ? 'bg-red-500 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'
+                    !isSpeakerOn ? 'bg-red-600 text-white' : 'bg-stone-700 text-white hover:bg-stone-600'
                   }`}
                   title={isSpeakerOn ? "Mute audio" : "Unmute audio"}
                 >
@@ -184,7 +184,7 @@ export function CallModal({
                 <button
                   onClick={toggleMute}
                   className={`p-3 rounded-full transition-colors ${
-                    isMuted ? 'bg-red-500 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'
+                    isMuted ? 'bg-red-600 text-white' : 'bg-stone-700 text-white hover:bg-stone-600'
                   }`}
                   title={isMuted ? "Unmute microphone" : "Mute microphone"}
                 >
@@ -194,7 +194,7 @@ export function CallModal({
                   <button
                     onClick={toggleVideo}
                     className={`p-3 rounded-full transition-colors ${
-                      isVideoOff ? 'bg-red-500 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'
+                      isVideoOff ? 'bg-red-600 text-white' : 'bg-stone-700 text-white hover:bg-stone-600'
                     }`}
                     title={isVideoOff ? "Turn on camera" : "Turn off camera"}
                   >
@@ -203,7 +203,7 @@ export function CallModal({
                 )}
                 <button
                   onClick={onEndCall}
-                  className="p-3 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  className="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
                   title="End call"
                 >
                   <PhoneOff size={20} />

@@ -6,12 +6,42 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import { downloadDocHtml } from '../lib/downloadDoc';
+
+const CHANNELS = [
+  { id: 'whatsapp', label: 'WhatsApp and phone calls' },
+  { id: 'otas', label: 'Booking.com or Airbnb' },
+  { id: 'corporate', label: 'Corporate and NGO orders' },
+  { id: 'walkins', label: 'Walk-ins and word of mouth' },
+];
+
+const PAIN_POINTS = [
+  { key: 'otaCommissions' as const, label: 'Paying 15% to 25% commission to booking sites' },
+  { key: 'delayedPayouts' as const, label: 'Slow foreign transfers and forex costs' },
+  { key: 'manualMessaging' as const, label: 'Repeating the same WhatsApp answers' },
+  { key: 'doubleBookings' as const, label: 'Tracking calendars by hand' },
+];
+
+const FEATURES = [
+  { id: 'payouts', label: 'Kwacha payouts (Airtel Money, TNM Mpamba, bank)' },
+  { id: 'zero_comm', label: '0% launch commission' },
+  { id: 'ical_sync', label: 'Calendar sync with Airbnb and RoomRaccoon' },
+  { id: 'ai_concierge', label: '24/7 guest chat with Ulendo' },
+  { id: 'shadow_support', label: 'Live setup help from our team' },
+  { id: 'calendar', label: 'Date blocker for offline bookings' },
+];
+
+const PILOT = [
+  { id: 'yes', label: 'Yes, we want to join the Founding Host Pilot' },
+  { id: 'briefing', label: 'Maybe, we would like a quick call first' },
+  { id: 'later', label: 'Not now, keep us updated' },
+];
 
 export default function ConceptValidationSurvey() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'concept-validation-survey',
-    'Pre-Launch Partner Survey: Direct Bookings & Local Payments',
-    'We are building a direct booking platform for independent lodges, cottages, and safari camps across Lake Malawi, Lilongwe, Blantyre, and the National Parks. Before opening to travelers, we want to hear directly from property managers to ensure we solve your daily operational hurdles.'
+    'Host survey: direct bookings and local payments',
+    'Three minutes. Tell us what slows your property down so we build the right tools.'
   );
 
   const [copied, setCopied] = useState(false);
@@ -36,24 +66,15 @@ export default function ConceptValidationSurvey() {
     pilotInterest: 'yes'
   });
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  const handleDownloadHtml = () => {
-    const link = document.createElement('a');
-    link.href = '/api/admin/docs/concept-validation-survey?format=html&download=1';
-    link.download = 'travel_malawi_partner_survey.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Downloaded survey document (.html)');
-  };
+  const handleDownloadHtml = () =>
+    downloadDocHtml('concept-validation-survey', 'travel_malawi_partner_survey.html', 'Downloaded survey (.html)');
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    toast.success('Link copied to clipboard!');
+    toast.success('Link copied');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -114,66 +135,45 @@ export default function ConceptValidationSurvey() {
 
       setSubmissionId(refId);
       setIsSubmitted(true);
-      toast.success('Zikomo! Survey submitted successfully.');
+      toast.success('Zikomo! Survey submitted.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error('Survey submit error:', err);
-      toast.error('Failed to submit survey. Please try again or reach out on WhatsApp.');
+      toast.error('Could not submit the survey. Try again or message us on WhatsApp.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const secondaryBtn =
-    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
-  const primaryBtn =
-    'inline-flex items-center justify-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
-  const inputCls =
-    'w-full bg-white border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900';
-  const labelCls = 'block text-sm font-medium text-stone-700 mb-1';
-  const optionCls = 'flex items-start gap-3 py-2 cursor-pointer select-none';
+  const optionCls = 'flex items-start gap-3 py-1.5 cursor-pointer select-none text-sm text-stone-800';
 
   return (
-    <div className="min-h-screen bg-white text-stone-700 font-sans">
-      <div className="max-w-3xl mx-auto px-5 py-12 print:py-0">
-
-        {/* Toolbar (hidden when printing) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8 print:hidden">
-          <Link to="/admin" className={secondaryBtn} title="Return to Admin Hub">
-            <ArrowLeft size={16} className="text-stone-500" />
-            <span>Admin Hub</span>
+    <div className="min-h-screen bg-white text-stone-700">
+      <div className="tm-page max-w-3xl py-8 sm:py-12 print:py-0">
+        <div className="tm-actions mb-6 print:hidden">
+          <Link to="/admin" className="tm-btn tm-btn-secondary tm-btn-sm">
+            <ArrowLeft size={14} /> Admin
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <DocQuickEditButton docId="concept-validation-survey" onSaved={() => refreshDoc()} />
-            <button onClick={handleShareWhatsApp} className={secondaryBtn} title="Share via WhatsApp">
-              <MessageSquare size={16} className="text-stone-500" />
-              <span>Share on WhatsApp</span>
-            </button>
-            <button onClick={handlePrint} className={secondaryBtn} title="Print or export as PDF">
-              <Printer size={16} className="text-stone-500" />
-              <span>Print / PDF</span>
-            </button>
-            <button onClick={handleDownloadHtml} className={secondaryBtn} title="Download HTML copy">
-              <Download size={16} className="text-stone-500" />
-              <span>HTML</span>
-            </button>
-            <button onClick={handleCopyLink} className={secondaryBtn} title="Copy survey URL">
-              {copied ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
-              <span>{copied ? 'Copied' : 'Copy link'}</span>
-            </button>
-          </div>
+          <DocQuickEditButton docId="concept-validation-survey" onSaved={() => refreshDoc()} />
+          <button onClick={handleShareWhatsApp} className="tm-btn tm-btn-secondary tm-btn-sm">
+            <MessageSquare size={14} /> Share
+          </button>
+          <button onClick={handleCopyLink} className="tm-btn tm-btn-secondary tm-btn-sm">
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy link'}
+          </button>
+          <button onClick={handleDownloadHtml} className="tm-btn tm-btn-secondary tm-btn-sm">
+            <Download size={14} /> HTML
+          </button>
+          <button onClick={handlePrint} className="tm-btn tm-btn-primary tm-btn-sm">
+            <Printer size={14} /> Print / PDF
+          </button>
         </div>
 
-        {/* Header */}
-        <header className="border-b border-stone-200 pb-6 mb-8">
-          <p className="text-sm text-stone-500">Travel Malawi &middot; Host discovery survey &middot; 2026</p>
-          <h1 className="mt-2 text-3xl font-semibold text-stone-900">{customTitle}</h1>
-          <p className="mt-2 text-stone-500 text-[15px] leading-relaxed">{customSubtitle}</p>
-          <p className="mt-3 text-sm text-stone-500">
-            Time to complete: about 3 minutes &middot; Direct WhatsApp payouts &middot; 0% launch commission
-          </p>
+        <header className="mb-8">
+          <h1 className="tm-h1">{customTitle}</h1>
+          <p className="tm-lead mt-2">{customSubtitle}</p>
           {(isCustomized || lastEditedBy) && (
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="tm-muted mt-2">
               {isCustomized && 'Customised edition'}
               {isCustomized && lastEditedBy && ' · '}
               {lastEditedBy && `Maintained by ${lastEditedBy}`}
@@ -182,103 +182,111 @@ export default function ConceptValidationSurvey() {
         </header>
 
         {isSubmitted ? (
-          /* Confirmation */
-          <section>
-            <h2 className="text-xl font-semibold text-stone-900">Zikomo Kwambiri!</h2>
-            <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
-              Thank you, <strong className="font-semibold text-stone-900">{formData.contactName || 'Partner'}</strong>. Your survey responses for <strong className="font-semibold text-stone-900">{formData.propName || 'your property'}</strong> have been received by our operations team.
+          <section className="tm-panel">
+            <h2 className="tm-h2">Zikomo kwambiri</h2>
+            <p className="tm-lead mt-2">
+              Thank you, {formData.contactName || 'partner'}. We have your answers for {formData.propName || 'your property'} and will message you on WhatsApp ({formData.contactPhone || 'the number you gave'}).
             </p>
             {submissionId && (
-              <p className="mt-2 text-sm text-stone-500">
-                Submission ID: <span className="font-mono">{submissionId}</span>
+              <p className="tm-muted mt-2">
+                Reference: <span className="font-mono">{submissionId}</span>
               </p>
             )}
-
-            <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
-              <h3 className="text-base font-semibold text-stone-900">What happens next</h3>
-              <ul className="mt-2 list-disc pl-5 space-y-1 text-[15px] leading-relaxed text-stone-700">
-                <li>Our team will review your pain points and room requirements.</li>
-                <li>We will connect with you via WhatsApp ({formData.contactPhone || 'provided contact'}).</li>
-                <li>If eligible, your stay will be prioritized for the 0% launch cohort.</li>
-              </ul>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2 print:hidden">
-              <button onClick={handlePrint} className={primaryBtn}>
-                Print copy for records
-              </button>
-              <button onClick={() => setIsSubmitted(false)} className={secondaryBtn}>
-                Edit or submit another response
-              </button>
+            <div className="tm-actions mt-4 print:hidden">
+              <button onClick={handlePrint} className="tm-btn tm-btn-primary">Print a copy</button>
+              <button onClick={() => setIsSubmitted(false)} className="tm-btn tm-btn-secondary">Edit or send another</button>
             </div>
           </section>
         ) : (
-          /* Survey form */
-          <form onSubmit={handleSubmit}>
-
-            {/* Section 1 */}
+          <form onSubmit={handleSubmit} className="space-y-8">
             <section>
-              <h2 className="text-xl font-semibold text-stone-900">1. How Your Property Currently Receives Bookings</h2>
-              <p className="mt-1 text-[15px] leading-relaxed text-stone-500">
-                Select the channels where your guests typically find and confirm reservations.
-              </p>
-              <div className="mt-4">
-                {[
-                  { id: 'whatsapp', label: 'Direct WhatsApp & Phone Calls', sub: 'Manual messaging and sharing bank details directly' },
-                  { id: 'otas', label: 'Foreign OTAs (Booking.com / Airbnb)', sub: 'Paying 15% to 25% commission on each stay' },
-                  { id: 'corporate', label: 'Corporate & NGO Purchase Orders', sub: 'Lilongwe/Blantyre business retreats and consultants' },
-                  { id: 'walkins', label: 'Walk-ins & Word of Mouth', sub: 'Returning guests and drive-by holidaymakers' }
-                ].map(item => {
-                  const isChecked = formData.channels.includes(item.id);
-                  return (
-                    <label
-                      key={item.id}
-                      onClick={() => toggleCheckbox('channels', item.id)}
-                      className={optionCls}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="mt-1 accent-stone-900"
-                      />
-                      <span>
-                        <span className="block text-[15px] font-medium text-stone-900">{item.label}</span>
-                        <span className="block text-sm text-stone-500">{item.sub}</span>
-                      </span>
-                    </label>
-                  );
-                })}
+              <h2 className="tm-h2">Your property</h2>
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="sv-prop" className="tm-label">Property name</label>
+                  <input
+                    id="sv-prop"
+                    type="text"
+                    value={formData.propName}
+                    onChange={e => setFormData({ ...formData, propName: e.target.value })}
+                    placeholder="e.g. Cape Maclear Sunset Lodge"
+                    required
+                    className="tm-input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sv-loc" className="tm-label">Location</label>
+                  <input
+                    id="sv-loc"
+                    type="text"
+                    value={formData.propLoc}
+                    onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
+                    placeholder="e.g. Chembe Village, Mangochi"
+                    className="tm-input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sv-name" className="tm-label">Your name</label>
+                  <input
+                    id="sv-name"
+                    type="text"
+                    value={formData.contactName}
+                    onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                    placeholder="e.g. Kondwani Phiri"
+                    className="tm-input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sv-phone" className="tm-label">WhatsApp number</label>
+                  <input
+                    id="sv-phone"
+                    type="text"
+                    value={formData.contactPhone}
+                    onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                    placeholder="Include country code"
+                    required
+                    className="tm-input"
+                  />
+                </div>
               </div>
             </section>
 
-            {/* Section 2 */}
-            <section className="border-t border-stone-200 mt-10">
-              <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Rate Your Daily Operational Frustrations</h2>
-              <p className="mt-1 text-[15px] leading-relaxed text-stone-500">
-                Scale from 1 (Not a problem) to 5 (Major headache).
-              </p>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-sm border border-stone-200">
+            <section className="tm-divider pt-6">
+              <h2 className="tm-h2">How do guests book today?</h2>
+              <div className="mt-2">
+                {CHANNELS.map(item => (
+                  <label key={item.id} className={optionCls}>
+                    <input
+                      type="checkbox"
+                      checked={formData.channels.includes(item.id)}
+                      onChange={() => toggleCheckbox('channels', item.id)}
+                      className="mt-0.5 accent-stone-900"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className="tm-divider pt-6">
+              <h2 className="tm-h2">How much does each one hurt?</h2>
+              <p className="tm-muted mt-1">1 is no problem, 5 is a major headache.</p>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-sm">
                   <thead>
                     <tr>
-                      <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Frustration</th>
+                      <th className="px-2 py-2 text-left font-medium text-stone-900">Problem</th>
                       {[1, 2, 3, 4, 5].map(val => (
-                        <th key={val} className="bg-stone-50 text-center font-medium text-stone-900 px-2 py-2 w-10">{val}</th>
+                        <th key={val} className="w-9 px-1 py-2 text-center font-medium text-stone-900">{val}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { key: 'otaCommissions' as const, label: 'Losing 15% to 25% commission to foreign travel engines' },
-                      { key: 'delayedPayouts' as const, label: 'Delayed foreign bank transfers or expensive forex conversions' },
-                      { key: 'manualMessaging' as const, label: 'Answering repetitive WhatsApp questions late at night' },
-                      { key: 'doubleBookings' as const, label: 'Tracking calendars manually across phone, WhatsApp, and paper' }
-                    ].map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="px-3 py-2 border-t border-stone-200 text-stone-700">{item.label}</td>
+                    {PAIN_POINTS.map(item => (
+                      <tr key={item.key} className="border-t border-stone-200">
+                        <td className="min-w-[10rem] px-2 py-2 text-stone-700">{item.label}</td>
                         {[1, 2, 3, 4, 5].map(val => (
-                          <td key={val} className="px-2 py-2 border-t border-stone-200 text-center">
+                          <td key={val} className="px-1 py-2 text-center">
                             <input
                               type="radio"
                               name={item.key}
@@ -286,7 +294,7 @@ export default function ConceptValidationSurvey() {
                               aria-label={`${item.label}: ${val}`}
                               checked={formData.painPoints[item.key] === val}
                               onChange={() => setPainPoint(item.key, val)}
-                              className="accent-stone-900 cursor-pointer"
+                              className="cursor-pointer accent-stone-900"
                             />
                           </td>
                         ))}
@@ -297,56 +305,28 @@ export default function ConceptValidationSurvey() {
               </div>
             </section>
 
-            {/* Section 3 */}
-            <section className="border-t border-stone-200 mt-10">
-              <h2 className="text-xl font-semibold text-stone-900 mt-10">3. What Features Would Help Your Property Most?</h2>
-              <p className="mt-1 text-[15px] leading-relaxed text-stone-500">
-                Select the features that would provide immediate value to your lodge.
-              </p>
-              <div className="mt-4">
-                {[
-                  { id: 'payouts', label: 'Local Kwacha Payouts', sub: 'Instant Airtel Money, TNM Mpamba, NBM, or Standard Bank' },
-                  { id: 'zero_comm', label: '0% Launch Commission', sub: 'Keep 100% of your listed room rate during launch' },
-                  { id: 'ical_sync', label: '2-Way PMS Calendar Sync & Diagnostics', sub: 'Sync RoomRaccoon, Airbnb, NightsBridge with 1-click latency testing' },
-                  { id: 'ai_concierge', label: '24/7 Guest Chat & Ulendo AI', sub: 'Answers common questions about power, boat trips, and menus' },
-                  { id: 'shadow_support', label: 'Concierge Shadow Onboarding', sub: 'Verified operations staff assist with setup live without sharing passwords' },
-                  { id: 'calendar', label: 'Room Calendar & Date Blocker', sub: 'Easily block dates for offline bookings or maintenance' }
-                ].map(item => {
-                  const isChecked = formData.features.includes(item.id);
-                  return (
-                    <label
-                      key={item.id}
-                      onClick={() => toggleCheckbox('features', item.id)}
-                      className={optionCls}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="mt-1 accent-stone-900"
-                      />
-                      <span>
-                        <span className="block text-[15px] font-medium text-stone-900">{item.label}</span>
-                        <span className="block text-sm text-stone-500">{item.sub}</span>
-                      </span>
-                    </label>
-                  );
-                })}
+            <section className="tm-divider pt-6">
+              <h2 className="tm-h2">What would help most?</h2>
+              <div className="mt-2">
+                {FEATURES.map(item => (
+                  <label key={item.id} className={optionCls}>
+                    <input
+                      type="checkbox"
+                      checked={formData.features.includes(item.id)}
+                      onChange={() => toggleCheckbox('features', item.id)}
+                      className="mt-0.5 accent-stone-900"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
               </div>
             </section>
 
-            {/* Section 4 */}
-            <section className="border-t border-stone-200 mt-10">
-              <h2 className="text-xl font-semibold text-stone-900 mt-10">4. Founding Partner Program (Zero Cost)</h2>
-              <p className="mt-1 text-[15px] leading-relaxed text-stone-500">
-                We are accepting 10 founding properties per district with 0% commission for 90 days.
-              </p>
-              <div className="mt-4">
-                {[
-                  { id: 'yes', label: 'Yes, we want to join the Founding Host Pilot', sub: 'Reach out to help us set up our profile (under 8 minutes).' },
-                  { id: 'briefing', label: 'Interested, but we would like a quick call or briefing first', sub: 'We have specific questions about payouts or our room inventory.' },
-                  { id: 'later', label: 'Not right now, keep us updated as you launch', sub: 'Send occasional updates via WhatsApp or email.' }
-                ].map(item => (
+            <section className="tm-divider pt-6">
+              <h2 className="tm-h2">Join the Founding Host Pilot?</h2>
+              <p className="tm-muted mt-1">10 stays per district, 0% commission for 90 days.</p>
+              <div className="mt-2">
+                {PILOT.map(item => (
                   <label key={item.id} className={optionCls}>
                     <input
                       type="radio"
@@ -354,99 +334,35 @@ export default function ConceptValidationSurvey() {
                       value={item.id}
                       checked={formData.pilotInterest === item.id}
                       onChange={() => setFormData({ ...formData, pilotInterest: item.id })}
-                      className="mt-1 accent-stone-900"
+                      className="mt-0.5 accent-stone-900"
                     />
-                    <span>
-                      <span className="block text-[15px] font-medium text-stone-900">{item.label}</span>
-                      <span className="block text-sm text-stone-500">{item.sub}</span>
-                    </span>
+                    <span>{item.label}</span>
                   </label>
                 ))}
               </div>
-            </section>
-
-            {/* Section 5 */}
-            <section className="border-t border-stone-200 mt-10">
-              <h2 className="text-xl font-semibold text-stone-900 mt-10">5. Your Property &amp; Contact Details</h2>
-              <p className="mt-1 text-[15px] leading-relaxed text-stone-500">
-                Used strictly by our operations team to confirm your responses.
-              </p>
-
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Lodge / Cottage Name</label>
-                  <input
-                    type="text"
-                    value={formData.propName}
-                    onChange={e => setFormData({ ...formData, propName: e.target.value })}
-                    placeholder="e.g. Cape Maclear Sunset Lodge"
-                    required
-                    className={inputCls}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelCls}>Location (District / Area)</label>
-                  <input
-                    type="text"
-                    value={formData.propLoc}
-                    onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
-                    placeholder="e.g. Chembe Village, Mangochi"
-                    className={inputCls}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelCls}>Manager / Owner Name</label>
-                  <input
-                    type="text"
-                    value={formData.contactName}
-                    onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                    placeholder="e.g. Kondwani Phiri"
-                    className={inputCls}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelCls}>WhatsApp / Phone Number</label>
-                  <input
-                    type="text"
-                    value={formData.contactPhone}
-                    onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
-                    placeholder="Your WhatsApp number"
-                    required
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
               <div className="mt-4">
-                <label className={labelCls}>Additional Notes or Questions (Optional)</label>
+                <label htmlFor="sv-notes" className="tm-label">Anything else? (optional)</label>
                 <textarea
+                  id="sv-notes"
                   rows={3}
                   value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Tell us about your power backup, boat trips, or any specific question..."
-                  className={inputCls}
+                  placeholder="Power backup, boat trips, or a question for us"
+                  className="tm-input"
                 />
               </div>
             </section>
 
-            {/* Submit */}
-            <div className="border-t border-stone-200 mt-10 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-              <p className="text-sm text-stone-500">
-                Your responses submit directly to our local hospitality team.
-              </p>
-              <button type="submit" disabled={isSubmitting} className={primaryBtn}>
-                {isSubmitting ? 'Submitting answers…' : 'Submit survey response'}
+            <div className="tm-actions print:hidden">
+              <button type="submit" disabled={isSubmitting} className="tm-btn tm-btn-primary">
+                {isSubmitting ? 'Sending…' : 'Send survey'}
               </button>
             </div>
           </form>
         )}
 
-        {/* Footer */}
-        <footer className="border-t border-stone-200 mt-12 pt-6 text-sm text-stone-500">
-          Ulendo Travel Malawi &middot; Direct Booking &middot; Lilongwe &middot; Blantyre &middot; Mangochi &middot; info@ulendomalawi.com
+        <footer className="tm-divider tm-muted mt-10 pt-4">
+          Travel Malawi · Lilongwe, Malawi · info@ulendomalawi.com
         </footer>
       </div>
     </div>

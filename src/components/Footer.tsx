@@ -28,7 +28,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 sm:gap-x-8 gap-y-7 sm:gap-y-8 lg:gap-10">
         <div className="col-span-2 md:col-span-3 lg:col-span-1 space-y-3 sm:space-y-4">
           <Link to="/" className="flex items-center gap-2 text-white">
-            <Palmtree className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-400" />
+            <Palmtree className="h-6 w-6 sm:h-7 sm:w-7 text-amber-400" />
             <span className="text-lg sm:text-xl font-serif font-bold tracking-tight">Travel Malawi</span>
           </Link>
           <p className="text-stone-400 text-xs sm:text-sm leading-relaxed max-w-sm lg:max-w-none">
@@ -58,10 +58,7 @@ export default function Footer() {
               <>
                 <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs inline-block py-0.5">Marketing Playbook</Link></li>
                 <li>
-                  <Link to="/uat" className="text-emerald-400 hover:text-emerald-300 transition text-xs flex items-center gap-1.5 py-0.5">
-                    <span>UAT &amp; Platform Guide</span>
-                    <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded-full">QA</span>
-                  </Link>
+                  <Link to="/uat" className="text-stone-400 hover:text-white transition text-xs inline-block py-0.5">Platform test guide</Link>
                 </li>
               </>
             )}
@@ -137,10 +134,9 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Developer credit in small print with typewriter loader loop animation */}
+      {/* Developer credit in small print */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 pt-4 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px] text-stone-500">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 shrink-0" aria-hidden="true" />
           <TypewriterCredit />
         </div>
         <div className="text-stone-500/80 text-[10px] tracking-wide">

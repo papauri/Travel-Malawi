@@ -52,7 +52,9 @@ after every wave instead of reading board files itself — that is what keeps or
 When one goal touches many departments (e.g. "no hard-coded properties"), the orchestrator writes it
 once as `agents/directives/D<n>-<slug>.md` (rule, rationale, how to find) and appends one inbox
 line per affected lead: `- [H-orch-D<n>] P1 → <lead> | <their files> | apply directive ... | contract: none`.
-Leads read the directive file instead of a long prompt; the tracker tracks the inbox lines like any
+Leads read the directive file instead of a long prompt; where a directive is mechanically checkable
+it ships a zero-token checker in `agents/checks/` (e.g. `node agents/checks/d2.mjs <files>`) that leads
+run before/after and the orchestrator runs as the gate; the tracker tracks the inbox lines like any
 handoff. Pick affected leads by grepping first and mapping hits through the ownership table.
 
 ## Run playbook (orchestrator — any agent)

@@ -324,7 +324,7 @@ export default function ManagerMessageTemplatesHub({
           setBody(text.trim());
         }
 
-        toast.success("Assistant drafted a template!");
+        toast.success("Draft ready. Check it before saving.");
         setShowAIPrompt(false);
       } else {
         toast.error("Failed to generate draft");
@@ -338,21 +338,18 @@ export default function ManagerMessageTemplatesHub({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden mb-8">
-      <div className="p-5 md:p-7 bg-stone-50 border-b border-stone-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <MessageSquare className="w-5 h-5 text-stone-900" />
-            <h2 className="text-xl font-bold text-stone-900">
-              Message Templates Hub
-            </h2>
-          </div>
-          <p className="text-sm text-stone-600">
-            Create reusable Email & WhatsApp templates for guest communications.
+    <div className="rounded-xl border border-stone-200 bg-white overflow-hidden mb-8 min-w-0">
+      <div className="p-4 sm:p-5 border-b border-stone-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="tm-h2 mb-1">
+            Message templates
+          </h2>
+          <p className="tm-muted">
+            Reusable email and WhatsApp messages for guests.
           </p>
         </div>
         {!editingId && (
-          <div className="flex flex-wrap gap-2">
+          <div className="tm-actions">
             <button
               onClick={() => {
                 setEditingId("new");
@@ -361,149 +358,149 @@ export default function ManagerMessageTemplatesHub({
                 setSubject("");
                 setBody("");
               }}
-              className="shrink-0 flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-xl font-bold transition text-sm shadow-sm"
+              className="tm-btn tm-btn-primary"
             >
               <Plus className="w-4 h-4" />
-              New Template
+              New template
             </button>
             <button
               onClick={applyToAllProperties}
               disabled={applyingToAll}
-              className="shrink-0 flex items-center gap-1.5 bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 px-4 py-2 rounded-xl font-bold transition text-sm shadow-sm disabled:opacity-50"
+              className="tm-btn tm-btn-secondary"
               title="Apply these templates to all properties you manage"
             >
               <Globe className="w-4 h-4" />
-              {applyingToAll ? "Applying..." : "Apply to All My Properties"}
+              {applyingToAll ? "Applying..." : "Use on all my properties"}
             </button>
             <button
               onClick={revertToDefaults}
-              className="shrink-0 flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 px-4 py-2 rounded-xl font-bold transition text-sm"
+              className="tm-btn tm-btn-danger"
               title="Revert to system defaults"
             >
               <RotateCcw className="w-4 h-4" />
-              Reset Defaults
+              Reset to defaults
             </button>
           </div>
         )}
       </div>
 
-      <div className="p-6 md:p-8">
+      <div className="p-4 sm:p-5">
         {editingId && (
-          <div className="bg-stone-50 p-6 rounded-2xl border border-stone-200 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-stone-900 text-lg">
-                {editingId === "new" ? "Create Template" : "Edit Template"}
+          <div className="pb-6 mb-6 border-b border-stone-200">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+              <h3 className="tm-h2">
+                {editingId === "new" ? "New template" : "Edit template"}
               </h3>
               {isAIAvailable && (
                 <button
                   type="button"
                   onClick={() => setShowAIPrompt(!showAIPrompt)}
-                  className="flex items-center gap-1.5 bg-stone-100 text-stone-700 hover:bg-stone-200 px-3 py-1.5 rounded-lg text-sm font-bold transition border border-stone-200"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
-                  {showAIPrompt ? "Close Assistant" : "Open Draft Assistant"}
+                  {showAIPrompt ? "Hide draft help" : "Help me write it"}
                 </button>
               )}
             </div>
 
             {isAIAvailable && showAIPrompt && (
-              <div className="mb-6 bg-white p-4 rounded-xl border border-stone-200">
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
-                  Draft Instructions
+              <div className="mb-4">
+                <label className="tm-label">
+                  What should it say?
                 </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="e.g. Write a friendly welcome email that reminds guests about the 2PM check-in and our free breakfast."
-                  className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 mb-3"
+                  className="tm-input mb-2"
                   rows={2}
                 />
                 <button
                   type="button"
                   onClick={generateWithAI}
                   disabled={isGenerating}
-                  className="flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 w-full sm:w-auto"
+                  className="tm-btn tm-btn-secondary w-full sm:w-auto"
                 >
                   {isGenerating && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isGenerating ? "Drafting Template..." : "Auto-Draft Content"}
+                  {isGenerating ? "Writing draft..." : "Write a draft"}
                 </button>
               </div>
             )}
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1">
+                  <label className="tm-label">
                     Type
                   </label>
-                  <div className="flex rounded-xl overflow-hidden border border-stone-200 bg-white">
+                  <div className="flex rounded-lg overflow-hidden border border-stone-300 bg-white">
                     <button
                       type="button"
                       onClick={() => setType("whatsapp")}
-                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "whatsapp" ? "bg-emerald-700 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+                      className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2 ${type === "whatsapp" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
                     >
                       <MessageSquare className="w-4 h-4" /> WhatsApp
                     </button>
                     <button
                       type="button"
                       onClick={() => setType("email")}
-                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "email" ? "bg-stone-900 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+                      className={`flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2 ${type === "email" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
                     >
                       <Mail className="w-4 h-4" /> Email
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1">
-                    Template Name
+                  <label className="tm-label">
+                    Template name
                   </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g. Booking Confirmation"
-                    className="w-full bg-white border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-stone-400 transition"
+                    className="tm-input"
                   />
                 </div>
               </div>
 
               {type === "email" && (
                 <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1">
-                    Email Subject
+                  <label className="tm-label">
+                    Email subject
                   </label>
                   <input
                     type="text"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="e.g. Your stay at our property"
-                    className="w-full bg-white border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-stone-400 transition"
+                    className="tm-input"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1">
-                  Message Body
+                <label className="tm-label">
+                  Message
                 </label>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder="Type your message here..."
                   rows={6}
-                  className="w-full bg-white border border-stone-200 text-stone-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 transition"
+                  className="tm-input"
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="tm-actions pt-2">
                 <button
                   onClick={saveTemplate}
-                  className="bg-stone-900 hover:bg-stone-800 text-white px-6 py-2.5 rounded-xl font-bold transition shadow-sm text-sm"
+                  className="tm-btn tm-btn-primary"
                 >
-                  Save Template
+                  Save template
                 </button>
                 <button
                   onClick={resetForm}
-                  className="bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 px-6 py-2.5 rounded-xl font-bold transition text-sm"
+                  className="tm-btn tm-btn-quiet"
                 >
                   Cancel
                 </button>
@@ -512,10 +509,10 @@ export default function ManagerMessageTemplatesHub({
           </div>
         )}
 
-        <div className="flex border-b border-stone-200 mb-6 mt-2">
+        <div className="flex border-b border-stone-200 mb-2">
           <button
             onClick={() => setActiveListTab("whatsapp")}
-            className={`flex-1 md:flex-none px-4 py-3 text-sm font-bold border-b-2 transition ${activeListTab === "whatsapp" ? "border-green-500 text-green-700" : "border-transparent text-stone-500 hover:text-stone-700"}`}
+            className={`flex-1 md:flex-none px-4 py-3 text-sm font-medium border-b-2 transition ${activeListTab === "whatsapp" ? "border-amber-700 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-700"}`}
           >
             <div className="flex items-center justify-center md:justify-start gap-2">
               <MessageSquare className="w-4 h-4" /> WhatsApp
@@ -523,7 +520,7 @@ export default function ManagerMessageTemplatesHub({
           </button>
           <button
             onClick={() => setActiveListTab("email")}
-            className={`flex-1 md:flex-none px-4 py-3 text-sm font-bold border-b-2 transition ${activeListTab === "email" ? "border-blue-500 text-blue-700" : "border-transparent text-stone-500 hover:text-stone-700"}`}
+            className={`flex-1 md:flex-none px-4 py-3 text-sm font-medium border-b-2 transition ${activeListTab === "email" ? "border-amber-700 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-700"}`}
           >
             <div className="flex items-center justify-center md:justify-start gap-2">
               <Mail className="w-4 h-4" /> Email
@@ -531,26 +528,28 @@ export default function ManagerMessageTemplatesHub({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="divide-y divide-stone-100">
           {templates.filter((t) => t.type === activeListTab).map((t) => (
             <div
               key={t.id}
-              className={`p-5 rounded-2xl border transition-all ${t.enabled ? "bg-white border-stone-200 shadow-sm" : "bg-stone-50 border-stone-200 opacity-60"}`}
+              className={`py-4 min-w-0 ${t.enabled ? "" : "opacity-60"}`}
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-start gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {t.type === "email" ? (
-                    <Mail className="w-5 h-5 text-blue-500" />
+                    <Mail className="w-4 h-4 text-stone-500 shrink-0" />
                   ) : (
-                    <MessageSquare className="w-5 h-5 text-green-500" />
+                    <MessageSquare className="w-4 h-4 text-stone-500 shrink-0" />
                   )}
-                  <h4 className="font-bold text-stone-900">{t.title}</h4>
+                  <h4 className="font-semibold text-stone-900 truncate">{t.title}</h4>
+                  {!t.isCustom && <span className="tm-tag shrink-0">Default</span>}
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex gap-1 shrink-0">
                   <button
                     onClick={() => toggleEnabled(t.id, t.enabled)}
-                    className={`p-1.5 rounded-lg transition ${t.enabled ? "bg-green-100 text-green-700" : "bg-stone-200 text-stone-500"} hover:opacity-80`}
-                    title={t.enabled ? "Disable" : "Enable"}
+                    className={`p-1.5 rounded-lg transition ${t.enabled ? "text-emerald-700 hover:bg-emerald-50" : "text-stone-500 hover:bg-stone-100"}`}
+                    title={t.enabled ? "Turn off" : "Turn on"}
+                    aria-label={t.enabled ? "Turn off" : "Turn on"}
                   >
                     {t.enabled ? (
                       <Check className="w-4 h-4" />
@@ -560,15 +559,17 @@ export default function ManagerMessageTemplatesHub({
                   </button>
                   <button
                     onClick={() => startEdit(t)}
-                    className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition"
+                    className="p-1.5 hover:bg-stone-100 text-stone-600 rounded-lg transition"
                     title="Edit"
+                    aria-label="Edit"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteTemplate(t.id)}
-                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition"
+                    className="p-1.5 hover:bg-red-50 text-red-700 rounded-lg transition"
                     title="Delete"
+                    aria-label="Delete"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -576,36 +577,27 @@ export default function ManagerMessageTemplatesHub({
               </div>
 
               {t.type === "email" && t.subject && (
-                <div className="text-xs font-bold text-stone-500 mb-1 pb-1 border-b border-stone-100">
-                  Subj: {t.subject}
+                <div className="text-xs font-medium text-stone-500 mb-1 truncate">
+                  Subject: {t.subject}
                 </div>
               )}
 
-              <div className="text-sm text-stone-600 line-clamp-3 whitespace-pre-wrap mt-2">
+              <div className="text-sm text-stone-600 line-clamp-3 whitespace-pre-wrap break-words">
                 {t.body}
               </div>
-
-              {!t.isCustom && (
-                <div className="mt-3 pt-3 border-t border-stone-100 flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-md">
-                    Default
-                  </span>
-                </div>
-              )}
             </div>
           ))}
 
           {templates.filter((t) => t.type === activeListTab).length === 0 && (
-            <div className="col-span-full py-12 text-center bg-stone-50 rounded-2xl border border-stone-200 border-dashed">
-              <MessageSquare className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-              <p className="text-stone-500 font-medium">
-                No {activeListTab} templates created yet.
+            <div className="py-10 text-center">
+              <p className="tm-muted">
+                No {activeListTab} templates yet.
               </p>
               <button
                 onClick={revertToDefaults}
-                className="mt-4 text-stone-600 hover:text-stone-900 text-sm font-bold underline"
+                className="mt-3 tm-btn tm-btn-secondary tm-btn-sm"
               >
-                Load Default Templates
+                Load default templates
               </button>
             </div>
           )}

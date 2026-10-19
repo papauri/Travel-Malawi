@@ -194,7 +194,7 @@ export default function AdminWhatsAppSettings() {
       {/* 1. Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">WhatsApp Business &amp; Messaging</h2>
+          <h2 className="tm-h1">WhatsApp Business &amp; Messaging</h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
             Configure automated arrival PINs, 3-day welcome notes, and instant booking reminders.
           </p>
@@ -213,7 +213,7 @@ export default function AdminWhatsAppSettings() {
       </div>
 
       {/* 2. System Status & Master Switch */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs">
+      <div className="bg-white border border-stone-200 rounded-xl p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -240,7 +240,7 @@ export default function AdminWhatsAppSettings() {
             <button
               type="button"
               onClick={() => setForm(prev => ({ ...prev, enabled: !prev.enabled }))}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 form.enabled
                   ? 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-300'
                   : 'bg-emerald-700 hover:bg-emerald-800 text-white'
@@ -256,7 +256,7 @@ export default function AdminWhatsAppSettings() {
       {/* 3. Configuration & Test Form */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Settings Form */}
-        <div className="lg:col-span-2 bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-2xs space-y-5">
+        <div className="lg:col-span-2 bg-white border border-stone-200 rounded-xl p-5 md:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <Smartphone className="w-4 h-4 text-stone-700" />
@@ -365,7 +365,7 @@ export default function AdminWhatsAppSettings() {
                       placeholder="e.g. 102938475629182"
                       value={form.phoneNumberId}
                       onChange={e => setForm({ ...form, phoneNumberId: e.target.value })}
-                      className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                      className="tm-input"
                     />
                     <p className="text-[10px] text-stone-400 mt-1">
                       Meta Developers &gt; WhatsApp &gt; API Setup &gt; Phone number ID.
@@ -382,7 +382,7 @@ export default function AdminWhatsAppSettings() {
                       placeholder="e.g. 987654321012345"
                       value={form.businessAccountId}
                       onChange={e => setForm({ ...form, businessAccountId: e.target.value })}
-                      className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                      className="tm-input"
                     />
                     <p className="text-[10px] text-stone-400 mt-1">
                       Optional Meta WABA identification code.
@@ -397,7 +397,7 @@ export default function AdminWhatsAppSettings() {
                       System User Access Token <span className="text-red-500">*</span>
                     </label>
                     {form.hasToken && (
-                      <span className="text-[11px] text-stone-500 flex items-center gap-1 font-mono">
+                      <span className="text-[11px] text-stone-500 flex items-center gap-1">
                         <Lock className="w-3 h-3 text-emerald-600" /> Token saved on server
                       </span>
                     )}
@@ -408,7 +408,7 @@ export default function AdminWhatsAppSettings() {
                       placeholder={form.hasToken ? '••••••••••••••••••••••••••••••••' : 'EAAG... (Paste permanent Meta Access Token)'}
                       value={form.accessToken}
                       onChange={e => setForm({ ...form, accessToken: e.target.value })}
-                      className="w-full pl-3 pr-9 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                      className="tm-input pl-3 pr-9"
                     />
                     <button
                       type="button"
@@ -439,7 +439,7 @@ export default function AdminWhatsAppSettings() {
                     placeholder="+265"
                     value={form.defaultCountryCode}
                     onChange={e => setForm({ ...form, defaultCountryCode: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                    className="tm-input pl-9 pr-3"
                   />
                 </div>
                 <p className="text-[10px] text-stone-400 mt-1">
@@ -458,7 +458,7 @@ export default function AdminWhatsAppSettings() {
                     placeholder="+265 999 123 456"
                     value={form.senderPhoneNumber}
                     onChange={e => setForm({ ...form, senderPhoneNumber: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                    className="tm-input pl-9 pr-3"
                   />
                 </div>
                 <p className="text-[10px] text-stone-400 mt-1">
@@ -476,7 +476,7 @@ export default function AdminWhatsAppSettings() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="tm-btn tm-btn-primary"
               >
                 {saving ? (
                   <>
@@ -496,7 +496,7 @@ export default function AdminWhatsAppSettings() {
 
         {/* Sidebar Testing & Diagnostic Tool */}
         <div className="space-y-4">
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs space-y-4">
+          <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
             <div>
               <h3 className="font-serif font-bold text-base text-stone-900">Connection Diagnostics</h3>
               <p className="text-xs text-stone-500 mt-0.5">
@@ -513,7 +513,7 @@ export default function AdminWhatsAppSettings() {
                 value={testPhone}
                 onChange={e => setTestPhone(e.target.value)}
                 placeholder="+265 999 123 456"
-                className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:border-stone-900 outline-none transition"
+                className="tm-input"
               />
             </div>
 

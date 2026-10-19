@@ -12,7 +12,7 @@ import ConfirmDialog from './ConfirmDialog';
 import {
   SlidersHorizontal, Percent, DollarSign, Tag, Check,
   RotateCcw, TrendingDown, TrendingUp, Calendar, Zap, AlertCircle,
-  ArrowRight, ChevronDown, Building2, BedDouble, Search, X, Info,
+  ArrowRight, ChevronDown, Building2, BedDouble, Search, X, Info, Plus,
   Save, Loader2, CheckCircle2, Sliders, Layers, Play, Pause, Trash2, Clock
 } from 'lucide-react';
 
@@ -491,31 +491,25 @@ export default function BulkRoomEditor({
   };
 
   return (
-    <div className={`bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden ${isEmbedded ? '' : 'max-w-5xl mx-auto'}`}>
+    <div className={`bg-white rounded-xl border border-stone-200 overflow-hidden min-w-0 ${isEmbedded ? '' : 'max-w-5xl mx-auto'}`}>
       {/* Header Banner */}
-      <div className="bg-stone-50 border-b border-stone-200/90 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
+      <div className="border-b border-stone-200 p-4 sm:p-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 shadow-2xs flex items-center justify-center text-stone-700">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-stone-700 shrink-0">
               <SlidersHorizontal className="w-4 h-4" />
             </div>
-            <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-              <span>Bulk Room &amp; Rates Editor</span>
-              <span className="text-[10px] font-sans font-semibold bg-stone-200/80 text-stone-700 px-2 py-0.5 rounded-md uppercase tracking-wider border border-stone-300/50">
-                Rates &amp; Inventory
-              </span>
-            </h2>
+            <h2 className="tm-h2">Bulk rates</h2>
           </div>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed">
-            Quickly adjust base rates or launch promotional slashed prices across multiple rooms simultaneously with standardized Malawian Kwacha and USD rounding.
-          </p>
+          <p className="tm-muted">Change rates or add a discount for several rooms at once.</p>
         </div>
 
         {onClose && (
           <button
             onClick={onClose}
-            className="self-end sm:self-center p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-500 hover:text-stone-900 border border-stone-200 transition cursor-pointer shadow-2xs"
-            title="Close Bulk Editor"
+            className="shrink-0 p-2 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition cursor-pointer"
+            title="Close bulk editor"
+            aria-label="Close bulk editor"
           >
             <X className="w-5 h-5" />
           </button>
@@ -523,9 +517,9 @@ export default function BulkRoomEditor({
       </div>
 
       {/* Minimal Underline-Based Navigation Tabs */}
-      <div className="border-b border-stone-200/90 bg-white px-4 sm:px-6">
+      <div className="border-b border-stone-200 bg-white px-4 sm:px-5 overflow-x-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-4 sm:gap-8" role="tablist" aria-label="Editor modes">
+          <div className="flex items-center gap-5 sm:gap-8" role="tablist" aria-label="Editor modes">
             <button
               type="button"
               role="tab"
@@ -538,7 +532,7 @@ export default function BulkRoomEditor({
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>Base Rates</span>
+              <span>Rates</span>
             </button>
             <button
               type="button"
@@ -552,7 +546,7 @@ export default function BulkRoomEditor({
               }`}
             >
               <Percent className="w-4 h-4" />
-              <span>New Campaign</span>
+              <span>New discount</span>
             </button>
             <button
               type="button"
@@ -566,8 +560,8 @@ export default function BulkRoomEditor({
               }`}
             >
               <Tag className="w-4 h-4" />
-              <span>Active Campaigns</span>
-              <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-md ${
+              <span>Running discounts</span>
+              <span className={`text-[11px] tabular-nums px-1.5 py-0.5 rounded-md ${
                 activeTab === 'active_promotions' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
               }`}>
                 {allPromotions.length}
@@ -575,39 +569,26 @@ export default function BulkRoomEditor({
             </button>
           </div>
 
-          <div className="hidden sm:flex text-xs text-stone-400 items-center gap-1.5 pb-2">
-            <Info className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-            <span>
-              {activeTab === 'rates'
-                ? 'Updates standard published nightly inventory rates.'
-                : activeTab === 'promotions'
-                ? 'Creates promotional discounts with strikethrough prices.'
-                : 'Monitor, pause, extend, or remove running promotional campaigns.'}
-            </span>
-          </div>
         </div>
       </div>
 
       {/* Active Campaigns Management View */}
       {activeTab === 'active_promotions' ? (
         <div className="p-4 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
-            <div>
-              <h3 className="font-semibold text-stone-900 text-sm">Active &amp; Scheduled Promotional Campaigns</h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Manage live discounts, pause or extend durations, and track running sales across properties.
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-stone-900 text-sm">Running and scheduled discounts</h3>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="tm-actions">
               {hotels.length > 1 && (
                 <select
                   value={selectedHotelFilter}
                   onChange={e => changeHotelFilter(e.target.value)}
                   aria-label="Filter campaigns by property"
-                  className="bg-white border border-stone-200 text-xs font-medium rounded-lg px-2.5 py-1.5 text-stone-800 focus:outline-hidden"
+                  className="max-w-full bg-white border border-stone-300 text-xs font-medium rounded-lg px-2.5 py-1.5 text-stone-800 focus:outline-hidden"
                 >
-                  <option value="all">All Properties ({hotels.length})</option>
+                  <option value="all">All properties ({hotels.length})</option>
                   {hotels.map(h => (
                     <option key={h.id} value={h.id}>{h.name}</option>
                   ))}
@@ -616,30 +597,25 @@ export default function BulkRoomEditor({
               <button
                 type="button"
                 onClick={() => setActiveTab('promotions')}
-                className="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
+                className="tm-btn tm-btn-secondary tm-btn-sm"
               >
-                <Zap className="w-3.5 h-3.5" />
-                <span>New Campaign</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>New discount</span>
               </button>
             </div>
           </div>
 
           {allPromotions.length === 0 ? (
-            <div className="bg-stone-50 rounded-2xl border border-dashed border-stone-300 p-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
-                <Tag className="w-6 h-6 text-stone-500" />
-              </div>
-              <h4 className="font-bold text-stone-900 text-base mb-1">No Running Campaigns</h4>
-              <p className="text-xs text-stone-500 max-w-md mx-auto mb-4">
-                You haven't launched any promotional discounts yet. Create a flash sale, weekend special, or early bird promo to drive bookings.
-              </p>
+            <div className="rounded-lg border border-dashed border-stone-300 p-8 text-center">
+              <Tag className="w-6 h-6 text-stone-400 mx-auto mb-3" />
+              <p className="tm-muted max-w-md mx-auto mb-4">No discounts running yet.</p>
               <button
                 type="button"
                 onClick={() => setActiveTab('promotions')}
-                className="inline-flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer shadow-xs"
+                className="tm-btn tm-btn-secondary"
               >
-                <Zap className="w-4 h-4" />
-                <span>Create a Promotional Campaign</span>
+                <Plus className="w-4 h-4" />
+                <span>Add a discount</span>
               </button>
             </div>
           ) : (
@@ -652,14 +628,14 @@ export default function BulkRoomEditor({
 
                 let statusBadge = {
                   text: 'Active',
-                  className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                  className: 'tm-tag-good',
                 };
                 if (!promo.isActive) {
-                  statusBadge = { text: 'Paused', className: 'bg-stone-100 text-stone-600 border-stone-200' };
+                  statusBadge = { text: 'Paused', className: '' };
                 } else if (isExpired) {
-                  statusBadge = { text: 'Expired', className: 'bg-rose-50 text-rose-700 border-rose-200' };
+                  statusBadge = { text: 'Expired', className: 'tm-tag-bad' };
                 } else if (isScheduled) {
-                  statusBadge = { text: `Scheduled (${promo.startDate})`, className: 'bg-stone-100 text-stone-700 border-stone-200' };
+                  statusBadge = { text: `Scheduled (${promo.startDate})`, className: 'tm-tag-warn' };
                 }
 
                 const targetCount = promo.targetRoomIds ? promo.targetRoomIds.length : (hotel.rooms?.length || 'All');
@@ -667,60 +643,56 @@ export default function BulkRoomEditor({
                 return (
                   <div
                     key={`${hotel.id}-${promo.id}`}
-                    className="bg-white rounded-xl border border-stone-200 p-4 shadow-xs flex flex-col justify-between gap-3 hover:border-stone-300 transition"
+                    className="rounded-lg border border-stone-200 p-4 flex flex-col justify-between gap-3 min-w-0"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                        <div className="min-w-0">
+                          <span className="text-xs text-stone-500 block truncate">
                             {hotel.name}
                           </span>
-                          <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5 mt-0.5">
+                          <h4 className="font-semibold text-stone-900 text-sm flex items-center gap-1.5 mt-0.5 min-w-0">
                             <Tag className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                            <span>{promo.name}</span>
+                            <span className="truncate">{promo.name}</span>
                           </h4>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge.className}`}>
+                        <span className={`tm-tag shrink-0 ${statusBadge.className}`}>
                           {statusBadge.text}
                         </span>
                       </div>
 
                       <div className="space-y-1 text-xs text-stone-600">
-                        <div className="flex items-center justify-between py-0.5 border-b border-stone-100">
-                          <span className="text-stone-400">Discount:</span>
+                        <div className="flex items-center justify-between gap-3 py-0.5 border-b border-stone-100">
+                          <span className="text-stone-500">Discount</span>
                           <span className="font-semibold text-stone-900">
                             {promo.discountType === 'percentage'
-                              ? `${promo.discountPercentage}% OFF`
+                              ? `${promo.discountPercentage}% off`
                               : promo.fixedSlashAmount
                               ? `Slash ${formatMoney(Object.values(promo.fixedSlashAmount)[0] || 0, Object.keys(promo.fixedSlashAmount)[0] as CurrencyCode)}`
                               : 'Discount'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-0.5 border-b border-stone-100">
-                          <span className="text-stone-400">Target Inventory:</span>
+                        <div className="flex items-center justify-between gap-3 py-0.5 border-b border-stone-100">
+                          <span className="text-stone-500">Rooms</span>
                           <span className="font-medium text-stone-800">
                             {typeof targetCount === 'number' ? `${targetCount} room${targetCount === 1 ? '' : 's'}` : 'All rooms in property'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-0.5">
-                          <span className="text-stone-400">Duration:</span>
+                        <div className="flex items-center justify-between gap-3 py-0.5">
+                          <span className="text-stone-500">Dates</span>
                           <span className="font-medium text-stone-800">
-                            {promo.endDate ? `${promo.startDate || 'Now'} to ${promo.endDate}` : 'Ongoing (No expiration)'}
+                            {promo.endDate ? `${promo.startDate || 'Now'} to ${promo.endDate}` : 'Ongoing'}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Quick Campaign Actions */}
-                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="pt-2 border-t border-stone-100 tm-actions justify-between">
                       <button
                         type="button"
                         onClick={() => hotel.id && handleTogglePromotionActive(hotel.id, promo.id)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${
-                          promo.isActive
-                            ? 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                            : 'bg-stone-900 border-stone-900 text-white hover:bg-stone-800'
-                        }`}
+                        className="tm-btn tm-btn-secondary tm-btn-sm"
                       >
                         {promo.isActive ? (
                           <>
@@ -729,33 +701,33 @@ export default function BulkRoomEditor({
                           </>
                         ) : (
                           <>
-                            <Play className="w-3 h-3 text-stone-300" />
+                            <Play className="w-3 h-3 text-stone-500" />
                             <span>Activate</span>
                           </>
                         )}
                       </button>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="tm-actions gap-1.5">
                         <button
                           type="button"
                           onClick={() => hotel.id && handleExtendPromotion(hotel.id, promo.id, 7)}
-                          className="px-2 py-1 text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md transition cursor-pointer"
+                          className="tm-btn tm-btn-quiet tm-btn-sm"
                           title="Extend campaign by 7 days"
                         >
-                          +7 Days
+                          +7 days
                         </button>
                         <button
                           type="button"
                           onClick={() => hotel.id && handleExtendPromotion(hotel.id, promo.id, 30)}
-                          className="px-2 py-1 text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md transition cursor-pointer"
+                          className="tm-btn tm-btn-quiet tm-btn-sm"
                           title="Extend campaign by 30 days"
                         >
-                          +30 Days
+                          +30 days
                         </button>
                         <button
                           type="button"
                           onClick={() => hotel.id && setPendingPromoDelete({ hotelId: hotel.id, promoId: promo.id, name: promo.name })}
-                          className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                          className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer"
                           title="Delete promotion"
                           aria-label="Delete promotion"
                         >
@@ -771,15 +743,15 @@ export default function BulkRoomEditor({
         </div>
       ) : (
         /* Controls Grid */
-        <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-6 min-w-0">
         {/* Left Column: Room Selection & Filter (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col space-y-4 border-b lg:border-b-0 lg:border-r border-stone-200 pb-6 lg:pb-0 lg:pr-6">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-5 flex flex-col space-y-4 border-b lg:border-b-0 lg:border-r border-stone-200 pb-6 lg:pb-0 lg:pr-6 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <BedDouble className="w-4 h-4 text-stone-700" />
-              <h3 className="font-semibold text-stone-900 text-sm">Select Target Rooms</h3>
+              <h3 className="font-semibold text-stone-900 text-sm">Rooms</h3>
             </div>
-            <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full">
+            <span className="tm-tag">
               {selectedRoomIds.length} of {filteredRooms.length} selected
             </span>
           </div>
@@ -788,16 +760,16 @@ export default function BulkRoomEditor({
           <div className="space-y-2">
             {hotels.length > 1 && (
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-1">
-                  Filter by Property
+                <label className="tm-label">
+                  Property
                 </label>
                 <div className="relative">
                   <select
                     value={selectedHotelFilter}
                     onChange={(e) => changeHotelFilter(e.target.value)}
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-medium text-stone-800 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-800 appearance-none pr-8 focus:border-stone-500 focus:outline-none cursor-pointer"
                   >
-                    <option value="all">All Properties ({rooms.length} total rooms)</option>
+                    <option value="all">All properties ({rooms.length} rooms)</option>
                     {hotels.map(h => (
                       <option key={h.id} value={h.id}>
                         {h.name} ({rooms.filter(r => r.hotelId === h.id).length} rooms)
@@ -813,10 +785,10 @@ export default function BulkRoomEditor({
               <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search rooms by name..."
+                placeholder="Search rooms"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-800 placeholder-stone-400 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                className="w-full bg-white border border-stone-300 rounded-lg pl-8 pr-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:border-stone-500 focus:outline-none"
               />
               {searchQuery && (
                 <button
@@ -830,28 +802,28 @@ export default function BulkRoomEditor({
           </div>
 
           {/* Bulk Select Actions */}
-          <div className="flex items-center justify-between text-xs pt-1">
+          <div className="flex items-center justify-between gap-2 text-xs pt-1">
             <button
               type="button"
               onClick={handleSelectAll}
               className="font-semibold text-stone-700 hover:text-stone-900 cursor-pointer"
             >
-              Select All ({filteredRooms.length})
+              Select all ({filteredRooms.length})
             </button>
             <button
               type="button"
               onClick={handleDeselectAll}
               className="font-semibold text-stone-500 hover:text-stone-800 cursor-pointer"
             >
-              Deselect All
+              Clear
             </button>
           </div>
 
           {/* Rooms Checklist List */}
-          <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1 divide-y divide-stone-100 border border-stone-100 rounded-xl p-2 bg-stone-50/50">
+          <div className="max-h-[380px] overflow-y-auto space-y-1 pr-1 border border-stone-200 rounded-lg p-1.5">
             {filteredRooms.length === 0 ? (
-              <div className="p-6 text-center text-stone-400 text-xs">
-                No rooms match the selected filter.
+              <div className="p-6 text-center text-stone-500 text-xs">
+                No rooms match.
               </div>
             ) : (
               filteredRooms.map(room => {
@@ -864,10 +836,10 @@ export default function BulkRoomEditor({
                   <div
                     key={room.id}
                     onClick={() => room.id && toggleRoomSelection(room.id)}
-                    className={`pt-2 first:pt-0 p-2.5 rounded-xl transition cursor-pointer flex items-center gap-3 ${
+                    className={`p-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 min-w-0 ${
                       isSelected
-                        ? 'bg-stone-900 text-white shadow-2xs'
-                        : 'bg-white hover:bg-stone-100/80 text-stone-800 border border-stone-200/60'
+                        ? 'bg-amber-50 text-stone-900'
+                        : 'bg-white hover:bg-stone-50 text-stone-800'
                     }`}
                   >
                     <input
@@ -881,13 +853,13 @@ export default function BulkRoomEditor({
                       <div className="flex items-baseline justify-between gap-1">
                         <p className="font-semibold text-xs truncate">{room.name}</p>
                         {hotel && (
-                          <span className={`text-[10px] truncate max-w-[120px] ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                          <span className="text-[11px] truncate max-w-[120px] text-stone-500">
                             {hotel.name}
                           </span>
                         )}
                       </div>
 
-                      <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                      <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5 text-stone-500">
                         {mwkRate !== null && <span>{formatMoney(mwkRate, 'MWK')}</span>}
                         {mwkRate !== null && usdRate !== null && <span>•</span>}
                         {usdRate !== null && <span>{formatMoney(usdRate, 'USD')}</span>}
@@ -901,16 +873,16 @@ export default function BulkRoomEditor({
         </div>
 
         {/* Right Column: Adjustment Configuration & Preview (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col space-y-5">
+        <div className="lg:col-span-7 flex flex-col space-y-5 min-w-0">
           {activeTab === 'rates' ? (
             /* ================================================================ */
             /* TAB 1: BASE ROOM RATES ADJUSTMENT                                */
             /* ================================================================ */
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-base flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="font-semibold text-stone-900 text-sm sm:text-base flex items-center gap-2">
                   <TrendingDown className="w-4 h-4 text-stone-500" />
-                  <span>Configure Base Rate Adjustment</span>
+                  <span>Change rates</span>
                 </h4>
                 <span className="text-xs text-stone-500">Rounded to MK 1,000 / whole dollars</span>
               </div>
@@ -918,10 +890,10 @@ export default function BulkRoomEditor({
               {/* Adjustment Method Tabs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'percentage_discount', label: 'Percentage Discount (-%)', icon: TrendingDown },
-                  { id: 'percentage_increase', label: 'Percentage Increase (+%)', icon: TrendingUp },
-                  { id: 'amount_drop', label: 'Fixed Price Drop (- Amount)', icon: DollarSign },
-                  { id: 'amount_increase', label: 'Fixed Price Increase (+ Amount)', icon: TrendingUp },
+                  { id: 'percentage_discount', label: 'Lower by %', icon: TrendingDown },
+                  { id: 'percentage_increase', label: 'Raise by %', icon: TrendingUp },
+                  { id: 'amount_drop', label: 'Lower by amount', icon: DollarSign },
+                  { id: 'amount_increase', label: 'Raise by amount', icon: TrendingUp },
                 ].map(item => {
                   const Icon = item.icon;
                   return (
@@ -929,13 +901,13 @@ export default function BulkRoomEditor({
                       key={item.id}
                       type="button"
                       onClick={() => setRateAdjustmentType(item.id as RateAdjustmentType)}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col justify-between ${
+                      className={`p-2.5 rounded-lg border text-left text-xs transition cursor-pointer flex flex-col justify-between min-w-0 ${
                         rateAdjustmentType === item.id
-                          ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                          ? 'bg-amber-50 text-stone-900 border-amber-700 ring-1 ring-amber-700'
                           : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 mb-1 ${rateAdjustmentType === item.id ? 'text-stone-400' : 'text-stone-500'}`} />
+                      <Icon className="w-3.5 h-3.5 mb-1 text-stone-500" />
                       <span className="font-semibold leading-tight">{item.label}</span>
                     </button>
                   );
@@ -944,12 +916,12 @@ export default function BulkRoomEditor({
 
               {/* Percentage Inputs */}
               {(rateAdjustmentType === 'percentage_discount' || rateAdjustmentType === 'percentage_increase') && (
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
+                <div className="p-3.5 rounded-lg bg-stone-50 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="font-semibold text-stone-700">
-                      {rateAdjustmentType === 'percentage_discount' ? 'Discount Percentage' : 'Rate Increase Percentage'}
+                      {rateAdjustmentType === 'percentage_discount' ? 'Lower by' : 'Raise by'}
                     </span>
-                    <span className="text-stone-500">Pick a preset or enter a custom %</span>
+                    
                   </div>
 
                   {/* Preset Pills */}
@@ -959,10 +931,10 @@ export default function BulkRoomEditor({
                         key={val}
                         type="button"
                         onClick={() => handlePercentageChange(val)}
-                        className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                           ratePercentage === val
-                            ? 'bg-stone-900 text-white shadow-xs'
-                            : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                            ? 'bg-stone-900 text-white'
+                            : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-50'
                         }`}
                       >
                         {rateAdjustmentType === 'percentage_discount' ? `-${val}%` : `+${val}%`}
@@ -971,9 +943,9 @@ export default function BulkRoomEditor({
                   </div>
 
                   {/* Custom Percentage Input */}
-                  <div className="flex items-center gap-3 pt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
                     <label className="text-xs font-medium text-stone-600 whitespace-nowrap">
-                      Custom Percentage:
+                      Other %
                     </label>
                     <div className="relative w-32">
                       <input
@@ -983,29 +955,27 @@ export default function BulkRoomEditor({
                         step="0.5"
                         value={customRatePercentage}
                         onChange={(e) => handleCustomPercentageInput(e.target.value)}
-                        className="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs font-bold text-stone-900 pr-8 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-medium text-stone-900 pr-8 focus:border-stone-500 focus:outline-none"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400 pointer-events-none">
                         %
                       </span>
                     </div>
-                    <span className="text-xs text-stone-500 italic">
-                      Applies proportionally across both MWK &amp; USD rates
-                    </span>
+                    <span className="text-xs text-stone-500">Applies to MWK and USD rates.</span>
                   </div>
                 </div>
               )}
 
               {/* Amount Inputs */}
               {(rateAdjustmentType === 'amount_drop' || rateAdjustmentType === 'amount_increase') && (
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-stone-700">Currency &amp; Adjustment Amount</span>
+                <div className="p-3.5 rounded-lg bg-stone-50 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-stone-700">Amount</span>
                     <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-lg p-0.5">
                       <button
                         type="button"
                         onClick={() => setRateAmountCurrency('MWK')}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
                           rateAmountCurrency === 'MWK' ? 'bg-stone-900 text-white' : 'text-stone-600'
                         }`}
                       >
@@ -1014,7 +984,7 @@ export default function BulkRoomEditor({
                       <button
                         type="button"
                         onClick={() => setRateAmountCurrency('USD')}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
                           rateAmountCurrency === 'USD' ? 'bg-stone-900 text-white' : 'text-stone-600'
                         }`}
                       >
@@ -1033,10 +1003,10 @@ export default function BulkRoomEditor({
                         key={val}
                         type="button"
                         onClick={() => handleAmountChange(val)}
-                        className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                           rateAmount === val
-                            ? 'bg-stone-900 text-white shadow-xs'
-                            : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                            ? 'bg-stone-900 text-white'
+                            : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-50'
                         }`}
                       >
                         {rateAdjustmentType === 'amount_drop' ? '-' : '+'}
@@ -1046,9 +1016,9 @@ export default function BulkRoomEditor({
                   </div>
 
                   {/* Custom Amount Input */}
-                  <div className="flex items-center gap-3 pt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
                     <label className="text-xs font-medium text-stone-600 whitespace-nowrap">
-                      Custom Amount:
+                      Other amount
                     </label>
                     <div className="relative w-40">
                       <input
@@ -1057,7 +1027,7 @@ export default function BulkRoomEditor({
                         step={rateAmountCurrency === 'MWK' ? '1000' : '1'}
                         value={customRateAmount}
                         onChange={(e) => handleCustomAmountInput(e.target.value)}
-                        className="w-full bg-white border border-stone-300 rounded-xl pl-3 pr-12 py-1.5 text-xs font-bold text-stone-900 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                        className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-12 py-1.5 text-sm font-medium text-stone-900 focus:border-stone-500 focus:outline-none"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-stone-400 pointer-events-none">
                         {rateAmountCurrency}
@@ -1069,28 +1039,23 @@ export default function BulkRoomEditor({
 
               {/* Real-time Rate Preview Table */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                    Rate Adjustment Preview ({selectedRooms.length} rooms)
-                  </h5>
-                  {selectedRooms.length > 0 && (
-                    <span className="text-[11px] text-stone-400">Values update in real-time</span>
-                  )}
-                </div>
+                <h5 className="text-sm font-semibold text-stone-700">
+                  Preview ({selectedRooms.length} rooms)
+                </h5>
 
-                <div className="border border-stone-200 rounded-xl overflow-hidden bg-white max-h-[220px] overflow-y-auto">
+                <div className="border border-stone-200 rounded-lg bg-white max-h-[220px] overflow-auto">
                   {selectedRooms.length === 0 ? (
-                    <div className="p-8 text-center text-stone-400 text-xs">
-                      Select one or more rooms from the left to preview new calculated rates.
+                    <div className="p-6 text-center text-stone-500 text-xs">
+                      Pick rooms to see the new rates.
                     </div>
                   ) : (
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full min-w-[480px] text-left text-xs border-collapse">
                       <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold text-[11px]">
                         <tr>
-                          <th className="p-2.5">Room &amp; Property</th>
-                          <th className="p-2.5">Current Rate</th>
-                          <th className="p-2.5">New Rate</th>
-                          <th className="p-2.5 text-right">Net Change</th>
+                          <th className="p-2.5">Room</th>
+                          <th className="p-2.5">Now</th>
+                          <th className="p-2.5">New</th>
+                          <th className="p-2.5 text-right">Change</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
@@ -1105,7 +1070,7 @@ export default function BulkRoomEditor({
                             <tr key={room.id} className="hover:bg-stone-50/60">
                               <td className="p-2.5">
                                 <p className="font-semibold text-stone-900 truncate max-w-[150px]">{room.name}</p>
-                                <p className="text-[10px] text-stone-400 truncate max-w-[150px]">{hotel?.name}</p>
+                                <p className="text-[11px] text-stone-500 truncate max-w-[150px]">{hotel?.name}</p>
                               </td>
                               <td className="p-2.5">
                                 {originalMWK !== null && <div>{formatMoney(originalMWK, 'MWK')}</div>}
@@ -1113,7 +1078,7 @@ export default function BulkRoomEditor({
                               </td>
                               <td className="p-2.5 font-bold text-stone-900">
                                 {newMWK !== null && (
-                                  <div className="text-emerald-700">{formatMoney(newMWK, 'MWK')}</div>
+                                  <div>{formatMoney(newMWK, 'MWK')}</div>
                                 )}
                                 {newUSD !== null && (
                                   <div className="text-stone-500 text-[10px]">{formatMoney(newUSD, 'USD')}</div>
@@ -1122,17 +1087,17 @@ export default function BulkRoomEditor({
                               </td>
                               <td className="p-2.5 text-right">
                                 {diffMWK < 0 ? (
-                                  <span className="inline-flex items-center gap-0.5 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px]">
+                                  <span className="tm-tag whitespace-nowrap">
                                     <TrendingDown className="w-2.5 h-2.5" />
                                     {pctMWK}% ({formatMoney(diffMWK, 'MWK')})
                                   </span>
                                 ) : diffMWK > 0 ? (
-                                  <span className="inline-flex items-center gap-0.5 text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-full text-[10px]">
+                                  <span className="tm-tag tm-tag-warn whitespace-nowrap">
                                     <TrendingUp className="w-2.5 h-2.5" />
                                     +{pctMWK}% (+{formatMoney(diffMWK, 'MWK')})
                                   </span>
                                 ) : (
-                                  <span className="text-stone-400 text-[10px]">No change</span>
+                                  <span className="text-stone-500 text-[11px]">No change</span>
                                 )}
                               </td>
                             </tr>
@@ -1145,22 +1110,22 @@ export default function BulkRoomEditor({
               </div>
 
               {/* Action Button */}
-              <div className="pt-2 flex items-center justify-end gap-3">
+              <div className="pt-2 tm-actions justify-end">
                 <button
                   type="button"
                   onClick={handleApplyBaseRates}
                   disabled={saving || selectedRooms.length === 0}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-sm cursor-pointer"
+                  className="tm-btn tm-btn-primary w-full sm:w-auto"
                 >
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving New Base Rates...</span>
+                      <span>Saving rates…</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Apply Rates to {selectedRooms.length} Room{selectedRooms.length === 1 ? '' : 's'}</span>
+                      <span>Save rates for {selectedRooms.length} room{selectedRooms.length === 1 ? '' : 's'}</span>
                     </>
                   )}
                 </button>
@@ -1171,20 +1136,15 @@ export default function BulkRoomEditor({
             /* TAB 2: PROMOTIONAL SLASH CAMPAIGN                                */
             /* ================================================================ */
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-base flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-stone-500" />
-                  <span>Configure Promotional Slash Campaign</span>
-                </h4>
-                <span className="text-xs text-stone-700 bg-stone-100 border border-stone-200 px-2.5 py-0.5 rounded-md font-medium">
-                  Strikethrough Price &amp; Sale Tag
-                </span>
-              </div>
+              <h4 className="font-semibold text-stone-900 text-sm sm:text-base flex items-center gap-2">
+                <Tag className="w-4 h-4 text-stone-500" />
+                <span>New discount</span>
+              </h4>
 
               {/* Campaign Type */}
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-1">
-                  Sale Campaign Type
+                <label className="tm-label">
+                  Sale badge
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {SALE_TYPE_OPTIONS.map(st => (
@@ -1197,9 +1157,9 @@ export default function BulkRoomEditor({
                           setPromoCustomTitle(st.label);
                         }
                       }}
-                      className={`p-2 rounded-xl border text-left text-xs transition cursor-pointer ${
+                      className={`p-2 rounded-lg border text-left text-xs transition cursor-pointer min-w-0 ${
                         promoSaleType === st.value
-                          ? 'bg-stone-900 text-white border-stone-900 shadow-2xs font-semibold'
+                          ? 'bg-amber-50 text-stone-900 border-amber-700 font-semibold'
                           : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
                       }`}
                     >
@@ -1211,43 +1171,43 @@ export default function BulkRoomEditor({
 
               {/* Campaign Custom Title */}
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-1">
-                  Promotion Title / Campaign Name
+                <label className="tm-label">
+                  Name
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Weekend Special, Summer Flash Sale, Easter Getaway"
                   value={promoCustomTitle}
                   onChange={(e) => setPromoCustomTitle(e.target.value)}
-                  className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 placeholder-stone-400 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                  className="tm-input"
                 />
               </div>
 
               {/* Discount Structure: Percentage vs Fixed Slash */}
-              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+              <div className="p-3.5 rounded-lg bg-stone-50 space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 p-1 bg-stone-200/80 rounded-xl">
+                  <div className="flex items-center gap-1 p-0.5 bg-stone-200/70 rounded-lg">
                     <button
                       type="button"
                       onClick={() => setPromoDiscountMode('percentage')}
-                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                      className={`px-3 py-1 rounded-md font-medium text-xs transition cursor-pointer ${
                         promoDiscountMode === 'percentage'
-                          ? 'bg-white text-stone-900 shadow-xs'
+                          ? 'bg-white text-stone-900 shadow-sm'
                           : 'text-stone-600'
                       }`}
                     >
-                      % Percentage Discount
+                      Percent off
                     </button>
                     <button
                       type="button"
                       onClick={() => setPromoDiscountMode('fixed_slash')}
-                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                      className={`px-3 py-1 rounded-md font-medium text-xs transition cursor-pointer ${
                         promoDiscountMode === 'fixed_slash'
-                          ? 'bg-white text-stone-900 shadow-xs'
+                          ? 'bg-white text-stone-900 shadow-sm'
                           : 'text-stone-600'
                       }`}
                     >
-                      Fixed Amount Slash
+                      Amount off
                     </button>
                   </div>
                 </div>
@@ -1260,20 +1220,20 @@ export default function BulkRoomEditor({
                           key={val}
                           type="button"
                           onClick={() => handlePromoPercentageChange(val)}
-                          className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                             promoPercentage === val
-                              ? 'bg-stone-900 text-white shadow-xs'
-                              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                              ? 'bg-stone-900 text-white'
+                              : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-50'
                           }`}
                         >
-                          {val}% OFF
+                          {val}% off
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
                       <label className="text-xs font-medium text-stone-600 whitespace-nowrap">
-                        Custom Percentage:
+                        Other %
                       </label>
                       <div className="relative w-32">
                         <input
@@ -1282,7 +1242,7 @@ export default function BulkRoomEditor({
                           max="90"
                           value={customPromoPercentage}
                           onChange={(e) => handleCustomPromoPercentageInput(e.target.value)}
-                          className="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs font-bold text-stone-900 pr-8 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-medium text-stone-900 pr-8 focus:border-stone-500 focus:outline-none"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400 pointer-events-none">
                           %
@@ -1297,7 +1257,7 @@ export default function BulkRoomEditor({
                         <button
                           type="button"
                           onClick={() => setPromoSortedCurrency('MWK')}
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
                             promoSortedCurrency === 'MWK' ? 'bg-stone-900 text-white' : 'text-stone-600'
                           }`}
                         >
@@ -1306,7 +1266,7 @@ export default function BulkRoomEditor({
                         <button
                           type="button"
                           onClick={() => setPromoSortedCurrency('USD')}
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
                             promoSortedCurrency === 'USD' ? 'bg-stone-900 text-white' : 'text-stone-600'
                           }`}
                         >
@@ -1324,20 +1284,20 @@ export default function BulkRoomEditor({
                           key={val}
                           type="button"
                           onClick={() => handlePromoAmountChange(val)}
-                          className={`px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                             promoSortedAmount === val
-                              ? 'bg-stone-900 text-white shadow-xs'
-                              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                              ? 'bg-stone-900 text-white'
+                              : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-50'
                           }`}
                         >
-                          Slash {formatMoney(val, promoSortedCurrency)}
+                          -{formatMoney(val, promoSortedCurrency)}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
                       <label className="text-xs font-medium text-stone-600 whitespace-nowrap">
-                        Custom Amount to Slash:
+                        Other amount
                       </label>
                       <div className="relative w-40">
                         <input
@@ -1346,7 +1306,7 @@ export default function BulkRoomEditor({
                           step={promoSortedCurrency === 'MWK' ? '1000' : '1'}
                           value={customPromoAmount}
                           onChange={(e) => handleCustomPromoAmountInput(e.target.value)}
-                          className="w-full bg-white border border-stone-300 rounded-xl pl-3 pr-12 py-1.5 text-xs font-bold text-stone-900 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                          className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-12 py-1.5 text-sm font-medium text-stone-900 focus:border-stone-500 focus:outline-none"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-stone-400 pointer-events-none">
                           {promoSortedCurrency}
@@ -1360,41 +1320,41 @@ export default function BulkRoomEditor({
               {/* Dates & Badge (Optional) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-1">
-                    Start Date
+                  <label className="tm-label">
+                    Starts
                   </label>
                   <input
                     type="date"
                     value={promoStartDate}
                     onChange={(e) => setPromoStartDate(e.target.value)}
                     onClick={(e) => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+                    className="tm-input cursor-pointer"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 mb-1">
-                    End Date (Optional)
+                  <label className="tm-label">
+                    Ends (optional)
                   </label>
                   <input
                     type="date"
                     value={promoEndDate}
                     onChange={(e) => setPromoEndDate(e.target.value)}
                     onClick={(e) => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+                    className="tm-input cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* Live Promotional Price Preview */}
               <div className="space-y-2">
-                <h5 className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                  Guest-Facing Slashed Preview ({selectedRooms.length} rooms)
+                <h5 className="text-sm font-semibold text-stone-700">
+                  What guests see ({selectedRooms.length} rooms)
                 </h5>
 
-                <div className="border border-stone-200 rounded-xl overflow-hidden bg-white max-h-[220px] overflow-y-auto">
+                <div className="border border-stone-200 rounded-lg bg-white max-h-[220px] overflow-auto">
                   {selectedRooms.length === 0 ? (
-                    <div className="p-8 text-center text-stone-400 text-xs">
-                      Select one or more rooms from the left to preview guest-facing promotional prices.
+                    <div className="p-6 text-center text-stone-500 text-xs">
+                      Pick rooms to see the discounted prices.
                     </div>
                   ) : (
                     <div className="p-3 space-y-2 divide-y divide-stone-100">
@@ -1417,19 +1377,19 @@ export default function BulkRoomEditor({
                           <div key={room.id} className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs">
                             <div className="min-w-0">
                               <p className="font-semibold text-stone-900 truncate">{room.name}</p>
-                              <p className="text-[10px] text-stone-400 truncate">{hotel?.name}</p>
+                              <p className="text-[11px] text-stone-500 truncate">{hotel?.name}</p>
                             </div>
 
                             <div className="text-right shrink-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="line-through text-stone-400 text-[11px]">
+                                <span className="line-through text-stone-500 text-[11px]">
                                   {formatMoney(originalMWK, 'MWK')}
                                 </span>
-                                <span className="font-bold text-emerald-700 text-sm">
+                                <span className="font-semibold text-stone-900 text-sm">
                                   {formatMoney(slashed.slashedPrice, 'MWK')}
                                 </span>
                               </div>
-                              <div className="text-[10px] font-semibold text-stone-700 bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
+                              <div className="tm-tag mt-0.5">
                                 {slashed.badgeText}
                               </div>
                             </div>
@@ -1442,22 +1402,22 @@ export default function BulkRoomEditor({
               </div>
 
               {/* Action Button */}
-              <div className="pt-2 flex items-center justify-end gap-3">
+              <div className="pt-2 tm-actions justify-end">
                 <button
                   type="button"
                   onClick={handleApplyPromotion}
                   disabled={saving || selectedRooms.length === 0}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-sm cursor-pointer"
+                  className="tm-btn tm-btn-primary w-full sm:w-auto"
                 >
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Creating Promotions...</span>
+                      <span>Saving discount…</span>
                     </>
                   ) : (
                     <>
-                      <Zap className="w-4 h-4" />
-                      <span>Launch Promotion on {selectedRooms.length} Room{selectedRooms.length === 1 ? '' : 's'}</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Add discount to {selectedRooms.length} room{selectedRooms.length === 1 ? '' : 's'}</span>
                     </>
                   )}
                 </button>

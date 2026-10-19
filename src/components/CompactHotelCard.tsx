@@ -50,7 +50,7 @@ export default function CompactHotelCard({
   return (
     <Link
       to={url}
-      className={`group flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3.5 md:gap-4 bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-stone-200/80 hover:border-stone-400 hover:shadow-md transition-all ${
+      className={`group flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3.5 md:gap-4 bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl border border-stone-200/80 hover:border-stone-400 hover:shadow-sm transition-all ${
         isAvailable === false ? 'opacity-60 grayscale hover:grayscale-0 transition duration-300' : ''
       }`}
     >

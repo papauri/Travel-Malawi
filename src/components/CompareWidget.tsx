@@ -34,7 +34,7 @@ export default function CompareWidget() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 md:bottom-6 left-4 md:left-1/2 md:-translate-x-1/2 z-[70] flex items-center gap-2 sm:gap-4 bg-stone-900 text-white p-2 pl-3 sm:px-5 sm:py-2.5 rounded-xl shadow-xl border border-stone-800 w-auto max-w-[calc(100%-5rem)] md:max-w-none overflow-x-auto scrollbar-hide"
+            className="fixed bottom-6 md:bottom-6 left-4 md:left-1/2 md:-translate-x-1/2 z-[70] flex items-center gap-2 sm:gap-4 bg-stone-900 text-white p-2 pl-3 sm:px-5 sm:py-2.5 rounded-xl shadow-sm border border-stone-800 w-auto max-w-[calc(100%-5rem)] md:max-w-none overflow-x-auto scrollbar-hide"
           >
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Scale className="w-4 h-4 text-stone-300 shrink-0" />
@@ -91,7 +91,7 @@ export default function CompareWidget() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsCompareModalOpen(false)}
-                className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm"
+                className="fixed inset-0 bg-stone-900/60"
               />
               
               <motion.div
@@ -100,7 +100,7 @@ export default function CompareWidget() {
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="relative w-full max-w-6xl max-h-[calc(100dvh-2rem)] sm:max-h-[88vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden my-auto text-left overscroll-contain"
+                className="relative w-full max-w-6xl max-h-[calc(100dvh-2rem)] sm:max-h-[88vh] bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden my-auto text-left overscroll-contain"
               >
                 <div className="flex items-center justify-between p-5 sm:p-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
                   <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export default function CompareWidget() {
                         <button
                           type="button"
                           onClick={() => toggleHotel(item)}
-                          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white text-stone-900 rounded-full shadow-md transition cursor-pointer"
+                          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white text-stone-900 rounded-full shadow-sm transition cursor-pointer"
                           aria-label={`Remove ${item.hotel.name} from comparison`}
                           title="Remove from comparison"
                         >

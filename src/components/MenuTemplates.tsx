@@ -68,7 +68,7 @@ function Masthead({
         <>
           {restaurant.name && <h2 className={titleClass}>{restaurant.name}</h2>}
           {restaurant.tagline && (
-            <p className={`text-[10px] sm:text-xs uppercase tracking-[0.22em] sm:tracking-[0.28em] font-medium ${accentClass}`}>
+            <p className={`text-xs sm:text-sm italic font-medium ${accentClass}`}>
               {restaurant.tagline}
             </p>
           )}
@@ -99,7 +99,7 @@ function Tags({ tags }: { tags?: string[] }) {
       {tags.map((tag, tagIdx) => (
         <span
           key={`tag-${tag}-${tagIdx}`}
-          className="text-[9px] sm:text-[10px] uppercase font-semibold tracking-wider text-emerald-800 bg-emerald-50/90 border border-emerald-200/80 rounded-full px-2 py-0.5 whitespace-nowrap shadow-2xs"
+          className="text-[10px] sm:text-xs uppercase font-medium text-stone-600 bg-stone-100 rounded-md px-1.5 py-0.5 whitespace-nowrap"
         >
           {tag}
         </span>
@@ -114,7 +114,7 @@ const hasItems = (sections: MenuSection[]) => sections.some(s => s.items.length 
 function ClassicMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
+    <div className="bg-white rounded-xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
       <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight" />
       <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
         {restaurant.sections.map((section, sIdx) => (
@@ -160,7 +160,7 @@ function ClassicMenu(props: Props) {
 function ElegantMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#fbfaf8] rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-16 shadow-xs">
+    <div className="bg-[#fbfaf8] rounded-xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-16 shadow-xs">
       <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight font-light" />
       <div className="space-y-10 sm:space-y-14 max-w-xl mx-auto text-center">
         {restaurant.sections.map((section, sIdx) => (
@@ -201,7 +201,7 @@ function ElegantMenu(props: Props) {
 function MinimalMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
+    <div className="bg-white rounded-xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
       <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
       <div className="space-y-10 sm:space-y-12 max-w-2xl">
         {restaurant.sections.map((section, sIdx) => (
@@ -239,7 +239,7 @@ function MinimalMenu(props: Props) {
 function BistroMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#f7f3ea] rounded-3xl border border-[#e6dcc8] p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
+    <div className="bg-[#f7f3ea] rounded-xl border border-[#e6dcc8] p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
       <Masthead {...props} accentClass="text-[#a98d5f]" titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-[#3f3527] tracking-tight" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-10 lg:gap-x-12 gap-y-8 sm:gap-y-10">
         {restaurant.sections.map((section, sIdx) => (
@@ -280,7 +280,7 @@ function BistroMenu(props: Props) {
 function ModernMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-stone-50 rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
+    <div className="bg-stone-50 rounded-xl border border-stone-200 p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
       <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
       <div className="space-y-8 sm:space-y-10">
         {restaurant.sections.map((section, sIdx) => (
@@ -292,11 +292,11 @@ function ModernMenu(props: Props) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {section.items.map((item, iIdx) => (
-                <article key={`modern-item-${item.id || iIdx}-${iIdx}`} className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+                <article key={`modern-item-${item.id || iIdx}-${iIdx}`} className="bg-white rounded-lg border border-stone-200/90 p-4 sm:p-5 flex flex-col justify-between">
                   <div>
                     <div className="flex items-start justify-between gap-2.5 mb-2">
                       <h4 className="font-semibold text-stone-900 text-sm sm:text-base leading-snug">{item.name}</h4>
-                      <span className="shrink-0 bg-stone-900 text-white text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full tabular-nums shadow-2xs">
+                      <span className="shrink-0 bg-stone-900 text-white text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-md tabular-nums">
                         {priceLabel(item, currency) ?? '—'}
                       </span>
                     </div>
@@ -320,8 +320,8 @@ function ModernMenu(props: Props) {
 function HeritageMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#fdfcf9] rounded-3xl border border-stone-200 p-3.5 sm:p-6 md:p-8 shadow-xs">
-      <div className="border-2 border-double border-stone-300 rounded-2xl p-5 sm:p-8 md:p-12 lg:p-14">
+    <div className="bg-[#fdfcf9] rounded-xl border border-stone-200 p-3.5 sm:p-6 md:p-8 shadow-xs">
+      <div className="border-2 border-double border-stone-300 rounded-lg p-5 sm:p-8 md:p-12 lg:p-14">
         <Masthead {...props} titleClass="font-serif text-2xl sm:text-3xl md:text-4xl text-stone-900 tracking-[0.08em] uppercase" />
         <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
           {restaurant.sections.map((section, sIdx) => (
@@ -372,7 +372,7 @@ export default function MenuTemplateView(props: Props) {
 
   if (!restaurant.sections?.length || !hasItems(restaurant.sections)) {
     return (
-      <div className="bg-white rounded-3xl border border-stone-200 p-8 sm:p-12 text-center shadow-xs">
+      <div className="bg-white rounded-xl border border-stone-200 p-8 sm:p-12 text-center shadow-xs">
         <p className="text-stone-600 font-medium">This menu has not been published yet.</p>
         <p className="text-xs sm:text-sm text-stone-400 mt-1">Contact the property for today's dishes and daily specials.</p>
       </div>

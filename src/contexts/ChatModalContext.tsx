@@ -160,7 +160,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
       {activeChat && user && (
         <>
           {isMinimized ? (
-            /* Minimized Floating Icon in bottom-right corner */
+            /* Minimised chat button (bottom right) */
             <div 
               id="minimized-floating-chat-pill"
               className={`fixed bottom-6 z-[140] pointer-events-none transition-all duration-200 ${
@@ -173,23 +173,23 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={maximizeChat}
-                  className="relative flex items-center justify-center w-12 h-12 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-stone-700/80 hover:border-emerald-400/70 backdrop-blur-md transition-all hover:scale-105 active:scale-95 cursor-pointer select-none"
+                  className="relative flex items-center justify-center w-12 h-12 rounded-full bg-stone-900 hover:bg-stone-800 text-white shadow-sm border border-stone-700 transition-colors cursor-pointer select-none"
                   title={activeChat.type === 'inquiry' 
                     ? (activeChat.guestId ? `Chat: ${activeChat.guestName || 'Guest'}` : currentHotelName)
                     : `Booking: ${activeChat.booking.guestName || 'Guest'}`}
                   aria-label="Expand chat"
                 >
                   <div className="relative flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform duration-200" />
+                    <MessageSquare className="w-5 h-5 text-stone-50" />
                     <span 
                       className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
-                        isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-stone-400'
+                        isOnline ? 'bg-emerald-500' : 'bg-stone-400'
                       }`} 
                     />
                   </div>
                 </button>
 
-                {/* Quick Close Button on hover */}
+                {/* Close button (on hover) */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -205,12 +205,12 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           ) : (
-            /* Expanded Floating Chat Card Docked at Bottom Right */
+            /* Open chat window (bottom right) */
             <div 
               id="expanded-floating-chat-container"
               ref={chatScrollIsolationRef}
               data-lenis-prevent="true"
-              className="fixed inset-x-0 bottom-0 top-10 sm:top-auto sm:inset-x-auto sm:bottom-6 sm:right-6 z-[200] sm:w-[440px] h-[calc(100dvh-2.5rem)] sm:h-[660px] sm:max-h-[calc(100dvh-5rem)] origin-bottom-right animate-fadeIn flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl overscroll-contain"
+              className="fixed inset-x-0 bottom-0 top-10 sm:top-auto sm:inset-x-auto sm:bottom-6 sm:right-6 z-[200] sm:w-[440px] h-[calc(100dvh-2.5rem)] sm:h-[660px] sm:max-h-[calc(100dvh-5rem)] origin-bottom-right animate-fadeIn flex flex-col overflow-hidden rounded-t-xl sm:rounded-xl shadow-sm overscroll-contain"
             >
               {activeChat.type === 'inquiry' ? (
                 <PropertyChat

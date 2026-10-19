@@ -13,7 +13,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
-import Modal, { fieldClass, labelClass } from '../components/Modal';
+import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
@@ -482,26 +482,26 @@ export default function MyBookings() {
       case 'confirmed':
       case 'approved':
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-200">
+          <span className="tm-tag tm-tag-good">
             <CheckCircle2 className="w-3.5 h-3.5" /> Confirmed
           </span>
         );
       case 'rejected':
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-bold uppercase tracking-wider border border-red-200">
+          <span className="tm-tag tm-tag-bad">
             <XCircle className="w-3.5 h-3.5" /> Declined
           </span>
         );
       case 'cancelled':
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs font-bold uppercase tracking-wider border border-stone-200">
+          <span className="tm-tag border border-stone-200">
             <Ban className="w-3.5 h-3.5" /> Cancelled
           </span>
         );
       case 'pending':
       default:
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-200">
+          <span className="tm-tag tm-tag-warn">
             <Clock className="w-3.5 h-3.5" /> Pending
           </span>
         );
@@ -510,7 +510,7 @@ export default function MyBookings() {
 
   if (authLoading || loading || loadingHost) return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-300 border-t-stone-700"></div>
     </div>
   );
 
@@ -518,25 +518,21 @@ export default function MyBookings() {
     return (
       <div className="min-h-screen bg-stone-50 pt-16 pb-24">
         <div className="max-w-xl mx-auto px-6 text-center">
-          <div className="w-20 h-20 bg-emerald-50 text-emerald-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100">
-            <Calendar className="w-10 h-10" />
-          </div>
-          <h1 className="text-3xl font-serif font-bold text-stone-900 mb-3">Your Bookings</h1>
-          <p className="text-stone-600 mb-8 leading-relaxed">
-            Please sign in to view your upcoming property bookings, manage guest reservations, and access your digital vouchers.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Calendar className="w-8 h-8 text-stone-400 mx-auto mb-4" />
+          <h1 className="tm-h1 mb-2">Your bookings</h1>
+          <p className="tm-lead mx-auto mb-6">Sign in to see your trips and vouchers.</p>
+          <div className="tm-actions justify-center">
             <button
               onClick={() => openAuth('signin')}
-              className="bg-stone-900 hover:bg-stone-800 text-white font-semibold px-6 py-3 rounded-full transition shadow-md"
+              className="tm-btn tm-btn-primary"
             >
-              Sign In
+              Sign in
             </button>
             <Link
               to="/"
-              className="bg-white hover:bg-stone-100 text-stone-700 font-semibold px-6 py-3 rounded-full border border-stone-200 transition"
+              className="tm-btn tm-btn-secondary"
             >
-              Explore Properties
+              Browse stays
             </Link>
           </div>
         </div>
@@ -547,68 +543,61 @@ export default function MyBookings() {
 
   return (
     <div className="min-h-screen bg-stone-50 pt-8 pb-24">
-      <div className="max-w-4xl mx-auto px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
-          <div>
-            <h1 className="text-4xl font-serif font-bold text-stone-900 mb-2">
-              {activeMainTab === 'host' ? 'Property Bookings' : 'My Trips'}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+          <div className="min-w-0">
+            <h1 className="tm-h1 mb-1">
+              {activeMainTab === 'host' ? 'Property bookings' : 'My trips'}
             </h1>
-            <p className="text-stone-500">
-              {activeMainTab === 'host' ? 'Manage bookings across your properties.' : 'Manage your upcoming stays and past trips.'}
+            <p className="tm-muted">
+              {activeMainTab === 'host' ? 'Bookings across your properties.' : 'Your upcoming and past stays.'}
             </p>
           </div>
           {managerHotels.length > 0 && (
-            <div className="flex bg-stone-100 p-1 rounded-xl">
+            <div className="flex bg-stone-100 p-1 rounded-lg">
               <button
                 onClick={() => setActiveMainTab('host')}
-                className={`flex-1 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeMainTab === 'host' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeMainTab === 'host' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
               >
-                Property Bookings
+                Property bookings
               </button>
               <button
                 onClick={() => setActiveMainTab('guest')}
-                className={`flex-1 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeMainTab === 'guest' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeMainTab === 'guest' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
               >
-                My Trips
+                My trips
               </button>
             </div>
           )}
         </div>
 
         {/* Offline Bookings Queue (IndexedDB) */}
-        <OfflineBookingsQueue className="mb-8" />
+        <OfflineBookingsQueue className="mb-6" />
 
         {activeMainTab === 'guest' && broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).length > 0 && filter === 'upcoming' && (
-          <div className="mb-10 space-y-4">
-            <h2 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-              <Megaphone className="w-5 h-5" /> Live Updates
+          <div className="mb-8 space-y-3">
+            <h2 className="tm-h2 flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-stone-500" /> News from your hosts
             </h2>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="tm-panel !py-1 divide-y divide-stone-100">
               {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).map((broadcast, bIdx) => {
                 const hotel = grouped.upcoming.find(b => b.hotelId === broadcast.hotelId)?.hotel;
                 return (
-                  <div key={`${broadcast.id || 'bc'}-${bIdx}`} className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex items-start gap-4">
-                    <div className={`mt-1 p-2 rounded-full shrink-0 ${
-                      broadcast.type === 'alert' ? 'bg-red-100 text-red-600' :
-                      broadcast.type === 'event' ? 'bg-amber-100 text-amber-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
-                      <Megaphone className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                          {hotel?.name || 'Property Update'}
+                  <div key={`${broadcast.id || 'bc'}-${bIdx}`} className="py-3 flex items-start gap-3 min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-x-2 gap-y-1 mb-1 flex-wrap">
+                        <span className="text-sm font-semibold text-stone-900 truncate">
+                          {hotel?.name || 'Property update'}
                         </span>
-                        <span className="text-stone-300">•</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-stone-500">{broadcast.type}</span>
-                        <span className="text-stone-300">•</span>
+                        <span className={`tm-tag ${broadcast.type === 'alert' ? 'tm-tag-bad' : broadcast.type === 'event' ? 'tm-tag-warn' : ''}`}>{broadcast.type}</span>
                         <span className="text-xs text-stone-500">{new Date(broadcast.createdAt).toLocaleString()}</span>
                       </div>
-                      <p className="text-stone-900 font-medium">{broadcast.message}</p>
+                      <p className="text-sm text-stone-800 break-words">{broadcast.message}</p>
                     </div>
                     <button 
-                      className="p-1.5 ml-auto text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-full transition"
+                      type="button"
+                      aria-label="Hide this update"
+                      className="p-1.5 shrink-0 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
                       onClick={() => {
                         const newHidden = [...hiddenBroadcastIds, broadcast.id!];
                         setHiddenBroadcastIds(newHidden);
@@ -640,7 +629,7 @@ export default function MyBookings() {
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-md ${
+                <span className={`text-xs tabular-nums px-1.5 py-0.5 rounded-md ${
                   filter === tab.key ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
                 }`}>
                   {tab.count}
@@ -667,45 +656,43 @@ export default function MyBookings() {
         </div>
 
         {activeBookings.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-stone-200 shadow-sm mx-auto flex flex-col items-center">
-            <div className="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center mb-6">
-              <Calendar className="h-10 w-10 text-stone-400" />
-            </div>
-            <h2 className="text-2xl text-stone-900 font-serif font-bold mb-3">
+          <div className="tm-panel text-center py-12 flex flex-col items-center">
+            <Calendar className="h-8 w-8 text-stone-400 mb-3" />
+            <h2 className="tm-h2 mb-1">
               {activeMainTab === 'host'
                 ? (filter === 'upcoming' ? 'No upcoming bookings yet' : filter === 'past' ? 'No past bookings' : 'No cancelled bookings')
-                : (filter === 'upcoming' ? 'No trips booked... yet!' : filter === 'past' ? 'No past stays' : 'Nothing cancelled')}
+                : (filter === 'upcoming' ? 'No trips booked yet' : filter === 'past' ? 'No past stays' : 'Nothing cancelled')}
             </h2>
-            <p className="text-stone-500 mb-8 max-w-md">
+            <p className="tm-muted mb-5 max-w-md">
               {activeMainTab === 'host'
-                ? 'Guest reservations for your properties will appear here along with their contact info and confirmation tools.'
+                ? 'New guest bookings will show here.'
                 : (filter === 'upcoming'
-                    ? 'Time to dust off your bags and start planning your next adventure in Malawi.'
-                    : 'Bookings will show up here once they move into this stage.')}
+                    ? 'Find a place to stay and your trip will show here.'
+                    : 'Bookings show here once they reach this stage.')}
             </p>
             {activeMainTab === 'guest' && filter === 'upcoming' && (
-              <button onClick={() => navigate('/')} className="bg-stone-900 text-white px-8 py-3.5 rounded-full font-medium hover:bg-stone-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                Start Exploring
+              <button type="button" onClick={() => navigate('/')} className="tm-btn tm-btn-primary">
+                Browse stays
               </button>
             )}
             {activeMainTab === 'host' && managerHotels.length > 0 && (
-              <Link to={`/dashboard/hotel/${managerHotels[0]?.id}`} className="bg-stone-900 text-white px-8 py-3.5 rounded-full font-medium hover:bg-stone-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                Open Host Dashboard
+              <Link to={`/dashboard/hotel/${managerHotels[0]?.id}`} className="tm-btn tm-btn-primary">
+                Open dashboard
               </Link>
             )}
           </div>
         ) : activeMainTab === 'host' ? (
-          <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+          <div className="tm-panel !p-0 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-stone-600 min-w-[800px]">
-                <thead className="bg-stone-50 text-xs uppercase font-bold text-stone-400 border-b border-stone-200">
+              <table className="w-full text-left text-sm text-stone-600 min-w-[760px]">
+                <thead className="bg-stone-50 text-xs font-medium text-stone-500 border-b border-stone-200">
                   <tr>
-                    <th className="px-6 py-4">Guest</th>
-                    <th className="px-6 py-4">Property</th>
-                    <th className="px-6 py-4">Dates</th>
-                    <th className="px-6 py-4">Total</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-4 py-3">Guest</th>
+                    <th className="px-4 py-3">Property</th>
+                    <th className="px-4 py-3">Dates</th>
+                    <th className="px-4 py-3">Total</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -718,7 +705,7 @@ export default function MyBookings() {
                           <div className="text-xs">{booking.guestPhone || booking.guestEmail}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <Link to={`/dashboard/hotel/${booking.hotelId}`} className="font-semibold text-stone-900 hover:text-emerald-700 transition truncate max-w-[150px] inline-block">{booking.hotel?.name || 'Property'}</Link>
+                          <Link to={`/dashboard/hotel/${booking.hotelId}`} className="font-semibold text-stone-900 hover:text-amber-800 transition-colors truncate max-w-[150px] inline-block">{booking.hotel?.name || 'Property'}</Link>
                           <div className="text-xs text-stone-500 truncate max-w-[150px]">{booking.room?.name || 'Room'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -735,8 +722,9 @@ export default function MyBookings() {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => setEditBookingTarget(booking)}
-                              className="p-2 text-stone-400 hover:text-stone-900 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition"
-                              title="Quick Edit"
+                              className="tm-btn tm-btn-secondary tm-btn-sm !px-2"
+                              title="Edit booking"
+                              aria-label="Edit booking"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -744,8 +732,9 @@ export default function MyBookings() {
                               <button
                                 onClick={() => setConfirmModalBooking(booking)}
                                 disabled={busyId === booking.id || confirmFlow.busyId === booking.id}
-                                className="disabled:opacity-50 p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-sm"
-                                title="Approve Booking"
+                                className="tm-btn tm-btn-secondary tm-btn-sm !px-2 !text-emerald-800"
+                                title="Confirm booking"
+                                aria-label="Confirm booking"
                               >
                                 <Check className="w-4 h-4" />
                               </button>
@@ -754,16 +743,18 @@ export default function MyBookings() {
                               <button
                                 onClick={() => handleRejectHostBooking(booking)}
                                 disabled={busyId === booking.id || confirmFlow.busyId === booking.id}
-                                className="disabled:opacity-50 p-2 text-red-600 hover:text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition shadow-sm"
-                                title="Decline Booking"
+                                className="tm-btn tm-btn-danger tm-btn-sm !px-2"
+                                title="Decline booking"
+                                aria-label="Decline booking"
                               >
                                 <X className="w-4 h-4" />
                               </button>
                             )}
                             <button
                               onClick={() => setVoucherTarget(booking)}
-                              className="p-2 text-stone-400 hover:text-stone-900 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition"
-                              title="Guest Voucher"
+                              className="tm-btn tm-btn-secondary tm-btn-sm !px-2"
+                              title="Guest voucher"
+                              aria-label="Guest voucher"
                             >
                               <ShieldCheck className="w-4 h-4" />
                             </button>
@@ -777,18 +768,18 @@ export default function MyBookings() {
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {activeBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
               const terms = cancellationTerms(booking);
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
               const canReview = activeMainTab === 'guest' && booking.status === 'confirmed' && booking.id && !reviewedBookingIds.has(booking.id);
               return (
-              <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm transition-shadow">
+              <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group tm-panel !p-0 flex flex-col md:flex-row overflow-hidden min-w-0">
                 <div className="md:w-64 lg:w-72 h-36 sm:h-44 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
                   <SmartImage
                     src={booking.hotel ? getHotelImage(booking.hotel) : undefined}
                     alt={booking.hotel?.name || 'Property'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover"
                   />
                   <div className="absolute top-3 left-3">
                     {getStatusBadge(booking.status)}
@@ -799,118 +790,119 @@ export default function MyBookings() {
                   <div>
                     <div className="flex justify-between items-start mb-1.5 sm:mb-2 gap-2 sm:gap-3 min-w-0">
                       {booking.hotel?.id ? (
-                        <Link to={`/hotel/${booking.hotel.id}`} className="hover:text-emerald-600 transition min-w-0 flex-1">
-                          <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900 flex items-center gap-2 line-clamp-2 leading-snug">
+                        <Link to={`/hotel/${booking.hotel.id}`} className="hover:text-amber-800 transition-colors min-w-0 flex-1">
+                          <h3 className="tm-h2 flex items-center gap-2 leading-snug">
                             <span className="line-clamp-2">{booking.hotel.name}</span>
                             <ExternalLink className="w-3.5 h-3.5 shrink-0 text-stone-400 opacity-0 group-hover:opacity-100 transition" />
                           </h3>
                         </Link>
                       ) : (
-                        <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900 line-clamp-2 leading-snug flex-1 min-w-0">
+                        <h3 className="tm-h2 line-clamp-2 leading-snug flex-1 min-w-0">
                           {booking.hotel?.name || 'Property no longer listed'}
                         </h3>
                       )}
                       {booking.reference && (
                         <button
+                          type="button"
                           onClick={() => copyReference(booking.reference!)}
                           title="Copy booking reference"
-                          className="shrink-0 flex items-center gap-1 text-[11px] sm:text-xs font-mono font-semibold text-stone-500 bg-stone-100 hover:bg-stone-200 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition"
+                          className="tm-tag font-mono shrink-0 hover:bg-stone-200 transition-colors cursor-pointer"
                         >
                           {booking.reference}
                           <Copy className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center text-stone-500 gap-1.5 mb-3 text-xs sm:text-sm font-medium truncate">
+                    <div className="flex items-center text-stone-500 gap-1.5 mb-3 text-sm truncate">
                       <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
                     </div>
 
-                    <div className="bg-stone-50 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-stone-100 flex flex-col sm:flex-row gap-2.5 sm:gap-6 mb-4 sm:mb-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 mb-4 text-sm">
                       <div>
-                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Check-in</p>
-                        <p className="text-xs sm:text-sm font-medium text-stone-900">{formatDateStr(booking.checkIn)}</p>
+                        <p className="tm-muted">Check-in</p>
+                        <p className="font-medium text-stone-900">{formatDateStr(booking.checkIn)}</p>
                       </div>
-                      <div className="hidden sm:block w-px bg-stone-200"></div>
                       <div>
-                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Check-out</p>
-                        <p className="text-xs sm:text-sm font-medium text-stone-900">{formatDateStr(booking.checkOut)}</p>
+                        <p className="tm-muted">Check-out</p>
+                        <p className="font-medium text-stone-900">{formatDateStr(booking.checkOut)}</p>
                       </div>
-                      <div className="hidden sm:block w-px bg-stone-200"></div>
-                      <div>
-                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Room</p>
-                        <p className="text-xs sm:text-sm font-medium text-stone-900 truncate max-w-[160px]" title={booking.room?.name || 'Room'}>
+                      <div className="col-span-2 sm:col-span-1 min-w-0">
+                        <p className="tm-muted">Room</p>
+                        <p className="font-medium text-stone-900 truncate" title={booking.room?.name || 'Room'}>
                           {booking.room?.name || 'Room'}
-                          <span className="text-stone-400 font-normal"> · {nights}n · {booking.guests}g</span>
+                          <span className="text-stone-500 font-normal"> · {nights} night{nights === 1 ? '' : 's'} · {booking.guests} guest{booking.guests === 1 ? '' : 's'}</span>
                         </p>
                       </div>
                     </div>
                   </div>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="space-y-3 min-w-0">
+                        <div className="tm-actions">
                           {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
                             <button
                               type="button"
                               onClick={() => setVoucherTarget(booking)}
-                              className="text-xs font-semibold text-emerald-900 border-2 border-emerald-900 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-900 hover:text-white transition flex items-center gap-1.5"
+                              className="tm-btn tm-btn-primary tm-btn-sm"
                             >
-                              <ShieldCheck className="w-4 h-4" /> View Digital Voucher
+                              <ShieldCheck className="w-4 h-4" /> View voucher
                             </button>
                           )}
                           {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
                             <button
                               type="button"
                               onClick={() => openBookingChat(booking as unknown as Booking)}
-                              className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
+                              className="tm-btn tm-btn-secondary tm-btn-sm"
                             >
                               <MessageSquare className="w-4 h-4" /> Contact host
                             </button>
                           )}
                         </div>
                         {booking.status === 'pending' && (
-                          <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
-                            Waiting for property confirmation. Payment on arrival.
+                          <p className="text-sm text-amber-800">
+                            Waiting for the property to confirm. You pay on arrival.
                           </p>
                         )}
                         {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
-                          <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                            Your stay is confirmed! Payment on arrival.
+                          <p className="text-sm text-emerald-800">
+                            Your stay is confirmed. You pay on arrival.
                           </p>
                         )}
                         {booking.status === 'cancelled' && (
-                          <p className="text-xs font-medium text-stone-500 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200">
+                          <p className="text-sm text-stone-500">
                             Cancelled{booking.cancelledBy === 'manager' ? ' by the property' : ''}
                             {booking.cancelledAt ? ` on ${new Date(booking.cancelledAt).toLocaleDateString()}` : ''}.
                           </p>
                         )}
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="tm-actions">
                           {terms.canCancel && (
                             <button
+                              type="button"
                               onClick={() => setCancelTarget(booking)}
                               disabled={busyId === booking.id}
-                              className="text-xs font-semibold text-stone-600 border border-stone-300 px-3 py-1.5 rounded-lg hover:bg-stone-100 hover:text-red-600 hover:border-red-200 transition disabled:opacity-50"
+                              className="tm-btn tm-btn-quiet tm-btn-sm hover:!text-red-700"
                             >
                               {busyId === booking.id ? 'Cancelling…' : 'Cancel booking'}
                             </button>
                           )}
                           {canReview && (
                             <button
+                              type="button"
                               onClick={() => setReviewTarget(booking)}
-                              className="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition flex items-center gap-1.5"
+                              className="tm-btn tm-btn-secondary tm-btn-sm"
                             >
                               <Star className="w-3.5 h-3.5" /> Write a review
                             </button>
                           )}
                           {booking.id && reviewedBookingIds.has(booking.id) && (
-                            <span className="text-xs font-semibold text-stone-400 px-3 py-1.5">Reviewed — thank you</span>
+                            <span className="text-xs text-stone-500 px-1 py-1.5">Reviewed. Zikomo.</span>
                           )}
                         </div>
                       </div>
                     <div className="text-left sm:text-right w-full sm:w-auto">
-                      <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
-                      <div className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+                      <p className="tm-muted">Total</p>
+                      <div className="text-lg sm:text-xl font-serif font-semibold text-stone-900">
                         <PriceDisplay amount={booking.total ?? (booking.room && isCurrencyCode(booking.currency) ? (roomPrice(booking.room, booking.currency) ?? 0) * nights : null)} currency={booking.currency} />
                       </div>
                     </div>
@@ -920,6 +912,7 @@ export default function MyBookings() {
                   {booking.status === 'confirmed' && (
                     <div className="mt-4 border-t border-stone-100 pt-3">
                       <button
+                        type="button"
                         onClick={() => {
                           if (showRemindersFor === booking.id) {
                             setShowRemindersFor(null);
@@ -931,26 +924,26 @@ export default function MyBookings() {
                         className="text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1"
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        {showRemindersFor === booking.id ? 'Hide Reminders' : 'View Upcoming Reminders'}
+                        {showRemindersFor === booking.id ? 'Hide reminders' : 'Show reminders'}
                       </button>
                       {showRemindersFor === booking.id && (
-                        <div className="mt-2 space-y-2">
+                        <div className="mt-2 divide-y divide-stone-100">
                           {(bookingReminders[booking.id!] || []).filter((r: any) => r.recipientType === 'guest').length === 0 ? (
-                            <p className="text-xs text-stone-400">No reminders scheduled for this booking.</p>
+                            <p className="text-xs text-stone-500">No reminders scheduled.</p>
                           ) : (
                             (bookingReminders[booking.id!] || []).filter((r: any) => r.recipientType === 'guest').map((rem: any, remIdx: number) => (
-                              <div key={`rem-guest-${booking.id || 'b'}-${rem.id || remIdx}-${remIdx}`} className={`text-xs p-2 rounded-lg border ${rem.sent ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-                                <div className="flex justify-between items-start">
-                                  <span className={`font-medium ${rem.sent ? 'text-green-700' : 'text-amber-700'}`}>
-                                    {rem.type === 'check_in_24h' ? '24h Arrival Reminder' :
-                                     rem.type === 'check_out' ? 'Check-out Reminder' : 'Update'}
+                              <div key={`rem-guest-${booking.id || 'b'}-${rem.id || remIdx}-${remIdx}`} className="text-xs py-2">
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="font-medium text-stone-800">
+                                    {rem.type === 'check_in_24h' ? 'Day-before arrival reminder' :
+                                     rem.type === 'check_out' ? 'Check-out reminder' : 'Update'}
                                   </span>
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${rem.sent ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                                    {rem.sent ? '✓ Sent' : 'Upcoming'}
+                                  <span className={`tm-tag ${rem.sent ? 'tm-tag-good' : 'tm-tag-warn'}`}>
+                                    {rem.sent ? 'Sent' : 'Upcoming'}
                                   </span>
                                 </div>
-                                <p className="text-stone-600 mt-1">{rem.message}</p>
-                                <p className="text-stone-400 mt-0.5">
+                                <p className="text-stone-600 mt-1 break-words">{rem.message}</p>
+                                <p className="text-stone-500 mt-0.5">
                                   Scheduled: {new Date(rem.scheduledFor).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                               </div>
@@ -999,74 +992,71 @@ export default function MyBookings() {
                 : undefined
             }
             footer={
-              <div className="flex gap-3">
+              <div className="tm-actions justify-end">
                 <button
+                  type="button"
                   onClick={() => setConfirmModalBooking(null)}
-                  className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition"
+                  className="tm-btn tm-btn-secondary"
                 >
                   Not yet
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     handleConfirmHostBooking(booking);
                     setConfirmModalBooking(null);
                   }}
-                  className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-emerald-700 transition"
+                  className="tm-btn tm-btn-primary"
                 >
-                  Approve booking
+                  Confirm booking
                 </button>
               </div>
             }
           >
             <div className="space-y-4">
               {booking && (
-                <div className="rounded-2xl border border-stone-200 divide-y divide-stone-100 text-sm">
-                  <div className="flex justify-between px-4 py-3">
+                <div className="divide-y divide-stone-100 border-y border-stone-100 text-sm">
+                  <div className="flex justify-between gap-3 py-2.5">
                     <span className="text-stone-500">Guest</span>
-                    <span className="font-semibold text-stone-900">{booking.guestName}</span>
+                    <span className="font-semibold text-stone-900 truncate">{booking.guestName}</span>
                   </div>
-                  <div className="flex justify-between px-4 py-3">
+                  <div className="flex justify-between gap-3 py-2.5">
                     <span className="text-stone-500">Stay</span>
                     <span className="font-semibold text-stone-900 tabular-nums">
                       {nightsBetween(booking.checkIn, booking.checkOut)} night{nightsBetween(booking.checkIn, booking.checkOut) === 1 ? '' : 's'} · {booking.guests} guest{booking.guests === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <div className="flex justify-between px-4 py-3">
+                  <div className="flex justify-between gap-3 py-2.5">
                     <span className="text-stone-500">Total</span>
                     <PriceDisplay className="text-stone-900" amount={booking.total ?? 0} currency={booking.currency} />
                   </div>
                   {booking.guestPhone && (
-                    <div className="flex justify-between px-4 py-3">
+                    <div className="flex justify-between gap-3 py-2.5">
                       <span className="text-stone-500">Phone</span>
-                      <a href={`tel:${booking.guestPhone}`} className="font-semibold text-stone-900 hover:text-emerald-700">{booking.guestPhone}</a>
+                      <a href={`tel:${booking.guestPhone}`} className="tm-link">{booking.guestPhone}</a>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="bg-amber-50 text-amber-900 px-4 py-3.5 rounded-xl text-sm border border-amber-200">
-                <span className="font-semibold block mb-1">Before you approve</span>
-                <p className="mb-3">Call the guest, or message them on WhatsApp, to agree an arrival time.</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="text-sm text-stone-700">
+                <p className="mb-2">Before you confirm, agree an arrival time with the guest. They pay the property on arrival.</p>
+                <div className="tm-actions">
                   <a
                     href={`https://wa.me/${(booking?.guestWhatsapp || booking?.guestPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${booking?.guestName}, we are processing your booking at ${hotel?.name} for ${booking ? formatDateStr(booking.checkIn) : ''}. Could we quickly confirm your estimated arrival time?`)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#20bd5a] transition shadow-sm"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Guest
+                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp guest
                   </a>
                   <a
                     href={`mailto:${booking?.guestEmail || ''}?subject=${encodeURIComponent(`Your booking request at ${hotel?.name}`)}&body=${encodeURIComponent(`Hello ${booking?.guestName},\n\nWe are processing your booking request for ${room?.name} from ${booking ? formatDateStr(booking.checkIn) : ''} to ${booking ? formatDateStr(booking.checkOut) : ''}.\n\nCould we quickly confirm your estimated arrival time before we finalize the booking?\n\nBest regards,\n${hotel?.name}`)}`}
-                    className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-stone-800 transition shadow-sm"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
-                    <Mail className="w-3.5 h-3.5" /> Email Guest
+                    <Mail className="w-3.5 h-3.5" /> Email guest
                   </a>
                 </div>
-              </div>
-              <div className="bg-stone-50 text-stone-600 px-4 py-3.5 rounded-xl text-sm border border-stone-200">
-                <span className="font-semibold block mb-1 text-stone-900">Payment</span>
-                Remind them that payment is settled directly at the property on arrival.
               </div>
             </div>
           </Modal>
@@ -1196,11 +1186,11 @@ function ReviewDialog({
       title={`How was ${booking.hotel?.name ?? 'your stay'}?`}
       description={`${formatDateStr(booking.checkIn)} – ${formatDateStr(booking.checkOut)} · your review shows as a verified stay`}
       footer={
-        <div className="flex gap-3">
+        <div className="tm-actions justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition"
+            className="tm-btn tm-btn-secondary"
           >
             Not now
           </button>
@@ -1208,7 +1198,7 @@ function ReviewDialog({
             type="submit"
             form="review-form"
             disabled={submitting}
-            className="flex-1 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-50"
+            className="tm-btn tm-btn-primary"
           >
             {submitting ? 'Publishing…' : 'Publish review'}
           </button>
@@ -1217,7 +1207,7 @@ function ReviewDialog({
     >
       <form id="review-form" onSubmit={submit} className="space-y-6" noValidate>
         <div>
-          <label className={labelClass}>Rating</label>
+          <span className="tm-label">Rating</span>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map(value => (
               <button
@@ -1237,26 +1227,28 @@ function ReviewDialog({
         </div>
 
         <div>
-          <label className={labelClass}>Review title (optional)</label>
+          <label className="tm-label" htmlFor="review-title">Title (optional)</label>
           <input
+            id="review-title"
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
             maxLength={120}
-            placeholder="e.g. Unforgettable lake views & fantastic host"
-            className={fieldClass}
+            placeholder="e.g. Lovely lake views and a kind host"
+            className="tm-input"
           />
         </div>
 
         <div>
-          <label className={labelClass}>Your review</label>
+          <label className="tm-label" htmlFor="review-text">Your review</label>
           <textarea
+            id="review-text"
             value={text}
             onChange={e => setText(e.target.value)}
             rows={6}
             maxLength={REVIEW_MAX}
             placeholder="What stood out? Rooms, food, staff, the setting…"
-            className={`${fieldClass} resize-none`}
+            className="tm-input resize-none"
           />
           <p className="text-xs text-stone-400 mt-1.5 text-right tabular-nums">{trimmed.length}/{REVIEW_MAX}</p>
           <FieldError message={showErrors ? problem : ''} />
@@ -1315,29 +1307,29 @@ function QuickEditBookingModal({ booking, onClose, onUpdated }: { booking: Enric
       open
       onClose={onClose}
       size="sm"
-      title="Quick Edit Booking"
-      description={`Update contact details for ${booking.guestName}`}
+      title="Edit guest details"
+      description={booking.guestName ? `Contact details for ${booking.guestName}` : undefined}
       footer={
-        <div className="flex justify-end gap-3 w-full">
-          <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition">Cancel</button>
-          <button type="button" onClick={submit} disabled={submitting} className="px-6 py-2.5 text-sm font-semibold bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition disabled:opacity-50">
-            {submitting ? 'Saving...' : 'Save Changes'}
+        <div className="tm-actions justify-end w-full">
+          <button type="button" onClick={onClose} className="tm-btn tm-btn-quiet">Cancel</button>
+          <button type="button" onClick={submit} disabled={submitting} className="tm-btn tm-btn-primary">
+            {submitting ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       }
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Guest Name</label>
-          <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
+          <label className="tm-label" htmlFor="qe-name">Guest name</label>
+          <input id="qe-name" type="text" value={guestName} onChange={e => setGuestName(e.target.value)} className="tm-input" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Phone / WhatsApp</label>
-          <input type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
+          <label className="tm-label" htmlFor="qe-phone">Phone / WhatsApp</label>
+          <input id="qe-phone" type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="tm-input" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Email Address</label>
-          <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
+          <label className="tm-label" htmlFor="qe-email">Email</label>
+          <input id="qe-email" type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="tm-input" />
         </div>
       </form>
     </Modal>

@@ -30,7 +30,7 @@ export const requestBrowserNotifications = async (): Promise<NotificationPermiss
     try {
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
-        toast.success('Live notifications enabled!', { icon: '🔔' });
+        toast.success('Notifications turned on');
       }
       return perm;
     } catch {
@@ -179,18 +179,18 @@ export default function GlobalNotificationManager() {
               (t) => {
                 const CallIcon = isVideo ? Video : Phone;
                 return (
-                  <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
+                  <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white text-stone-900 shadow-sm rounded-xl pointer-events-auto flex flex-col p-4 border border-stone-200`}>
                     <div className="flex items-start gap-3">
-                      <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl shrink-0 animate-pulse">
+                      <div className="p-2.5 bg-stone-100 text-stone-700 rounded-lg shrink-0">
                         <CallIcon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-wider text-blue-400">Incoming {isVideo ? 'Video' : 'Voice'} Call</p>
-                        <p className="text-sm font-semibold text-white mt-0.5 truncate">
+                        <p className="text-xs font-medium text-stone-500">Incoming {isVideo ? 'video' : 'voice'} call</p>
+                        <p className="text-sm font-semibold text-stone-900 mt-0.5 truncate">
                           {callData.callerName || 'Guest'}
                         </p>
-                        <p className="text-xs text-stone-300 mt-1 truncate">
-                          Property: {hotel?.name || 'Loading...'}
+                        <p className="text-xs text-stone-500 mt-1 truncate">
+                          {hotel?.name || 'Loading...'}
                         </p>
                       </div>
                     </div>
@@ -203,9 +203,9 @@ export default function GlobalNotificationManager() {
                           await updateDoc(callRef, { status: 'rejected', updatedAt: Date.now(), endedAt: Date.now() })
                             .catch(err => console.warn('Failed to reject call:', err));
                         }}
-                        className="flex-1 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                        className="tm-btn tm-btn-danger tm-btn-sm flex-1"
                       >
-                        <PhoneOff className="w-3.5 h-3.5" /> Reject
+                        <PhoneOff className="w-3.5 h-3.5" /> Decline
                       </button>
                       <button
                         onClick={() => {
@@ -213,9 +213,9 @@ export default function GlobalNotificationManager() {
                           stopRinging();
                           ctx.open(hotel);
                         }}
-                        className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5"
+                        className="tm-btn tm-btn-primary tm-btn-sm flex-1"
                       >
-                        <CallIcon className="w-3.5 h-3.5" /> Accept {isVideo ? 'Video' : 'Voice'}
+                        <CallIcon className="w-3.5 h-3.5" /> Accept
                       </button>
                     </div>
                   </div>
@@ -344,37 +344,37 @@ export default function GlobalNotificationManager() {
             <div
               className={`${
                 t.visible ? 'animate-enter' : 'animate-leave'
-              } max-w-md w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}
+              } max-w-md w-full bg-white text-stone-900 shadow-sm rounded-xl pointer-events-auto flex flex-col p-4 border border-stone-200`}
             >
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-stone-800 text-stone-200 border border-stone-700 rounded-xl shrink-0">
+                <div className="p-2.5 bg-stone-100 text-stone-700 rounded-lg shrink-0">
                   <MessageSquare className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wider text-stone-300">
-                      {amIManager ? 'New Guest Inquiry' : 'Host Reply'}
+                    <p className="text-xs font-medium text-stone-500">
+                      {amIManager ? 'New guest question' : 'Host reply'}
                     </p>
                     <button
                       onClick={() => toast.dismiss(t.id)}
-                      className="text-stone-400 hover:text-white p-1 rounded-lg transition"
+                      className="text-stone-400 hover:text-stone-900 p-1 rounded-lg transition"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-sm font-semibold text-white mt-0.5 truncate">
+                  <p className="text-sm font-semibold text-stone-900 mt-0.5 truncate">
                     {senderTitle} {data.hotelName ? `· ${data.hotelName}` : ''}
                   </p>
-                  <p className="text-xs text-stone-200 mt-1 line-clamp-2 bg-stone-800 p-2 rounded-lg border border-stone-700">
-                    "{data.lastMessage}"
+                  <p className="text-xs text-stone-600 mt-1 line-clamp-2 break-words">
+                    {data.lastMessage}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <div className="mt-3 flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-white rounded-lg transition"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   Dismiss
                 </button>
@@ -387,10 +387,10 @@ export default function GlobalNotificationManager() {
                       amIManager ? (data.guestName || undefined) : undefined
                     );
                   }}
-                  className="px-4 py-1.5 bg-stone-100 hover:bg-white text-stone-950 text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                  Open Chat & Reply
+                  Reply
                 </button>
               </div>
             </div>
@@ -477,21 +477,21 @@ export default function GlobalNotificationManager() {
           
           toast.custom(
             (t) => (
-              <div className="bg-stone-900 text-white p-4 rounded-2xl shadow-2xl flex flex-col gap-2 border border-stone-800 max-w-sm w-full pointer-events-auto">
+              <div className="bg-white text-stone-900 p-4 rounded-xl shadow-sm flex flex-col gap-2 border border-stone-200 max-w-sm w-full pointer-events-auto">
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                       <MessageSquare className="w-5 h-5 text-stone-200" />
-                       <span className="font-bold text-sm">New message from {booking.lastMessageSenderName || (amIManager ? 'Guest' : 'Host')}</span>
+                       <MessageSquare className="w-5 h-5 text-stone-500 shrink-0" />
+                       <span className="font-semibold text-sm min-w-0 truncate">New message from {booking.lastMessageSenderName || (amIManager ? 'Guest' : 'Host')}</span>
                    </div>
-                   <button onClick={() => toast.dismiss(t.id)} className="text-stone-400 hover:text-white"><X className="w-4 h-4" /></button>
+                   <button onClick={() => toast.dismiss(t.id)} className="text-stone-400 hover:text-stone-900"><X className="w-4 h-4" /></button>
                 </div>
-                <p className="text-xs text-stone-200 px-7 line-clamp-2 bg-stone-800 p-2 rounded-lg border border-stone-700">"{booking.lastMessageText}"</p>
+                <p className="text-xs text-stone-600 px-7 line-clamp-2 break-words">{booking.lastMessageText}</p>
                 <button
                   onClick={() => {
                     toast.dismiss(t.id);
                     openBookingChat(booking);
                   }}
-                  className="ml-7 mt-2 px-3 py-1.5 bg-stone-100 hover:bg-white text-stone-950 font-bold text-xs rounded-xl shadow-sm self-start transition"
+                  className="ml-7 mt-1 tm-btn tm-btn-primary tm-btn-sm self-start"
                 >
                   Open Chat
                 </button>
@@ -521,37 +521,37 @@ export default function GlobalNotificationManager() {
             <div
               className={`${
                 t.visible ? 'animate-enter' : 'animate-leave'
-              } max-w-md w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}
+              } max-w-md w-full bg-white text-stone-900 shadow-sm rounded-xl pointer-events-auto flex flex-col p-4 border border-stone-200`}
             >
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl shrink-0">
+                <div className="p-2.5 bg-amber-50 text-amber-800 rounded-lg shrink-0">
                   <CalendarCheck className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                      New Booking Request
+                    <p className="text-xs font-medium text-amber-800">
+                      New booking request
                     </p>
                     <button
                       onClick={() => toast.dismiss(t.id)}
-                      className="text-stone-400 hover:text-white p-1 rounded-lg transition"
+                      className="text-stone-400 hover:text-stone-900 p-1 rounded-lg transition"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-sm font-semibold text-white mt-0.5 truncate">
+                  <p className="text-sm font-semibold text-stone-900 mt-0.5 truncate">
                     {booking.guestName} {hotel?.name ? `· ${hotel.name}` : ''}
                   </p>
-                  <p className="text-xs text-stone-300 mt-1">
-                    Dates: <span className="text-white font-medium">{booking.checkIn} to {booking.checkOut}</span> ({booking.guests} guest{booking.guests === 1 ? '' : 's'})
+                  <p className="text-xs text-stone-500 mt-1">
+                    Dates: <span className="text-stone-900 font-medium">{booking.checkIn} to {booking.checkOut}</span> ({booking.guests} guest{booking.guests === 1 ? '' : 's'})
                   </p>
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-end gap-2 pt-2 border-t border-stone-800">
+              <div className="mt-3 flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-white rounded-lg transition"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   Dismiss
                 </button>
@@ -560,9 +560,9 @@ export default function GlobalNotificationManager() {
                     toast.dismiss(t.id);
                     navigate(`/dashboard/hotel/${booking.hotelId}?tab=bookings`);
                   }}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                 >
-                  Review Request
+                  Review request
                 </button>
               </div>
             </div>
@@ -589,18 +589,18 @@ export default function GlobalNotificationManager() {
           );
           toast.custom(
             (t) => (
-              <div className="bg-emerald-900 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-700 pointer-events-auto">
-                <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+              <div className="bg-white text-stone-900 p-4 rounded-xl shadow-sm flex items-center gap-3 border border-emerald-200 pointer-events-auto max-w-sm w-full">
+                <CheckCircle2 className="w-6 h-6 text-emerald-700 shrink-0" />
                 <div>
-                  <h4 className="font-bold text-sm">Booking Confirmed!</h4>
-                  <p className="text-xs text-emerald-200 mt-0.5">The property has approved your stay request.</p>
+                  <h4 className="font-semibold text-sm">Booking confirmed</h4>
+                  <p className="text-xs text-stone-500 mt-0.5">The property approved your stay.</p>
                 </div>
                 <button
                   onClick={() => {
                     toast.dismiss(t.id);
                     navigate('/my-bookings');
                   }}
-                  className="ml-auto px-3 py-1.5 bg-white text-emerald-950 font-bold text-xs rounded-xl shadow-xs"
+                  className="ml-auto tm-btn tm-btn-secondary tm-btn-sm"
                 >
                   View
                 </button>
@@ -618,11 +618,11 @@ export default function GlobalNotificationManager() {
           );
           toast.custom(
             (t) => (
-              <div className="bg-stone-900 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-stone-800 pointer-events-auto">
-                <XCircle className="w-6 h-6 text-red-400 shrink-0" />
+              <div className="bg-white text-stone-900 p-4 rounded-xl shadow-sm flex items-center gap-3 border border-stone-200 pointer-events-auto max-w-sm w-full">
+                <XCircle className="w-6 h-6 text-red-600 shrink-0" />
                 <div>
-                  <h4 className="font-bold text-sm">Booking Cancelled</h4>
-                  <p className="text-xs text-stone-400 mt-0.5">Your booking was cancelled by {byWho}.</p>
+                  <h4 className="font-semibold text-sm">Booking cancelled</h4>
+                  <p className="text-xs text-stone-500 mt-0.5">Your booking was cancelled by {byWho}.</p>
                 </div>
               </div>
             ),

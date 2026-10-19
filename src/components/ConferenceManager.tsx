@@ -107,22 +107,22 @@ export default function ConferenceManager({ hotelId }: Props) {
 
   if (editingRoom) {
     return (
-      <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
-          <h3 className="text-xl font-serif text-stone-900">{editingRoom.id ? 'Edit Conference Room' : 'New Conference Room'}</h3>
-          <button type="button" onClick={() => setEditingRoom(null)} className="p-2 text-stone-400 hover:text-stone-900 rounded-full hover:bg-stone-100 transition"><X className="w-5 h-5" /></button>
+      <div className="tm-panel min-w-0">
+        <div className="flex items-center justify-between gap-3 mb-5 pb-4 border-b border-stone-100">
+          <h3 className="tm-h2 min-w-0 truncate">{editingRoom.id ? 'Edit conference room' : 'New conference room'}</h3>
+          <button type="button" onClick={() => setEditingRoom(null)} aria-label="Close" className="p-2 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition shrink-0"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4 md:col-span-2">
               <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Room Name</span>
-                <input required type="text" value={editingRoom.name} onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="e.g. Grand Ballroom" />
+                <span className="tm-label">Room name</span>
+                <input required type="text" value={editingRoom.name} onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })} className="tm-input" placeholder="e.g. Grand Ballroom" />
               </label>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-stone-900 block">Description</span>
+                  <span className="tm-label mb-0">Description</span>
                   <AIAssistantButton
                     value={editingRoom.description || ''}
                     onChange={text => setEditingRoom({ ...editingRoom, description: text })}
@@ -135,23 +135,23 @@ export default function ConferenceManager({ hotelId }: Props) {
                     fieldLabel="conference space description"
                   />
                 </div>
-                <textarea required rows={3} value={editingRoom.description} onChange={e => setEditingRoom({ ...editingRoom, description: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none" placeholder="Describe the space..." />
+                <textarea required rows={3} value={editingRoom.description} onChange={e => setEditingRoom({ ...editingRoom, description: e.target.value })} className="tm-input resize-none" placeholder="Describe the space..." />
               </div>
             </div>
             
             <label className="block">
-              <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Sitting Capacity</span>
+              <span className="tm-label">Seats</span>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Users className="h-4 w-4 text-stone-400" />
                 </div>
-                <input required type="number" min="1" value={editingRoom.capacity || ''} onChange={e => setEditingRoom({ ...editingRoom, capacity: parseInt(e.target.value) || 0 })} className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="100" />
+                <input required type="number" min="1" value={editingRoom.capacity || ''} onChange={e => setEditingRoom({ ...editingRoom, capacity: parseInt(e.target.value) || 0 })} className="w-full bg-white border border-stone-300 rounded-lg pl-10 pr-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-stone-500" placeholder="100" />
               </div>
             </label>
 
             <div className="md:col-span-2">
               <ImageUpload
-                label="Primary Cover Image"
+                label="Cover photo"
                 value={editingRoom.imageUrl || ''}
                 onChange={url => setEditingRoom({ ...editingRoom, imageUrl: url })}
                 folder={`hotels/${hotelId}/conferences`}
@@ -160,7 +160,7 @@ export default function ConferenceManager({ hotelId }: Props) {
 
             <div className="md:col-span-2 mt-4">
               <GalleryUpload
-                label="Gallery Images"
+                label="More photos"
                 value={editingRoom.galleryUrls || []}
                 onChange={urls => setEditingRoom({ ...editingRoom, galleryUrls: urls })}
                 folder={`hotels/${hotelId}/conferences`}
@@ -169,35 +169,35 @@ export default function ConferenceManager({ hotelId }: Props) {
             
             <div className="md:col-span-2 border-t border-stone-100 pt-6 mt-2">
               <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Amenities (Comma separated)</span>
-                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trimStart()) })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
+                <span className="tm-label">Amenities (comma separated)</span>
+                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trimStart()) })} className="tm-input" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
               </label>
             </div>
             
-            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-stone-50 border border-stone-200 rounded-xl p-4">
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg bg-stone-50 p-4">
               <div>
                 <label className="block">
-                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Base Rate Amount</span>
+                  <span className="tm-label">Base rate</span>
                   <input 
                     type="number" 
                     min="0"
                     step="1000"
                     value={editingRoom.price ?? ''} 
                     onChange={e => setEditingRoom({ ...editingRoom, price: e.target.value ? parseFloat(e.target.value) : undefined })} 
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500" 
+                    className="tm-input" 
                     placeholder="e.g. 250000" 
                   />
                 </label>
-                <span className="text-[11px] text-stone-400 mt-1 block">Enables automatic slashed FROM &gt; TO pricing</span>
+                <span className="text-xs text-stone-500 mt-1 block">Optional. Shows a from-price on your listing.</span>
               </div>
 
               <div>
                 <label className="block">
-                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Rate Currency</span>
+                  <span className="tm-label">Currency</span>
                   <select
                     value={editingRoom.priceCurrency || 'MWK'}
                     onChange={e => setEditingRoom({ ...editingRoom, priceCurrency: e.target.value as any })}
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500"
+                    className="tm-input"
                   >
                     <option value="MWK">MWK (Malawian Kwacha)</option>
                     <option value="USD">USD (US Dollars)</option>
@@ -207,16 +207,16 @@ export default function ConferenceManager({ hotelId }: Props) {
 
               <div>
                 <label className="block">
-                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Rate Type</span>
+                  <span className="tm-label">Charged</span>
                   <select
                     value={editingRoom.rateType || 'per_day'}
                     onChange={e => setEditingRoom({ ...editingRoom, rateType: e.target.value as any })}
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500"
+                    className="tm-input"
                   >
-                    <option value="per_day">Per Day</option>
-                    <option value="per_half_day">Per Half Day</option>
-                    <option value="per_hour">Per Hour</option>
-                    <option value="per_delegate">Per Delegate / Person</option>
+                    <option value="per_day">Per day</option>
+                    <option value="per_half_day">Per half day</option>
+                    <option value="per_hour">Per hour</option>
+                    <option value="per_delegate">Per delegate</option>
                   </select>
                 </label>
               </div>
@@ -224,22 +224,22 @@ export default function ConferenceManager({ hotelId }: Props) {
 
             <div className="md:col-span-2">
                <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Pricing & Packages Summary Note</span>
-                <input type="text" value={editingRoom.pricing || ''} onChange={e => setEditingRoom({ ...editingRoom, pricing: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="e.g. MWK 250,000 per day including full AV setup and water" />
+                <span className="tm-label">Pricing note</span>
+                <input type="text" value={editingRoom.pricing || ''} onChange={e => setEditingRoom({ ...editingRoom, pricing: e.target.value })} className="tm-input" placeholder="e.g. MWK 250,000 per day including full AV setup and water" />
               </label>
             </div>
             
             <div className="md:col-span-2">
               <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Guidelines & Offers (One per line)</span>
-                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n') })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm" placeholder="Breakfast and Coffee/Tea packages available on request\n50% deposit required to secure booking" />
+                <span className="tm-label">Guidelines and offers (one per line)</span>
+                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n') })} className="tm-input" placeholder="Breakfast and Coffee/Tea packages available on request\n50% deposit required to secure booking" />
               </label>
             </div>
           </div>
           
-          <div className="flex justify-end gap-3 pt-6 border-t border-stone-100">
-            <button type="button" onClick={() => setEditingRoom(null)} className="px-6 py-2.5 rounded-full text-sm font-bold text-stone-600 hover:bg-stone-100 transition">Cancel</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Conference Room'}</button>
+          <div className="tm-actions justify-end pt-5 border-t border-stone-100">
+            <button type="button" onClick={() => setEditingRoom(null)} className="tm-btn tm-btn-quiet">Cancel</button>
+            <button type="submit" disabled={saving} className="tm-btn tm-btn-primary"><Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save space'}</button>
           </div>
         </form>
       </div>
@@ -247,43 +247,42 @@ export default function ConferenceManager({ hotelId }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-serif text-stone-900">Conference Spaces</h2>
-          <p className="text-stone-500 text-sm mt-1">Manage meeting rooms, ballrooms, and event spaces.</p>
+          <h2 className="tm-h2">Conference spaces</h2>
+          <p className="tm-muted mt-1">Meeting rooms, halls and event spaces.</p>
         </div>
-        <button onClick={() => setEditingRoom({ hotelId, name: '', description: '', capacity: 0, amenities: [], imageUrl: '', policies: [], pricing: '' })} className="inline-flex items-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-stone-800 transition shadow-sm">
-          <Plus className="w-4 h-4" /> Add Space
+        <button onClick={() => setEditingRoom({ hotelId, name: '', description: '', capacity: 0, amenities: [], imageUrl: '', policies: [], pricing: '' })} className="tm-btn tm-btn-secondary">
+          <Plus className="w-4 h-4" /> Add space
         </button>
       </div>
 
       {rooms.length === 0 ? (
-        <div className="bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-12 text-center">
-          <Layout className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-          <h3 className="text-stone-900 font-semibold mb-2">No conference spaces</h3>
-          <p className="text-stone-500 text-sm mb-6 max-w-sm mx-auto">Add event spaces to let guests view your property's capacity for meetings, weddings, and conferences.</p>
-          <button onClick={() => setEditingRoom({ hotelId, name: '', description: '', capacity: 0, amenities: [], imageUrl: '', policies: [], pricing: '' })} className="inline-flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-6 py-2.5 rounded-full text-sm font-bold hover:bg-stone-50 transition shadow-sm">
-            <Plus className="w-4 h-4" /> Create First Space
+        <div className="border border-dashed border-stone-300 rounded-xl p-8 text-center">
+          <Layout className="w-8 h-8 text-stone-300 mx-auto mb-3" />
+          <p className="tm-muted mb-4">No conference spaces yet. Add one so guests can see your event rooms.</p>
+          <button onClick={() => setEditingRoom({ hotelId, name: '', description: '', capacity: 0, amenities: [], imageUrl: '', policies: [], pricing: '' })} className="tm-btn tm-btn-secondary">
+            <Plus className="w-4 h-4" /> Add space
           </button>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-4">
             {rooms
               .slice((currentPage - 1) * roomsPerPage, currentPage * roomsPerPage)
               .map((room, rIdx) => {
                 const isMenuOpen = openMenuId === (room.id || `conf-${rIdx}`);
                 return (
-                  <div key={`${room.id || 'room'}-${rIdx}`} className="bg-white rounded-2xl border border-stone-200 shadow-2xs flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-xs">
-                    <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
+                  <div key={`${room.id || 'room'}-${rIdx}`} className="tm-panel flex flex-col md:flex-row md:items-start gap-5 group min-w-0">
+                    <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-lg overflow-hidden bg-stone-100 shrink-0 relative">
                       <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])].filter(Boolean) as string[]))} altPrefix={room.name} />
                     </div>
                     <div className="flex-1 flex flex-col justify-between min-w-0 py-1 w-full">
                       <div>
-                        <div className="flex items-start justify-between gap-4 mb-2">
-                          <h3 className="text-xl font-serif font-bold text-stone-900 truncate">{room.name}</h3>
-                          <div className="flex items-center gap-1.5 text-stone-600 bg-stone-50 px-3 py-1 rounded-full text-xs font-semibold border border-stone-200 shrink-0">
+                        <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+                          <h3 className="tm-h2 truncate min-w-0">{room.name}</h3>
+                          <div className="tm-tag shrink-0">
                             <Users className="w-3.5 h-3.5 text-stone-500" /> {room.capacity} seats
                           </div>
                         </div>
@@ -292,33 +291,33 @@ export default function ConferenceManager({ hotelId }: Props) {
                         {room.amenities && room.amenities.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mb-4">
                             {room.amenities.slice(0, 5).map((a, aIdx) => (
-                              <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                              <span key={`${a}-${aIdx}`} className="tm-tag">{a}</span>
                             ))}
                             {room.amenities.length > 5 && (
-                              <span className="text-[10px] text-stone-400 font-bold px-1 py-1">+{room.amenities.length - 5} more</span>
+                              <span className="text-xs text-stone-500 px-1 py-0.5">+{room.amenities.length - 5} more</span>
                             )}
                           </div>
                         )}
                       </div>
                       
-                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100 mt-2">
+                      <div className="tm-actions justify-end pt-3 border-t border-stone-100 mt-2">
                         <button 
                           type="button"
                           onClick={() => setEditingRoom(room)} 
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs"
+                          className="tm-btn tm-btn-secondary tm-btn-sm"
                         >
                           <Edit2 className="w-3.5 h-3.5" /> 
-                          <span>Edit Space</span>
+                          <span>Edit</span>
                         </button>
 
                         <div className="relative inline-block text-left">
                           <button
                             type="button"
                             onClick={() => setOpenMenuId(isMenuOpen ? null : (room.id || `conf-${rIdx}`))}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                            className="tm-btn tm-btn-quiet tm-btn-sm"
                             aria-label="Space actions"
                           >
-                            <span>Actions</span>
+                            <span>More</span>
                             <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
                           </button>
 
@@ -328,7 +327,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                                 className="fixed inset-0 z-30" 
                                 onClick={() => setOpenMenuId(null)} 
                               />
-                              <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-xs animate-in fade-in-50 zoom-in-95">
+                              <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-lg shadow-sm border border-stone-200 py-1.5 z-40 text-xs">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -338,7 +337,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                                   className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                                 >
                                   <Edit2 className="w-3.5 h-3.5 text-stone-400" />
-                                  <span>Edit Details</span>
+                                  <span>Edit details</span>
                                 </button>
                                 <div className="my-1 border-t border-stone-100" />
                                 <button
@@ -350,7 +349,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                                   className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                  <span>Delete Space</span>
+                                  <span>Delete space</span>
                                 </button>
                               </div>
                             </>
@@ -377,9 +376,9 @@ export default function ConferenceManager({ hotelId }: Props) {
 
       <ConfirmDialog
         isOpen={!!roomToDelete}
-        title="Delete Conference Room"
-        message={`Are you sure you want to permanently delete "${roomToDelete?.name}"? This action cannot be undone.`}
-        confirmText="Yes, delete room"
+        title="Delete conference room?"
+        message={`"${roomToDelete?.name}" will be deleted for good.`}
+        confirmText="Delete room"
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={confirmDeleteRoom}

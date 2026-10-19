@@ -62,26 +62,26 @@ export default function EditableSection({ docId, fieldId, defaultText, multiline
           <textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className={`w-full bg-stone-100 border border-emerald-500 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-y min-h-[100px] ${className}`}
+            className={`tm-input resize-y min-h-[100px] ${className}`}
           />
         ) : (
           <input
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className={`w-full bg-stone-100 border border-emerald-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${className}`}
+            className={`tm-input ${className}`}
           />
         )}
-        <div className="flex items-center gap-2 mt-2">
+        <div className="tm-actions mt-2">
           <button
             onClick={handleSave}
-            className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition"
+            className="tm-btn tm-btn-primary tm-btn-sm"
           >
             <Check className="w-3.5 h-3.5" /> Save
           </button>
           <button
             onClick={() => setIsEditing(false)}
-            className="flex items-center gap-1 bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+            className="tm-btn tm-btn-secondary tm-btn-sm"
           >
             <X className="w-3.5 h-3.5" /> Cancel
           </button>
@@ -98,7 +98,7 @@ export default function EditableSection({ docId, fieldId, defaultText, multiline
           setValue(displayText);
           setIsEditing(true);
         }}
-        className="absolute -right-8 top-1/2 -translate-y-1/2 p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm text-stone-400 hover:text-emerald-600 hover:border-emerald-200 opacity-0 group-hover/editable:opacity-100 transition-all z-10"
+        className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 bg-white border border-stone-200 rounded-lg shadow-sm text-stone-400 hover:text-amber-800 opacity-0 group-hover/editable:opacity-100 focus:opacity-100 transition-opacity z-10"
         title="Edit section"
       >
         <Edit2 className="w-3.5 h-3.5" />

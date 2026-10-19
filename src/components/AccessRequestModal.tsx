@@ -214,29 +214,29 @@ export default function AccessRequestModal() {
   };
 
   const footer = (
-    <div className="flex items-center justify-between gap-3 text-xs">
+    <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
       <button
         type="button"
         onClick={handleResetToDefaults}
-        className="inline-flex items-center gap-1.5 text-stone-500 hover:text-stone-800 font-medium transition cursor-pointer"
+        className="tm-btn tm-btn-quiet tm-btn-sm"
         title="Restore defaults"
       >
         <RotateCcw className="w-3.5 h-3.5" />
-        <span>Reset Defaults</span>
+        <span>Reset</span>
       </button>
 
-      <div className="flex items-center gap-2">
+      <div className="tm-actions">
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          className="px-3 py-1.5 font-medium text-stone-500 hover:text-stone-800 transition cursor-pointer"
+          className="tm-btn tm-btn-quiet tm-btn-sm"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleApply}
-          className="px-4 py-2 font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+          className="tm-btn tm-btn-primary tm-btn-sm"
         >
           <Check className="w-3.5 h-3.5" />
           <span>Apply</span>
@@ -249,8 +249,8 @@ export default function AccessRequestModal() {
     <Modal
       open={isOpen}
       onClose={() => setIsOpen(false)}
-      title="Permissions & Location"
-      description="Manage device access and your default starting point."
+      title="Location and permissions"
+      description="Choose where trips start and what this device may use."
       size="sm"
       footer={footer}
     >
@@ -258,8 +258,8 @@ export default function AccessRequestModal() {
         {/* Starting Hub Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
-              Starting Location
+            <span className="text-sm font-medium text-stone-700">
+              Starting point
             </span>
             <button
               type="button"
@@ -306,18 +306,18 @@ export default function AccessRequestModal() {
 
         {/* Device Permissions Section */}
         <div className="space-y-2 pt-3 border-t border-stone-100">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block">
-            Device Permissions
+          <span className="text-sm font-medium text-stone-700 block">
+            Device permissions
           </span>
 
           <div className="space-y-2">
             {/* Location Toggle */}
-            <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-stone-50/70 border border-stone-200/80">
+            <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-stone-50">
               <div className="flex items-start gap-2 min-w-0">
                 <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <div className="font-medium text-stone-900 text-xs">Geographic Location</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Calculates driving times along M1, M5 &amp; lakeshore passes.</p>
+                  <div className="font-medium text-stone-900 text-xs">Location</div>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Used to show driving times.</p>
                 </div>
               </div>
               <button
@@ -338,12 +338,12 @@ export default function AccessRequestModal() {
             </div>
 
             {/* Microphone Toggle */}
-            <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-stone-50/70 border border-stone-200/80">
+            <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-stone-50">
               <div className="flex items-start gap-2 min-w-0">
                 <Mic className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Microphone</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Voice messages and inquiries with property hosts.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Used for voice messages to hosts.</p>
                 </div>
               </div>
               <button
@@ -364,12 +364,12 @@ export default function AccessRequestModal() {
             </div>
 
             {/* Camera Toggle */}
-            <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-stone-50/70 border border-stone-200/80">
+            <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-stone-50">
               <div className="flex items-start gap-2 min-w-0">
                 <Video className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Camera</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Voluntary photo updates and room video walkthroughs.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Used for photos and video calls.</p>
                 </div>
               </div>
               <button

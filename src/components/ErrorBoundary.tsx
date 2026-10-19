@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6 text-stone-900 font-sans">
-          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl text-center">
+          <div className="max-w-md w-full bg-white rounded-xl p-8 border border-stone-200 shadow-sm text-center">
             <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <AlertTriangle className="w-7 h-7" />
             </div>

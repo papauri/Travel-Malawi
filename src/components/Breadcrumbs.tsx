@@ -123,7 +123,7 @@ export default function Breadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="sticky top-14 sm:top-16 md:top-16 lg:top-[72px] z-40 w-full border-b border-stone-200/70 bg-white/95 backdrop-blur-md transition-all"
+      className="sticky top-14 sm:top-16 md:top-16 lg:top-[72px] z-40 w-full border-b border-stone-200/70 bg-white transition-all"
     >
       {/* Scrolls sideways rather than wrapping: a long property name on a
           narrow screen must not push the page into two rows or clip the

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { Booking } from '../types';
 import { Save } from 'lucide-react';
-import { fieldClass, labelClass } from './Modal';
 import { todayStr } from '../lib/dates';
 
 interface Props {
@@ -78,14 +77,14 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Edit Booking"
+      title="Edit booking"
       size="md"
       footer={
-        <div className="flex justify-end gap-3 w-full">
+        <div className="tm-actions justify-end w-full">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-full text-sm font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 transition"
+            className="tm-btn tm-btn-secondary"
           >
             Cancel
           </button>
@@ -93,92 +92,92 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition"
+            className="tm-btn tm-btn-primary"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       }
     >
       <div className="space-y-4">
         {error && (
-          <div className="bg-stone-50 border-l-2 border-stone-400 px-4 py-3 text-sm text-stone-800" role="alert">{error}</div>
+          <p className="text-sm text-red-700" role="alert">{error}</p>
         )}
-        <p className="text-xs text-stone-500">Changing dates or guests re-checks availability and recalculates the total.</p>
-        <div className="grid grid-cols-2 gap-4">
+        <p className="tm-muted">New dates or guest numbers re-check availability and update the total.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Check-in Date</label>
+            <label className="tm-label">Check-in</label>
             <input
               type="date"
               value={checkIn}
               onChange={e => setCheckIn(e.target.value)}
               onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-              className={`${fieldClass} cursor-pointer`}
+              className="tm-input cursor-pointer"
             />
           </div>
           <div>
-            <label className={labelClass}>Check-out Date</label>
+            <label className="tm-label">Check-out</label>
             <input
               type="date"
               value={checkOut}
               onChange={e => setCheckOut(e.target.value)}
               onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-              className={`${fieldClass} cursor-pointer`}
+              className="tm-input cursor-pointer"
             />
           </div>
         </div>
 
         <div>
-          <label className={labelClass}>Number of Guests</label>
+          <label className="tm-label">Guests</label>
           <input
             type="number"
             min="1"
             value={guests}
             onChange={e => setGuests(parseInt(e.target.value, 10) || 1)}
-            className={fieldClass}
+            className="tm-input"
           />
         </div>
 
         <div>
-          <label className={labelClass}>Guest Name</label>
+          <label className="tm-label">Guest name</label>
           <input
             type="text"
             value={guestName}
             onChange={e => setGuestName(e.target.value)}
-            className={fieldClass}
+            className="tm-input"
           />
         </div>
 
         <div>
-          <label className={labelClass}>Email Address</label>
+          <label className="tm-label">Email</label>
           <input
             type="email"
             value={guestEmail}
             onChange={e => setGuestEmail(e.target.value)}
-            className={fieldClass}
+            className="tm-input"
             placeholder="guest@example.com"
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Phone Number</label>
+            <label className="tm-label">Phone</label>
             <input
               type="tel"
               value={guestPhone}
               onChange={e => setGuestPhone(e.target.value)}
-              className={fieldClass}
+              className="tm-input"
               placeholder="+1234567890"
             />
           </div>
           <div>
-            <label className={labelClass}>WhatsApp Number</label>
+            <label className="tm-label">WhatsApp</label>
             <input
               type="tel"
               value={guestWhatsapp}
               onChange={e => setGuestWhatsapp(e.target.value)}
-              className={fieldClass}
+              className="tm-input"
               placeholder="+1234567890"
             />
           </div>

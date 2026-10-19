@@ -1,20 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Compass,
   Copy,
   ExternalLink,
   LocateFixed,
-  MapPin,
-  Navigation,
   Share2,
   Check,
-  Clock,
   Car,
   Plane,
-  AlertCircle,
   Crosshair,
   X,
-  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FormattedDescription from './FormattedDescription';
@@ -31,7 +25,6 @@ import {
   openStreetMapDirectionsUrl,
   isValidLatLng,
   resolveHotelCoordinates,
-  MALAWI_KNOWN_PLACES,
 } from '../lib/geo';
 import InteractiveMap from './InteractiveMap';
 import OfflineMapManager from './OfflineMapManager';
@@ -43,8 +36,12 @@ interface Props {
   locationNotes?: string;
   hotelImage?: string;
   hotelId?: string;
+  /** Switches to the Directions tab when it turns true (set by "directions" links). */
+  openDirections?: boolean;
   className?: string;
 }
+
+type Tab = 'map' | 'directions' | 'notes';
 
 const COMMON_ORIGINS: { label: string; name: string; coords: LatLng; icon: 'plane' | 'car' }[] = [
   {
@@ -86,8 +83,13 @@ export default function DirectionsPanel({
   locationNotes,
   hotelImage,
   hotelId,
+  openDirections = false,
   className = '',
 }: Props) {
+  const [tab, setTab] = useState<Tab>('map');
+  useEffect(() => {
+    if (openDirections) setTab('directions');
+  }, [openDirections]);
   const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
   const [selectedOriginName, setSelectedOriginName] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
@@ -106,7 +108,7 @@ export default function DirectionsPanel({
     if (isGpsActive) {
       setGuestLocation(null);
       setSelectedOriginName(null);
-      toast.success('Live GPS location switched off');
+      toast.success('Location switched off');
       return;
     }
 
@@ -142,7 +144,7 @@ export default function DirectionsPanel({
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setGuestLocation(origin);
         setSelectedOriginName('Your Current GPS Position');
-        toast.success('Found your location! Calculated direct route.');
+        toast.success('Found your location.');
       },
       err => {
         setLocating(false);
@@ -198,7 +200,7 @@ export default function DirectionsPanel({
         .catch(() => {});
     } else {
       navigator.clipboard.writeText(url).then(
-        () => toast.success('Directions link copied to clipboard!'),
+        () => toast.success('Directions link copied.'),
         () => toast.error('Could not copy the link.')
       );
     }
@@ -218,316 +220,179 @@ export default function DirectionsPanel({
         })()
       : null;
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'map', label: 'Map' },
+    { id: 'directions', label: 'Directions' },
+    ...(locationNotes ? [{ id: 'notes' as Tab, label: 'Notes' }] : []),
+  ];
+
+  const appLinks = [
+    { label: 'Google Maps', href: googleDirectionsUrl(destCoords || location, guestLocation || undefined) },
+    { label: 'Apple Maps', href: appleMapsDirectionsUrl(destCoords || location, guestLocation || undefined) },
+    ...(destCoords
+      ? [
+          { label: 'Waze', href: wazeDirectionsUrl(destCoords) },
+          { label: 'OpenStreetMap', href: openStreetMapDirectionsUrl(destCoords, guestLocation || undefined) },
+        ]
+      : []),
+  ];
+
   return (
-    <div
-      id="directions"
-      className={`rounded-2xl sm:rounded-3xl border border-stone-200/90 bg-white p-3.5 sm:p-6 md:p-8 shadow-xs isolate z-0 scroll-mt-28 ${className}`}
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 sm:p-2 bg-emerald-50 text-emerald-700 rounded-lg sm:rounded-xl">
-              <Navigation className="h-4 w-4 sm:h-5 sm:w-5" />
-            </span>
-            <h3 className="text-lg sm:text-2xl font-serif text-stone-900">Get Directions</h3>
-          </div>
-          <p className="text-stone-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
-            Navigate to <strong className="text-stone-900">{hotelName}</strong> ({location})
-          </p>
+    <section id="directions" className={`tm-panel scroll-mt-28 ${className}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="tm-h2">Location</h2>
+          <p className="tm-muted break-words">{hotelName}, {location}</p>
         </div>
-
-        {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          {destCoords && (
-            <OfflineMapManager
-              property={{
-                id: hotelId || hotelName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                name: hotelName,
-                location,
-                coordinates: destCoords,
-                locationNotes,
-                image: hotelImage,
-              }}
-              variant="inline"
-            />
-          )}
-          {destCoords && (
+        <div role="tablist" aria-label="Location views" className="flex shrink-0 gap-1 rounded-lg bg-stone-100 p-1">
+          {tabs.map(t => (
             <button
+              key={t.id}
               type="button"
-              onClick={handleCopyCoordinates}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition"
-            >
-              {copiedCoords ? (
-                <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-500" />
-              )}
-              {copiedCoords ? 'Copied' : 'Copy GPS'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleShareLocation}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition"
-          >
-            <Share2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-500" />
-            Share
-          </button>
-        </div>
-      </div>
-
-      {/* Primary Navigation Launchers - 2 columns on mobile, 4 columns on large screens */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
-        <a
-          href={googleDirectionsUrl(destCoords || location, guestLocation || undefined)}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="flex items-center justify-between p-2.5 sm:p-3.5 md:p-4 bg-stone-900 text-white rounded-xl sm:rounded-2xl hover:bg-emerald-800 transition shadow-xs group min-w-0"
-        >
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0 rounded-lg sm:rounded-xl bg-white/10 flex items-center justify-center">
-              <Navigation className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-300" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-white/60 font-medium truncate">Fast Turn-by-Turn</p>
-              <p className="text-xs sm:text-sm font-bold text-white truncate">Google Maps</p>
-            </div>
-          </div>
-          <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-white/40 group-hover:text-white transition ml-1.5 sm:ml-2" />
-        </a>
-
-        <a
-          href={appleMapsDirectionsUrl(destCoords || location, guestLocation || undefined)}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="flex items-center justify-between p-2.5 sm:p-3.5 md:p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-xl sm:rounded-2xl transition group min-w-0"
-        >
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0 rounded-lg sm:rounded-xl bg-white flex items-center justify-center text-stone-700 shadow-2xs">
-              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-stone-800" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-stone-500 font-medium truncate">Apple Devices</p>
-              <p className="text-xs sm:text-sm font-bold text-stone-900 truncate">Apple Maps</p>
-            </div>
-          </div>
-          <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-1.5 sm:ml-2" />
-        </a>
-
-        {destCoords && (
-          <a
-            href={wazeDirectionsUrl(destCoords)}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="flex items-center justify-between p-2.5 sm:p-3.5 md:p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-xl sm:rounded-2xl transition group min-w-0"
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0 rounded-lg sm:rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-2xs">
-                <Car className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-stone-500 font-medium truncate">Traffic &amp; Hazards</p>
-                <p className="text-xs sm:text-sm font-bold text-stone-900 truncate">Waze App</p>
-              </div>
-            </div>
-            <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-1.5 sm:ml-2" />
-          </a>
-        )}
-
-        {destCoords && (
-          <a
-            href={openStreetMapDirectionsUrl(destCoords, guestLocation || undefined)}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="flex items-center justify-between p-2.5 sm:p-3.5 md:p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-xl sm:rounded-2xl transition group min-w-0"
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0 rounded-lg sm:rounded-xl bg-white flex items-center justify-center text-emerald-600 shadow-2xs">
-                <Compass className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-emerald-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-stone-500 font-medium truncate">Open Source</p>
-                <p className="text-xs sm:text-sm font-bold text-stone-900 truncate">OpenStreetMap</p>
-              </div>
-            </div>
-            <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-1.5 sm:ml-2" />
-          </a>
-        )}
-      </div>
-
-      {/* Live Distance & Route Calculator */}
-      <div className="rounded-xl sm:rounded-2xl border border-stone-200/80 bg-stone-50 p-3 sm:p-4 md:p-5 mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4">
-          <div className="flex items-center gap-2">
-            <h4 className="text-[10px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider">
-              Travel Distance &amp; Driving Time
-            </h4>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleGuestLocation}
-              disabled={locating}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition disabled:opacity-50 ${
-                isGpsActive
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xs ring-2 ring-blue-300'
-                  : 'bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 shadow-2xs'
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === t.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'
               }`}
-              title={isGpsActive ? 'Click to turn off GPS' : 'Click to use your live location'}
             >
-              {locating ? (
-                <Crosshair className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-pulse text-blue-600" />
-              ) : (
-                <LocateFixed className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${isGpsActive ? 'text-white' : 'text-blue-600'}`} />
-              )}
-              <span>{isGpsActive ? 'GPS Active' : 'My Location'}</span>
-              {isGpsActive && (
-                <span className="ml-0.5 px-1 py-0.2 bg-blue-700 hover:bg-blue-800 rounded text-[9px] uppercase font-bold text-blue-100">
-                  ✕
-                </span>
-              )}
+              {t.label}
             </button>
-
-            {guestLocation && (
-              <button
-                type="button"
-                onClick={handleClearOrigin}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-full text-[11px] font-semibold transition"
-                title="Clear route origin"
-              >
-                <X className="h-3 w-3" />
-                <span>Clear</span>
-              </button>
-            )}
-          </div>
+          ))}
         </div>
-
-        {/* Airport & City preset origins */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-          <span className="text-[11px] sm:text-xs text-stone-400 font-medium">From:</span>
-          {COMMON_ORIGINS.map((origin, oIdx) => {
-            const isSelected = selectedOriginName === origin.label;
-            return (
-              <button
-                key={`${origin.label}-${oIdx}`}
-                type="button"
-                onClick={() => handleSelectPresetOrigin(origin)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold transition ${
-                  isSelected
-                    ? 'bg-stone-900 text-white shadow-2xs ring-2 ring-stone-900/20'
-                    : 'bg-white text-stone-600 border border-stone-200 hover:border-stone-400'
-                }`}
-                title={isSelected ? 'Click to remove this origin' : `Calculate route from ${origin.label}`}
-              >
-                {origin.icon === 'plane' ? (
-                  <Plane className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                ) : (
-                  <Car className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                )}
-                <span>{origin.label}</span>
-                {isSelected && <span className="text-[9px] text-stone-400">✕</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Calculated Stats Banner */}
-        {routeStats ? (
-          <div className="space-y-2 mb-3 sm:mb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border border-stone-200/80 shadow-2xs">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="p-2 sm:p-2.5 bg-blue-50 text-blue-600 rounded-lg sm:rounded-xl">
-                  <Car className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs text-stone-400 uppercase font-bold tracking-wider">Highway Distance</p>
-                  <p className="text-sm sm:text-base font-bold text-stone-900">
-                    ~{routeStats.km.toFixed(1)} km{' '}
-                    <span className="text-[10px] sm:text-xs text-stone-500 font-normal">
-                      ({routeStats.miles.toFixed(1)} mi)
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl">
-                  <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs text-stone-400 uppercase font-bold tracking-wider">
-                    Est. Drive Time
-                  </p>
-                  <p className="text-sm sm:text-base font-bold text-stone-900">~{routeStats.duration}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="p-2 sm:p-2.5 bg-amber-50 text-amber-600 rounded-lg sm:rounded-xl">
-                  <Compass className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs text-stone-400 uppercase font-bold tracking-wider">
-                    Heading / Origin
-                  </p>
-                  <p className="text-xs sm:text-sm font-bold text-stone-900 line-clamp-1">
-                    {routeStats.bearing} ({selectedOriginName || 'Origin'})
-                  </p>
-                </div>
-              </div>
-            </div>
-            {routeStats.notes && (
-              <div className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-stone-50 rounded-lg sm:rounded-xl border border-stone-200/60 text-[11px] sm:text-xs text-stone-600 flex items-center justify-between">
-                <span>Direct aerial: <strong className="text-stone-800">{routeStats.directKm.toFixed(1)} km</strong></span>
-                <span className="font-medium text-emerald-800 truncate">{routeStats.notes}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-[11px] sm:text-xs text-stone-500 mb-1">
-            Click "My Location" or choose a starting airport/city above to view driving distance and road travel time.
-          </p>
-        )}
       </div>
 
-      {/* Interactive Map with Route & Destination Pin */}
-      <div className={`h-[240px] sm:h-[320px] md:h-[400px] lg:h-[480px] rounded-xl sm:rounded-2xl overflow-hidden border border-stone-200/80 ${locationNotes ? 'mb-4 sm:mb-6' : ''}`}>
+      <div className="mt-4 overflow-hidden rounded-lg border border-stone-200 isolate">
         <InteractiveMap
           center={destCoords}
           markerPosition={destCoords}
           markerImage={hotelImage}
           origin={guestLocation}
           originLabel={selectedOriginName || 'Your Location'}
-          interactive={false}
+          interactive={true}
+          showSatelliteToggle={true}
+          showDistanceOverlay={false}
           popupText={hotelName}
-          heightClass="h-full w-full"
+          zoom={13}
+          heightClass="h-[260px] sm:h-[340px] lg:h-[400px]"
         />
       </div>
 
-      {/* Host Location Notes / Specific Instructions */}
-      {locationNotes && (
-        <div className="p-3 sm:p-4 bg-amber-50/70 border border-amber-200/70 rounded-xl sm:rounded-2xl flex items-start gap-2.5 sm:gap-3">
-          <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-700 shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <h4 className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
-              Host Arrival Advice &amp; Directions
-            </h4>
-            <FormattedDescription
-              text={locationNotes}
-              collapsible={true}
-              collapsedHeight={80}
-              expandLabel="See more details"
-              collapseLabel="Show less"
-              fadeGradientClass="from-transparent via-amber-50/60 to-amber-50"
-              buttonClassName="text-amber-950 font-bold text-xs"
-              className="text-amber-900 text-xs sm:text-sm"
-              paragraphClassName="text-xs sm:text-sm text-amber-900/90 leading-relaxed mb-1.5 last:mb-0"
-            />
+      <div className="mt-4">
+        {tab === 'map' && (
+          <div className="tm-actions">
+            {destCoords && (
+              <OfflineMapManager
+                property={{
+                  id: hotelId || hotelName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                  name: hotelName,
+                  location,
+                  coordinates: destCoords,
+                  locationNotes,
+                  image: hotelImage,
+                }}
+                variant="inline"
+              />
+            )}
+            {destCoords && (
+              <button type="button" onClick={handleCopyCoordinates} className="tm-btn tm-btn-secondary tm-btn-sm">
+                {copiedCoords ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedCoords ? 'Copied' : 'Copy coordinates'}
+              </button>
+            )}
+            <button type="button" onClick={handleShareLocation} className="tm-btn tm-btn-secondary tm-btn-sm">
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {tab === 'directions' && (
+          <div className="space-y-4">
+            <div>
+              <p className="tm-label">Start from</p>
+              <div className="tm-actions">
+                <button
+                  type="button"
+                  onClick={handleToggleGuestLocation}
+                  disabled={locating}
+                  aria-pressed={isGpsActive}
+                  className={`tm-btn tm-btn-sm ${isGpsActive ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
+                >
+                  {locating ? <Crosshair className="h-4 w-4 animate-pulse" /> : <LocateFixed className="h-4 w-4" />}
+                  {isGpsActive ? 'Using my location' : 'My location'}
+                </button>
+                {COMMON_ORIGINS.map((origin, oIdx) => {
+                  const isSelected = selectedOriginName === origin.label;
+                  return (
+                    <button
+                      key={`${origin.label}-${oIdx}`}
+                      type="button"
+                      onClick={() => handleSelectPresetOrigin(origin)}
+                      aria-pressed={isSelected}
+                      className={`tm-btn tm-btn-sm ${isSelected ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
+                    >
+                      {origin.icon === 'plane' ? <Plane className="h-4 w-4" /> : <Car className="h-4 w-4" />}
+                      {origin.label}
+                    </button>
+                  );
+                })}
+                {guestLocation && (
+                  <button type="button" onClick={handleClearOrigin} className="tm-btn tm-btn-quiet tm-btn-sm">
+                    <X className="h-4 w-4" />
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {routeStats ? (
+              <div className="tm-divider pt-4">
+                <p className="text-sm text-stone-900">
+                  About <strong>{routeStats.km.toFixed(0)} km</strong> by road ({routeStats.miles.toFixed(0)} mi),
+                  roughly <strong>{routeStats.duration}</strong> driving, heading {routeStats.bearing} from{' '}
+                  {selectedOriginName || 'your start'}.
+                </p>
+                {routeStats.notes && <p className="tm-muted mt-1">{routeStats.notes}</p>}
+              </div>
+            ) : (
+              <p className="tm-muted">Pick a starting point to see the road distance and drive time.</p>
+            )}
+
+            <div className="tm-divider pt-4">
+              <p className="tm-label">Open in</p>
+              <div className="tm-actions">
+                {appLinks.map(a => (
+                  <a
+                    key={a.label}
+                    href={a.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
+                  >
+                    {a.label}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'notes' && locationNotes && (
+          <FormattedDescription
+            text={locationNotes}
+            collapsible={true}
+            collapsedHeight={120}
+            expandLabel="Read more"
+            collapseLabel="Show less"
+            fadeGradientClass="from-transparent via-white/60 to-white"
+            buttonClassName="text-amber-800 font-medium text-sm"
+            className="text-stone-700 text-sm"
+            paragraphClassName="text-stone-700 text-sm leading-relaxed mb-2 last:mb-0"
+          />
+        )}
+      </div>
+    </section>
   );
 }
-
-
-

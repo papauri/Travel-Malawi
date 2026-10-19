@@ -227,7 +227,7 @@ export default function AdminEmailSettings() {
       {/* 1. Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Email &amp; SMTP Settings</h2>
+          <h2 className="tm-h1">Email &amp; SMTP Settings</h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
             Configure outgoing SMTP parameters to dispatch booking confirmations, 24h arrival PINs, and reminders.
           </p>
@@ -246,7 +246,7 @@ export default function AdminEmailSettings() {
       </div>
 
       {/* 2. System Status Card */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs">
+      <div className="bg-white border border-stone-200 rounded-xl p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function AdminEmailSettings() {
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
-              <span>Host: <strong className="text-stone-800 font-mono font-normal">{form.smtpHost || 'None'}</strong></span>
+              <span>Host: <strong className="text-stone-800 font-normal">{form.smtpHost || 'None'}</strong></span>
               <span aria-hidden="true" className="text-stone-300">·</span>
               <span className="font-mono">Port {form.smtpPort || '587'}</span>
               <span aria-hidden="true" className="text-stone-300">·</span>
@@ -271,7 +271,7 @@ export default function AdminEmailSettings() {
             <button
               onClick={() => handleSave()}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs disabled:opacity-50"
+              className="tm-btn tm-btn-primary"
             >
               {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -283,7 +283,7 @@ export default function AdminEmailSettings() {
       {/* 3. Form & Test Diagnostic Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main SMTP Form (2 cols) */}
-        <div className="lg:col-span-2 bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-2xs space-y-5">
+        <div className="lg:col-span-2 bg-white border border-stone-200 rounded-xl p-5 md:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4 text-stone-700" />
@@ -350,7 +350,7 @@ export default function AdminEmailSettings() {
                   value={form.smtpHost}
                   onChange={e => setForm({ ...form, smtpHost: e.target.value })}
                   placeholder="e.g. smtp.gmail.com"
-                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
+                  className="tm-input"
                 />
               </div>
 
@@ -363,7 +363,7 @@ export default function AdminEmailSettings() {
                   value={form.smtpPort}
                   onChange={e => setForm({ ...form, smtpPort: e.target.value })}
                   placeholder="587 or 465"
-                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
+                  className="tm-input"
                 />
               </div>
             </div>
@@ -391,7 +391,7 @@ export default function AdminEmailSettings() {
                   value={form.smtpUser}
                   onChange={e => setForm({ ...form, smtpUser: e.target.value })}
                   placeholder="e.g. info@ulendomalawi.com"
-                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
+                  className="tm-input"
                 />
               </div>
 
@@ -401,7 +401,7 @@ export default function AdminEmailSettings() {
                     SMTP Password / App Key
                   </label>
                   {form.hasPassword && (
-                    <span className="text-[10px] text-stone-500 font-mono">
+                    <span className="text-[10px] text-stone-500">
                       Password saved
                     </span>
                   )}
@@ -412,7 +412,7 @@ export default function AdminEmailSettings() {
                     value={form.smtpPass}
                     onChange={e => setForm({ ...form, smtpPass: e.target.value })}
                     placeholder={form.hasPassword ? '•••••••• (leave blank to keep current)' : 'Enter password or mailbox key'}
-                    className="w-full bg-stone-50 border border-stone-200 px-3 pr-9 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
+                    className="tm-input pr-9"
                   />
                   <button
                     type="button"
@@ -427,7 +427,7 @@ export default function AdminEmailSettings() {
             </div>
 
             <div className="pt-3 border-t border-stone-100">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-2 block">
+              <span className="text-[11px] font-semibold text-stone-400 mb-2 block">
                 Sender Presentation &amp; Return Address
               </span>
 
@@ -477,7 +477,7 @@ export default function AdminEmailSettings() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                className="tm-btn tm-btn-primary"
               >
                 {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 <span>{saving ? 'Saving...' : 'Save Settings'}</span>
@@ -488,7 +488,7 @@ export default function AdminEmailSettings() {
 
         {/* Test Connection Panel (1 col) */}
         <div className="space-y-4">
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs space-y-4">
+          <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
             <div>
               <h3 className="font-serif font-bold text-base text-stone-900">Test SMTP Connection</h3>
               <p className="text-xs text-stone-500 mt-0.5">
@@ -505,7 +505,7 @@ export default function AdminEmailSettings() {
                 value={testRecipient}
                 onChange={e => setTestRecipient(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
+                className="tm-input"
               />
             </div>
 

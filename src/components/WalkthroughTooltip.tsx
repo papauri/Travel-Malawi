@@ -209,7 +209,7 @@ export default function WalkthroughTooltip({
       role="status"
       aria-live="polite"
       onClick={handleDismiss}
-      className={`group cursor-pointer select-none rounded-2xl bg-stone-900/95 text-stone-100 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.4)] border border-amber-400/40 backdrop-blur-md transition-all ${className}`}
+      className={`group cursor-pointer select-none rounded-2xl bg-stone-900/95 text-stone-100 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.4)] border border-amber-400/40 transition-all ${className}`}
       style={{
         opacity: isFullyVisible ? 1 : isAppearing ? 0.8 : isVanishing ? 0 : 0,
         transform: isFullyVisible
@@ -264,7 +264,7 @@ export default function WalkthroughTooltip({
       {/* Vanishing Progress Line */}
       <div className="w-full bg-stone-800/80 h-[1.5px] rounded-full overflow-hidden mt-2.5">
         <div
-          className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200/40 rounded-full"
+          className="h-full bg-amber-400 rounded-full"
           style={{
             width: `${progressWidth}%`,
             transitionProperty: 'width',

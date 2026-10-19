@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { format, parse, isValid, addDays, startOfToday } from 'date-fns';
-import { Calendar, Lock, Info } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -69,7 +69,7 @@ export default function DatePicker({ checkIn, checkOut, onSelect, isDateBlocked 
         current = addDays(current, 1);
       }
       if (!valid) {
-        toast.error('The selected stay dates cross blocked or unavailable nights. Greyed-out dates have no availability.');
+        toast.error('Those dates include a night that is not available. Pick dates without grey days.');
         // If the range spans a blocked date, just set the start date
         toStr = '';
       }
@@ -98,30 +98,16 @@ export default function DatePicker({ checkIn, checkOut, onSelect, isDateBlocked 
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-700 hover:border-stone-300 transition cursor-pointer"
+        className="tm-input flex items-center justify-between gap-2 text-left hover:border-stone-400 transition-colors cursor-pointer"
       >
-        <span className={checkIn ? 'font-medium text-stone-900' : 'text-stone-400'}>{displayStr}</span>
+        <span className={`truncate ${checkIn ? 'font-medium text-stone-900' : 'text-stone-400'}`}>{displayStr}</span>
         <Calendar className="w-4 h-4 text-stone-500 shrink-0" />
       </button>
 
-      <p className="mt-1.5 text-[11px] text-stone-500 flex items-center gap-1 font-medium">
-        <Lock className="w-3 h-3 text-stone-400 shrink-0" />
-        <span>Greyed-out dates = No availability (reserved or blocked by host)</span>
-      </p>
+      <p className="mt-1.5 text-xs text-stone-500">Grey dates are already booked or closed.</p>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-50 bg-white border border-stone-200 rounded-2xl shadow-xl p-4 max-w-sm w-full">
-          {/* Explanatory Banner */}
-          <div className="flex items-start gap-2 p-2.5 mb-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-snug">
-            <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold">Greyed-out dates have NO availability.</span>
-              <p className="text-[11px] text-amber-800/90 mt-0.5">
-                These nights cannot be selected because they are fully booked or blocked by property management.
-              </p>
-            </div>
-          </div>
-
+        <div className="absolute top-full mt-2 left-0 z-50 bg-white border border-stone-200 rounded-xl shadow-sm p-3 sm:p-4 max-w-sm w-full">
           <DayPicker
             mode="range"
             selected={selectedRange}
@@ -137,23 +123,8 @@ export default function DatePicker({ checkIn, checkOut, onSelect, isDateBlocked 
             }}
           />
 
-          {/* Mini Legend & Done */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-stone-100 flex-wrap gap-2">
-            <div className="flex items-center gap-3 text-[11px] text-stone-500">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-stone-900 inline-block" />
-                <span>Selected</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-stone-100 border border-stone-300 inline-block line-through text-[8px] text-stone-400 text-center leading-2.5">✕</span>
-                <span>Greyed-out (No availability)</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="bg-stone-900 text-white px-4 py-1.5 rounded-full text-xs font-semibold hover:bg-stone-800 transition cursor-pointer"
-            >
+          <div className="flex justify-end mt-3 pt-3 border-t border-stone-100">
+            <button type="button" onClick={() => setIsOpen(false)} className="tm-btn tm-btn-primary tm-btn-sm">
               Done
             </button>
           </div>

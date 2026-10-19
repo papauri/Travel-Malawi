@@ -225,35 +225,34 @@ export default function GalleryUpload({
     >
       {/* Dragging Overlay */}
       {isDraggingFile && (
-        <div className="absolute inset-0 bg-stone-900/80 backdrop-blur-xs rounded-2xl z-30 flex flex-col items-center justify-center text-white border-2 border-dashed border-amber-400 pointer-events-none p-6 animate-in fade-in duration-200">
-          <Upload className="h-10 w-10 text-amber-400 mb-2 animate-bounce" />
-          <p className="text-base font-bold">Drop images to upload</p>
-          <p className="text-xs text-stone-300">Release files anywhere in this gallery</p>
+        <div className="absolute inset-0 bg-amber-50/95 rounded-xl z-30 flex flex-col items-center justify-center text-amber-900 border-2 border-dashed border-amber-400 pointer-events-none p-6">
+          <Upload className="h-8 w-8 text-amber-700 mb-2" />
+          <p className="text-sm font-semibold">Drop photos to upload</p>
         </div>
       )}
 
       {/* Header Bar */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${compact ? 'mb-2' : 'mb-3.5'}`}>
-        <div>
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 ${compact ? 'mb-2' : 'mb-3'}`}>
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-bold text-stone-800 tracking-wide`}>{label}</label>
+            <label className={`tm-label mb-0 ${compact ? 'text-xs' : ''}`}>{label}</label>
             {tooltip && <Tooltip text={tooltip} />}
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+            <span className="tm-tag">
               {value.length} {value.length === 1 ? 'photo' : 'photos'}
             </span>
           </div>
-          {hint && <div className={`text-stone-500 leading-relaxed ${compact ? 'text-[11px] mt-0.5' : 'text-xs mt-1'}`}>{hint}</div>}
+          {hint && <div className={`text-stone-500 ${compact ? 'text-xs mt-0.5' : 'text-xs mt-1'}`}>{hint}</div>}
         </div>
 
-        {/* Compact, non-wide mode toggle buttons */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 flex-wrap">
-          <div className="inline-flex items-center bg-stone-100/90 p-0.5 sm:p-1 rounded-lg border border-stone-200">
+        {/* Upload / link switch */}
+        <div className="tm-actions gap-1.5 self-start sm:self-auto shrink-0">
+          <div className="inline-flex items-center bg-stone-100 p-0.5 rounded-lg">
             <button
               type="button"
               onClick={() => setMode("upload")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${
                 mode === "upload"
-                  ? "bg-white text-stone-900 shadow-xs"
+                  ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
@@ -263,14 +262,14 @@ export default function GalleryUpload({
             <button
               type="button"
               onClick={() => setMode("url")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${
                 mode === "url"
-                  ? "bg-white text-stone-900 shadow-xs"
+                  ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
               <LinkIcon className="h-3 w-3" />
-              <span>Web Link</span>
+              <span>Link</span>
             </button>
           </div>
 
@@ -281,15 +280,11 @@ export default function GalleryUpload({
                 setIsSelectMode(!isSelectMode);
                 setSelectedUrls(new Set());
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
-                isSelectMode
-                  ? "bg-red-50 border-red-300 text-red-700 shadow-2xs"
-                  : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
-              }`}
-              title={isSelectMode ? "Exit multi-select mode" : "Select multiple photos to delete"}
+              className={`tm-btn tm-btn-sm ${isSelectMode ? "tm-btn-secondary" : "tm-btn-quiet"}`}
+              title={isSelectMode ? "Stop selecting" : "Select several photos to delete"}
             >
-              <Trash2 className="h-3 w-3 text-red-600" />
-              <span>{isSelectMode ? "Cancel" : "Select & Delete"}</span>
+              {!isSelectMode && <Trash2 className="h-3 w-3 text-red-600" />}
+              <span>{isSelectMode ? "Cancel" : "Select to delete"}</span>
             </button>
           )}
         </div>
@@ -297,27 +292,27 @@ export default function GalleryUpload({
 
       {/* Select & Delete Bulk Action Bar */}
       {isSelectMode && value.length > 0 && (
-        <div className="mb-3.5 p-2.5 sm:p-3 bg-red-50/90 border border-red-200 rounded-xl flex items-center justify-between gap-2.5 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="mb-3 tm-actions justify-between rounded-lg bg-red-50 px-3 py-2">
+          <div className="tm-actions">
             <button
               type="button"
               onClick={handleSelectAll}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+              className="tm-btn tm-btn-secondary tm-btn-sm"
             >
               {selectedUrls.size === value.length ? (
                 <>
                   <Square className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Deselect All</span>
+                  <span>Deselect all</span>
                 </>
               ) : (
                 <>
-                  <CheckSquare className="w-3.5 h-3.5 text-red-600" />
-                  <span>Select All ({value.length})</span>
+                  <CheckSquare className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Select all ({value.length})</span>
                 </>
               )}
             </button>
-            <span className="text-xs font-bold text-red-900">
-              {selectedUrls.size} photo{selectedUrls.size === 1 ? '' : 's'} selected
+            <span className="text-xs font-medium text-red-800">
+              {selectedUrls.size} selected
             </span>
           </div>
 
@@ -325,45 +320,45 @@ export default function GalleryUpload({
             type="button"
             onClick={handleDeleteSelected}
             disabled={selectedUrls.size === 0}
-            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98"
+            className="tm-btn tm-btn-danger tm-btn-sm"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Selected ({selectedUrls.size})</span>
+            <span>Delete ({selectedUrls.size})</span>
           </button>
         </div>
       )}
 
       {/* URL Input Bar (visible when mode === 'url') */}
       {mode === "url" && (
-        <div className="mb-4 p-3 bg-stone-50 border border-stone-200/90 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="relative flex-1">
+        <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
             <input
               type="url"
               value={urlInput}
               onChange={e => setUrlInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddUrl())}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-900 focus:border-stone-900 outline-none transition"
-              placeholder="Paste image link or share URL (Google Drive, OneDrive, Dropbox)..."
+              className="tm-input pl-9"
+              placeholder="Paste a photo link (Google Drive, OneDrive, Dropbox…)"
             />
           </div>
           <button
             type="button"
             onClick={handleAddUrl}
-            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition shrink-0 cursor-pointer"
+            className="tm-btn tm-btn-secondary shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Photo</span>
+            <span>Add photo</span>
           </button>
         </div>
       )}
 
       {/* Uploading Status Banner */}
       {isUploading && (
-        <div className="mb-4 p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center gap-3 animate-pulse">
+        <div className="mb-3 flex items-center gap-2 text-xs text-amber-900">
           <Loader2 className="h-4 w-4 text-amber-700 animate-spin shrink-0" />
-          <span className="text-xs font-semibold text-amber-900">
-            {uploadStatus || "Uploading images to gallery..."}
+          <span className="min-w-0 break-words">
+            {uploadStatus || "Uploading photos…"}
           </span>
         </div>
       )}
@@ -374,50 +369,34 @@ export default function GalleryUpload({
           /* Compact Empty State */
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border border-dashed border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 rounded-xl p-3 flex items-center justify-between gap-2.5 transition cursor-pointer group bg-stone-50/30"
+            className="border border-dashed border-stone-300 hover:border-amber-400 rounded-lg p-3 flex items-center justify-between gap-2.5 transition-colors cursor-pointer min-w-0"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 group-hover:text-amber-700 transition shrink-0">
-                <ImageIcon className="h-4 w-4" />
-              </div>
-              <div className="text-left min-w-0">
-                <p className="text-xs font-semibold text-stone-800 truncate">No gallery photos yet</p>
-                <p className="text-[10px] text-stone-500 truncate">Click to upload extra room angles or views</p>
-              </div>
+              <ImageIcon className="h-4 w-4 text-stone-400 shrink-0" />
+              <p className="text-xs text-stone-600 truncate">No photos yet</p>
             </div>
-            <button
-              type="button"
-              className="px-2.5 py-1 bg-stone-900 text-white text-[11px] font-semibold rounded-lg shadow-2xs hover:bg-stone-800 transition inline-flex items-center gap-1 pointer-events-none shrink-0"
-            >
+            <span className="tm-btn tm-btn-secondary tm-btn-sm pointer-events-none shrink-0">
               <Upload className="h-3 w-3" />
-              <span>Add Photos</span>
-            </button>
+              <span>Add photos</span>
+            </span>
           </div>
         ) : (
           /* Standard Empty State */
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-stone-300 hover:border-stone-400 hover:bg-stone-50/50 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition cursor-pointer group"
+            className="border-2 border-dashed border-stone-300 hover:border-stone-400 rounded-xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:text-stone-700 group-hover:scale-105 transition-all mb-2.5">
-              <ImageIcon className="h-5 w-5" />
-            </div>
-            <p className="text-sm font-semibold text-stone-800 mb-0.5">No photos added yet</p>
-            <p className="text-xs text-stone-500 mb-3 max-w-sm">
-              Drag &amp; drop photos here, or click to browse from your device.
-            </p>
-            <button
-              type="button"
-              className="px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-stone-800 transition inline-flex items-center gap-1.5 pointer-events-none"
-            >
+            <ImageIcon className="h-6 w-6 text-stone-400 mb-2" />
+            <p className="text-sm text-stone-600 mb-3">Drop photos here or choose them from your device.</p>
+            <span className="tm-btn tm-btn-secondary tm-btn-sm pointer-events-none">
               <Upload className="h-3.5 w-3.5" />
-              <span>Select Photos</span>
-            </button>
+              <span>Choose photos</span>
+            </span>
           </div>
         )
       ) : (
         /* Populated Grid with Integrated Upload Tile */
-        <div className={compact ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto pr-1" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"}>
+        <div className={compact ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto pr-1" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"}>
           {value.map((url, idx) => {
             const isSelected = selectedUrls.has(url);
             return (
@@ -430,7 +409,7 @@ export default function GalleryUpload({
                 onClick={() => {
                   if (isSelectMode) toggleSelectUrl(url);
                 }}
-                className={`relative aspect-video ${compact ? 'rounded-lg' : 'rounded-xl'} overflow-hidden group ${isSelectMode ? 'cursor-pointer ring-2' : 'cursor-move'} ${isSelected ? 'ring-red-600 bg-red-50' : 'ring-transparent'} bg-stone-100 border border-stone-200 hover:border-stone-300 hover:shadow-xs transition-all select-none`}
+                className={`relative aspect-video rounded-lg overflow-hidden group ${isSelectMode ? 'cursor-pointer ring-2' : 'cursor-move'} ${isSelected ? 'ring-red-600 bg-red-50' : 'ring-transparent'} bg-stone-100 border border-stone-200 hover:border-stone-300 transition-colors select-none`}
               >
                 <SmartImage
                   src={url}
@@ -438,21 +417,21 @@ export default function GalleryUpload({
                   className="w-full h-full object-cover pointer-events-none"
                 />
 
-                {/* Subtle gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                {/* Hover scrim so the overlay buttons stay readable */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                 {/* Top-Left: Position / Cover Badge OR Selection Checkbox */}
                 <div className="absolute top-2 left-2 z-10">
                   {isSelectMode ? (
-                    <div className={`p-1 rounded-md shadow-xs ${isSelected ? 'bg-red-600 text-white' : 'bg-stone-900/80 text-white/80'}`}>
+                    <div className={`p-1 rounded-md ${isSelected ? 'bg-red-600 text-white' : 'bg-stone-900/80 text-white/80'}`}>
                       {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                     </div>
                   ) : showCoverBadge && idx === 0 ? (
-                    <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-md shadow-xs flex items-center gap-1 pointer-events-none">
-                      ★ Cover
+                    <span className="px-2 py-0.5 bg-white/95 text-amber-900 text-xs font-medium rounded-md flex items-center gap-1 pointer-events-none">
+                      Cover
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.5 bg-stone-900/70 text-white text-[10px] font-mono rounded-md backdrop-blur-xs pointer-events-none">
+                    <span className="px-1.5 py-0.5 bg-stone-900/70 text-white text-xs tabular-nums rounded-md pointer-events-none">
                       #{idx + 1}
                     </span>
                   )}
@@ -468,7 +447,7 @@ export default function GalleryUpload({
                           e.stopPropagation();
                           moveImage(idx, idx - 1);
                         }}
-                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition-colors cursor-pointer"
                         title="Move backward"
                       >
                         <ChevronLeft className="w-3 h-3" />
@@ -481,7 +460,7 @@ export default function GalleryUpload({
                           e.stopPropagation();
                           moveImage(idx, idx + 1);
                         }}
-                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition-colors cursor-pointer"
                         title="Move forward"
                       >
                         <ChevronRight className="w-3 h-3" />
@@ -500,8 +479,8 @@ export default function GalleryUpload({
                           e.stopPropagation();
                           onSetCover(url, idx);
                         }}
-                        className="p-1.5 bg-stone-900/80 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
-                        title="Promote to Cover Photo"
+                        className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-amber-300 rounded-lg transition-colors cursor-pointer"
+                        title="Make this the cover photo"
                         aria-label="Set as cover"
                       >
                         <Star className="w-3.5 h-3.5 fill-current" />
@@ -513,7 +492,7 @@ export default function GalleryUpload({
                         e.stopPropagation();
                         setLightboxIdx(idx);
                       }}
-                      className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
+                      className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition-colors cursor-pointer"
                       title="View full photo"
                       aria-label="View photo"
                     >
@@ -525,8 +504,8 @@ export default function GalleryUpload({
                         e.stopPropagation();
                         removeImage(idx);
                       }}
-                      className="p-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center"
-                      title="Delete photo permanently"
+                      className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                      title="Delete photo"
                       aria-label="Delete photo"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -541,14 +520,11 @@ export default function GalleryUpload({
           {!isSelectMode && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`relative aspect-video ${compact ? 'rounded-lg p-2' : 'rounded-xl p-3'} border-2 border-dashed border-stone-300 hover:border-amber-500 hover:bg-amber-50/20 transition-all flex flex-col items-center justify-center text-center cursor-pointer group bg-stone-50/60`}
-              title="Click to add more photos"
+              className={`relative aspect-video rounded-lg ${compact ? 'p-2' : 'p-3'} border-2 border-dashed border-stone-300 hover:border-amber-500 transition-colors flex flex-col items-center justify-center text-center cursor-pointer text-stone-600 hover:text-amber-900`}
+              title="Add more photos"
             >
-              <div className={`${compact ? 'w-6 h-6 mb-1' : 'w-8 h-8 mb-1.5'} rounded-full bg-stone-200/80 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 flex items-center justify-center transition-transform group-hover:scale-105`}>
-                <Plus className={compact ? "w-3 h-3" : "w-4 h-4"} />
-              </div>
-              <p className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold text-stone-700 group-hover:text-amber-900`}>Add Photos</p>
-              <p className="text-[10px] text-stone-400 group-hover:text-stone-500">{compact ? 'Browse' : 'Drop or browse'}</p>
+              <Plus className={compact ? "w-4 h-4 mb-1" : "w-5 h-5 mb-1"} />
+              <p className="text-xs font-medium">Add photos</p>
             </div>
           )}
         </div>

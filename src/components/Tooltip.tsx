@@ -29,7 +29,7 @@ export default function Tooltip({ text, children }: { text: React.ReactNode, chi
         <div
           id={tipId}
           role="tooltip"
-          className="absolute z-50 w-64 max-w-[calc(100vw-3rem)] p-3 text-sm font-normal text-white bg-stone-900 rounded-lg shadow-lg -top-2 left-full ml-3 pointer-events-none"
+          className="absolute z-50 w-64 max-w-[calc(100vw-3rem)] p-3 text-sm font-normal text-white bg-stone-900 rounded-lg shadow-sm -top-2 left-full ml-3 pointer-events-none"
         >
           <div className="absolute w-2 h-2 bg-stone-900 rotate-45 -left-1 top-3"></div>
           {text}

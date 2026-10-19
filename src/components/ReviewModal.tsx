@@ -168,7 +168,7 @@ export function ReviewModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition"
+            className="tm-btn tm-btn-primary"
           >
             Close
           </button>
@@ -182,7 +182,7 @@ export function ReviewModal({
         </div>
       ) : userBookings.length === 0 ? (
         <div className="py-2 space-y-4">
-          <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-4 sm:p-5 space-y-3">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
                 <ShieldCheck className="w-5 h-5 text-amber-700" />
@@ -211,7 +211,7 @@ export function ReviewModal({
                   const roomsEl = document.getElementById('rooms');
                   if (roomsEl) roomsEl.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="w-full sm:flex-1 py-2.5 px-4 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                className="tm-btn tm-btn-primary w-full sm:flex-1"
               >
                 <BedDouble className="w-4 h-4 text-amber-400" />
                 <span>Book a Stay at {hotelName || 'This Stay'}</span>
@@ -255,7 +255,7 @@ export function ReviewModal({
               </select>
             )}
             {userBookings.length === 1 && (
-              <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
+              <span className="text-[11px] text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
                 Ref: {userBookings[0].reference || userBookings[0].id?.slice(0, 8)}
               </span>
             )}
@@ -264,7 +264,7 @@ export function ReviewModal({
           {/* Star Rating Picker */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-800">
                 Overall Rating
               </label>
               <span className={`text-xs font-semibold ${ratingInfo.color}`}>
@@ -292,7 +292,7 @@ export function ReviewModal({
                   />
                 </button>
               ))}
-              <span className="ml-auto font-mono text-xs font-bold text-stone-700 bg-white border border-stone-200 px-2 py-1 rounded-md">
+              <span className="ml-auto text-xs font-bold text-stone-700 bg-white border border-stone-200 px-2 py-1 rounded-md">
                 {activeRating}.0 / 5.0
               </span>
             </div>
@@ -300,7 +300,7 @@ export function ReviewModal({
 
           {/* Review Headline / Title */}
           <div>
-            <label className="block text-xs font-bold text-stone-800 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-stone-800 mb-1.5">
               Review Title (Optional)
             </label>
             <input
@@ -316,10 +316,10 @@ export function ReviewModal({
           {/* Review Feedback Text */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-800">
                 Your Authentic Experience
               </label>
-              <span className={`text-[11px] font-mono ${text.length > 1900 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
+              <span className={`text-[11px] ${text.length > 1900 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
                 {text.length}/2000
               </span>
             </div>
@@ -359,7 +359,7 @@ export function ReviewModal({
             <button
               type="submit"
               disabled={submitting || text.trim().length < 10}
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-2xs disabled:opacity-50 cursor-pointer"
+              className="tm-btn tm-btn-primary"
             >
               {submitting ? (
                 <>
@@ -368,8 +368,8 @@ export function ReviewModal({
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Publish Verified Review</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Publish review</span>
                 </>
               )}
             </button>

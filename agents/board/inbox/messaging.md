@@ -1,0 +1,1 @@
+- [H-orch-D2] P2 → messaging | BookingChat, PropertyChat, ActiveChatsMenu, CallModal, NotificationBell, GlobalNotificationManager, BroadcastManager, ManagerMessageTemplatesHub, ReminderTemplatesModal, ChatModalContext (dark/neon chat chrome → calm stone) | apply agents/directives/D2-minimal-human-ui.md | contract: none

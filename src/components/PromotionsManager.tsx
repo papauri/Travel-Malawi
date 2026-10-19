@@ -130,45 +130,44 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
   return (
     <div className="space-y-6">
       <SectionCard 
-        title="Promotions & Slashed Pricing Manager" 
-        description="Configure active promotions, sale types, and price slash campaigns. Slashed prices are prominently displayed with 'FROM > TO' tags and promotional badges on your hotel page and homepage cards."
+        title="Promotions" 
+        description="Time-limited discounts, shown as a from → to price on your listing."
         action={
           <button 
             onClick={addPromotion}
-            className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-stone-800 transition shadow-sm cursor-pointer"
+            className="tm-btn tm-btn-secondary tm-btn-sm"
           >
-            <Plus className="w-4 h-4" /> Create Promotion
+            <Plus className="w-4 h-4" /> Add promotion
           </button>
         }
       >
         {promotions.length === 0 ? (
-          <div className="text-center py-12 bg-stone-50 rounded-2xl border border-stone-100 p-6">
-            <Percent className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-            <h4 className="font-serif font-bold text-stone-800 text-base mb-1">No active promotions</h4>
-            <p className="text-stone-500 text-sm max-w-md mx-auto mb-4">
-              Slash room rates and conference space prices for limited periods, seasonal holidays, or early bird bookings.
+          <div className="text-center py-8 px-4 rounded-lg border border-dashed border-stone-300">
+            <Percent className="w-8 h-8 text-stone-300 mx-auto mb-3" />
+            <p className="tm-muted max-w-md mx-auto mb-4">
+              No promotions yet. Add one for a holiday, a quiet season or early bookings.
             </p>
             <button 
               onClick={addPromotion}
-              className="inline-flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-stone-800 transition shadow-sm cursor-pointer"
+              className="tm-btn tm-btn-secondary"
             >
-              <Plus className="w-3.5 h-3.5" /> Launch First Sale Campaign
+              <Plus className="w-4 h-4" /> Add promotion
             </button>
             {isDirty && (
               <div className="pt-4">
                 <button
                   onClick={savePromotions}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 bg-white border border-stone-300 text-stone-900 px-5 py-2.5 rounded-full text-xs font-bold hover:bg-stone-100 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="tm-btn tm-btn-primary"
                 >
                   {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  {saving ? 'Saving...' : 'Save removal of all promotions'}
+                  {saving ? 'Saving…' : 'Save (removes all promotions)'}
                 </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="min-w-0">
             {promotions
               .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
               .map((promo, pIdx) => {
@@ -176,36 +175,36 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
               const previewSlashed = calculateSlashedPrice(sampleOriginalRate, promo, 'MWK');
 
               return (
-                <div key={`${promo.id || 'promo'}-${pIdx}`} className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 shadow-xs relative">
-                  <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-4 mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-stone-100 text-stone-800 rounded-lg">
+                <div key={`${promo.id || 'promo'}-${pIdx}`} className="py-5 first:pt-0 border-t border-stone-200 first:border-t-0 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 bg-stone-100 text-stone-800 rounded-lg shrink-0">
                         <PromotionIcon saleType={promo.saleType} className="w-5 h-5 text-stone-800" />
                       </div>
-                      <div>
-                        <h4 className="font-bold text-stone-900 text-base">{promo.name || 'Unnamed Promotion'}</h4>
-                        <p className="text-xs text-stone-500">
-                          {getSaleTypeLabel(promo.saleType, promo.saleTypeCustomLabel)} · {promo.discountType === 'fixed_slash' ? 'Fixed price slash' : `${promo.discountPercentage}% Price Slash`}
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-stone-900 text-base truncate">{promo.name || 'Unnamed promotion'}</h4>
+                        <p className="text-xs text-stone-500 truncate">
+                          {getSaleTypeLabel(promo.saleType, promo.saleTypeCustomLabel)} · {promo.discountType === 'fixed_slash' ? 'Fixed price slash' : `${promo.discountPercentage}% off`}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 cursor-pointer bg-stone-50 px-3 py-1.5 rounded-full border border-stone-200">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded-lg hover:bg-stone-50">
                         <input 
                           type="checkbox" 
                           checked={promo.isActive}
                           onChange={e => updatePromo(promo.id, { isActive: e.target.checked })}
                           className="w-4 h-4 accent-stone-900 rounded cursor-pointer"
                         />
-                        <span className={`text-xs font-bold ${promo.isActive ? 'text-stone-900' : 'text-stone-400'}`}>
-                          {promo.isActive ? 'Campaign Active' : 'Paused / Inactive'}
+                        <span className={`text-xs font-medium ${promo.isActive ? 'text-stone-900' : 'text-stone-500'}`}>
+                          {promo.isActive ? 'Active' : 'Paused'}
                         </span>
                       </label>
                       <button 
                         onClick={() => deletePromo(promo.id)}
                         className="text-stone-400 hover:text-stone-900 p-1.5 rounded-lg hover:bg-stone-100 transition cursor-pointer"
-                        title="Delete Campaign"
+                        title="Delete promotion" aria-label="Delete promotion"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -215,27 +214,27 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Campaign Title */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        Internal Campaign Name
+                      <label className="tm-label">
+                        Name (only you see this)
                       </label>
                       <input 
                         type="text" 
                         value={promo.name} 
                         onChange={e => updatePromo(promo.id, { name: e.target.value })}
                         placeholder="e.g. Easter Weekend Special"
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
+                        className="tm-input"
                       />
                     </div>
 
                     {/* Sale Type Selector */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        Sale Type (Displayed on Cards)
+                      <label className="tm-label">
+                        Sale badge
                       </label>
                       <select
                         value={promo.saleType || 'flash_sale'}
                         onChange={e => updatePromo(promo.id, { saleType: e.target.value as SaleType })}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
+                        className="tm-input"
                       >
                         {SALE_TYPE_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>
@@ -247,32 +246,32 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
 
                     {/* Custom Sale Type Label if 'custom' selected */}
                     {promo.saleType === 'custom' && (
-                      <div className="md:col-span-2 bg-stone-50 border border-stone-200 rounded-xl p-3.5">
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Custom Sale Title / Marketing Tag
+                      <div className="md:col-span-2">
+                        <label className="tm-label">
+                          Custom badge text
                         </label>
                         <input 
                           type="text"
                           value={promo.saleTypeCustomLabel || ''}
                           onChange={e => updatePromo(promo.id, { saleTypeCustomLabel: e.target.value })}
                           placeholder="e.g. Independence Holiday Special, Lake Festival Getaway"
-                          className="w-full bg-white border border-stone-300 p-2 rounded-lg text-sm outline-none focus:border-stone-500"
+                          className="tm-input"
                         />
-                        <p className="text-[11px] text-stone-500 mt-1">
-                          This label will show in uppercase on your property card badges and in the FROM &gt; TO price section.
+                        <p className="text-xs text-stone-500 mt-1">
+                          Shown on your listing badge and next to the from → to price.
                         </p>
                       </div>
                     )}
 
                     {/* Target Scope */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        Applies To
+                      <label className="tm-label">
+                        Applies to
                       </label>
                       <select
                         value={promo.appliesTo || 'all'}
                         onChange={e => updatePromo(promo.id, { appliesTo: e.target.value as PromotionTarget })}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
+                        className="tm-input"
                       >
                         {PROMOTION_TARGET_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>
@@ -280,15 +279,15 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
                           </option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-stone-400 mt-1">
+                      <p className="text-xs text-stone-500 mt-1">
                         {PROMOTION_TARGET_OPTIONS.find(o => o.value === (promo.appliesTo || 'all'))?.description}
                       </p>
                     </div>
 
                     {/* Discount Percentage */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        Price Slash Percentage (%)
+                      <label className="tm-label">
+                        Discount
                       </label>
                       <div className="flex items-center gap-3">
                         <input 
@@ -300,20 +299,20 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
                           onChange={e => updatePromo(promo.id, { discountPercentage: parseInt(e.target.value) || 0 })}
                           className="flex-1 accent-stone-900 cursor-pointer"
                         />
-                        <div className="flex items-center gap-1 bg-stone-100 text-stone-900 px-3 py-1.5 rounded-lg font-bold text-sm min-w-[70px] justify-center border border-stone-200">
+                        <div className="flex items-center gap-1 text-stone-900 px-2 py-1.5 font-semibold text-sm min-w-[56px] justify-end tabular-nums">
                           <span>{promo.discountPercentage}%</span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-stone-400 mt-1">
-                        How much rates are slashed by. Minimum 5%, up to {MAX_PROMO_DISCOUNT_PERCENT}%.
+                      <p className="text-xs text-stone-500 mt-1">
+                        5% to {MAX_PROMO_DISCOUNT_PERCENT}%.
                       </p>
                     </div>
 
                     {/* Specific Room Selection if target is 'specific_rooms' */}
                     {promo.appliesTo === 'specific_rooms' && roomsList.length > 0 && (
-                      <div className="md:col-span-2 bg-stone-50 border border-stone-200 rounded-xl p-4">
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
-                          Select Qualifying Accommodations
+                      <div className="md:col-span-2">
+                        <label className="tm-label">
+                          Which rooms
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                           {roomsList.map(room => {
@@ -321,10 +320,10 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
                             return (
                               <label 
                                 key={room.id} 
-                                className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                                className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition min-w-0 ${
                                   isSelected 
-                                    ? 'bg-stone-900 border-stone-900 text-white font-bold' 
-                                    : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100/60'
+                                    ? 'bg-amber-50 border-amber-700 text-stone-900 font-medium' 
+                                    : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
                                 }`}
                               >
                                 <input 
@@ -343,21 +342,21 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
 
                     {/* Date Scheduling */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        Start Date (Optional)
+                      <label className="tm-label">
+                        Starts (optional)
                       </label>
                       <input 
                         type="date" 
                         value={promo.startDate || ''} 
                         onChange={e => updatePromo(promo.id, { startDate: e.target.value })}
                         onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400 cursor-pointer"
+                        className="tm-input cursor-pointer"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                        End Date (Optional)
+                      <label className="tm-label">
+                        Ends (optional)
                       </label>
                       <input 
                         type="date" 
@@ -365,49 +364,48 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
                         min={promo.startDate || undefined}
                         onChange={e => updatePromo(promo.id, { endDate: e.target.value })}
                         onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400 cursor-pointer"
+                        className="tm-input cursor-pointer"
                       />
                     </div>
 
                     {/* Live Guest Preview Card */}
-                    <div className="md:col-span-2 bg-stone-900 text-white rounded-xl p-4 mt-2">
-                      <div className="flex items-center gap-1.5 text-xs text-stone-400 font-semibold uppercase tracking-wider mb-3">
-                        <Eye className="w-3.5 h-3.5 text-stone-300" />
-                        <span>Live Guest View Preview</span>
-                      </div>
+                    <details className="md:col-span-2 group">
+                      <summary className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-700 hover:text-stone-900 cursor-pointer select-none">
+                        <Eye className="w-4 h-4 text-stone-500" />
+                        <span>Preview what guests see</span>
+                      </summary>
 
-                      <div className="bg-white/10 border border-white/15 rounded-lg p-3.5">
+                      <div className="mt-3 rounded-lg bg-stone-50 p-3.5">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 bg-white text-stone-900 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-2xs">
-                            <PromotionIcon saleType={promo.saleType} className="w-3 h-3 text-stone-900" />
+                          <span className="tm-tag tm-tag-warn">
+                            <PromotionIcon saleType={promo.saleType} className="w-3 h-3" />
                             <span>{previewSlashed.saleTypeLabel}</span>
                           </span>
-                          <span className="bg-white/10 text-stone-200 border border-white/20 px-2 py-0.5 rounded text-[10px] font-semibold">
-                            Slashed by <PriceDisplay amount={previewSlashed.slashedAmount} currency="MWK" /> ({previewSlashed.discountPercentage}% OFF)
+                          <span className="text-xs text-stone-600">
+                            Slashed by <PriceDisplay amount={previewSlashed.slashedAmount} currency="MWK" /> ({previewSlashed.discountPercentage}% off)
                           </span>
                         </div>
 
                         <div className="flex items-baseline gap-2 flex-wrap">
-                          <span className="text-[11px] font-bold uppercase text-stone-400">FROM</span>
-                          <span className="line-through decoration-stone-400 text-stone-400 text-xs font-medium">
+                          <span className="text-xs text-stone-500">From</span>
+                          <span className="line-through text-stone-500 text-xs">
                             <PriceDisplay amount={sampleOriginalRate} currency="MWK" />
                           </span>
-                          <span className="text-stone-400 font-bold text-xs">&gt;</span>
-                          <span className="text-[11px] font-bold uppercase text-stone-200">TO</span>
-                          <span className="text-white font-bold text-base sm:text-lg">
+                                                    <span className="text-xs text-stone-500">to</span>
+                          <span className="text-stone-900 font-semibold text-base sm:text-lg">
                             <PriceDisplay amount={previewSlashed.slashedPrice} currency="MWK" />
                           </span>
-                          <span className="text-stone-300 text-xs font-normal"> / night</span>
+                          <span className="text-stone-500 text-xs"> / night</span>
                         </div>
 
                         {promo.appliesTo === 'all' && (
-                          <div className="text-[10px] text-stone-300 font-medium mt-2 flex items-center gap-1.5">
-                            <Briefcase className="w-3 h-3 text-stone-400" />
-                            <span>Conference spaces also slashed up to {promo.discountPercentage}%</span>
+                          <div className="text-xs text-stone-500 mt-2 flex items-center gap-1.5">
+                            <Briefcase className="w-3 h-3" />
+                            <span>Conference spaces also up to {promo.discountPercentage}% off</span>
                           </div>
                         )}
                       </div>
-                    </div>
+                    </details>
                   </div>
                 </div>
               );
@@ -423,14 +421,14 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
               </div>
             )}
 
-            <div className="pt-4 flex justify-end">
+            <div className="pt-4 tm-actions justify-end">
               <button 
                 onClick={savePromotions}
                 disabled={saving}
-                className="flex items-center gap-2 bg-stone-900 text-white px-7 py-3 rounded-full text-sm font-bold hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md cursor-pointer"
+                className="tm-btn tm-btn-primary"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {saving ? 'Saving...' : 'Save All Promotions'}
+                {saving ? 'Saving…' : 'Save promotions'}
               </button>
             </div>
           </div>

@@ -7,7 +7,7 @@ import {
   ShieldCheck, Ticket, CheckCircle2, Clock, Key, 
   Wallet, XCircle, ChevronDown, 
   Phone, Video, Minus, X, PhoneMissed, PhoneOff, Settings,
-  Trash2, MoreVertical, Menu
+  Trash2, MoreVertical, Menu, Smartphone, Landmark
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from './ConfirmDialog';
@@ -468,7 +468,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           }).catch(console.error);
         }
 
-      toast.success('Booking confirmed & Digital Voucher issued!');
+      toast.success('Booking confirmed and voucher sent');
     } catch (err) {
       console.error('Voucher notice failed after confirmation:', err);
       toast.error('Booking confirmed, but the voucher message could not be sent. Please message the guest.');
@@ -490,7 +490,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
 
     setNewMessage(snippet);
     setShowDepositMenu(false);
-    toast.success('Deposit request template loaded! Details visible in the chat box.');
+    toast.success('Deposit details added to your message');
 
     setTimeout(() => {
       adjustTextareaHeight();
@@ -530,7 +530,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         chatDeletedBy: restoreForParticipants(),
       }).catch(() => {});
 
-      toast.success('Credentials shared with guest!');
+      toast.success('PIN and Wi-Fi sent to the guest');
     } catch (err) {
       console.error('Failed to share credentials:', err);
       toast.error('Failed to send credentials.');
@@ -672,7 +672,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   ].sort((a, b) => a.createdAt - b.createdAt);
 
   return (
-    <div className="flex flex-col h-full bg-stone-50 relative overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl">
+    <div className="flex flex-col h-full bg-stone-50 relative overflow-hidden rounded-t-xl sm:rounded-xl shadow-sm">
       <PriceMismatchNotice
         mismatch={confirmFlow.mismatch}
         busy={!!confirmFlow.busyId}
@@ -680,49 +680,49 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         onDismiss={confirmFlow.dismiss}
       />
       
-      {/* 1. Top Header Bar with Sleek Dark Finish & Call Controls */}
-      <div className="px-3.5 py-2.5 bg-stone-900 text-white flex items-center justify-between gap-2 shrink-0 border-b border-stone-800">
+      {/* 1. Header: participant, status and call controls */}
+      <div className="px-3.5 py-2.5 bg-white text-stone-900 flex items-center justify-between gap-2 shrink-0 border-b border-stone-200">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-stone-700 to-stone-800 flex items-center justify-center text-amber-300 font-bold text-xs shadow-xs ring-1 ring-stone-600">
+            <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-amber-800 font-bold text-xs ring-1 ring-stone-200">
               {(otherParticipantName || 'U').slice(0, 2).toUpperCase()}
             </div>
             <span 
-              className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 transition-colors ${
-                otherInChat ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'
+              className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white transition-colors ${
+                otherInChat ? 'bg-emerald-500' : 'bg-stone-300'
               }`} 
               title={otherInChat ? 'Currently active in chat' : 'Away'}
             />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-stone-100 text-xs sm:text-sm truncate">
+              <h3 className="font-semibold text-stone-900 text-xs sm:text-sm truncate">
                 {otherParticipantName}
               </h3>
               {liveBooking.status === 'confirmed' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="tm-tag tm-tag-good">
                   <CheckCircle2 className="w-3 h-3" /> Confirmed
                 </span>
               ) : liveBooking.status === 'pending' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="tm-tag tm-tag-warn">
                   <Clock className="w-3 h-3" /> Pending
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-700 text-stone-300">
+                <span className="tm-tag">
                   <XCircle className="w-3 h-3" /> {liveBooking.status}
                 </span>
               )}
             </div>
             
-            <div className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-stone-400 truncate">
+            <div className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-stone-500 truncate">
               {isOtherTyping ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-emerald-700 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   typing...
                 </span>
               ) : otherInChat ? (
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-emerald-400" /> In chat now
+                <span className="text-emerald-700 font-medium flex items-center gap-1">
+                  <Eye className="w-3 h-3" /> In chat now
                 </span>
               ) : otherLastOpenedAt ? (
                 <span>Opened {formatReceiptTime(otherLastOpenedAt)}</span>
@@ -740,7 +740,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             <button
               type="button"
               onClick={() => handleStartCall(false)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
               title="Audio Call"
               aria-label="Audio Call"
             >
@@ -753,7 +753,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             <button
               type="button"
               onClick={() => handleStartCall(true)}
-              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
               title="Video Call"
               aria-label="Video Call"
             >
@@ -768,13 +768,13 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               onClick={handleToggleCalls}
               className={`hidden sm:inline-flex p-1.5 rounded-lg text-xs font-semibold transition items-center gap-1 cursor-pointer ${
                 isCallsEnabled
-                  ? 'text-emerald-400 hover:bg-emerald-950/60 border border-emerald-500/30'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800 border border-stone-700'
+                  ? 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                  : 'text-stone-600 hover:bg-stone-100 border border-stone-200'
               }`}
               title={isCallsEnabled ? 'Calls enabled. Click to disable for this lodge.' : 'Calls disabled. Click to turn on.'}
             >
               <Phone className="w-3.5 h-3.5" />
-              <span className="text-[10px]">{isCallsEnabled ? 'Calls On' : 'Calls Off'}</span>
+              <span className="text-[10px]">{isCallsEnabled ? 'Calls on' : 'Calls off'}</span>
             </button>
           )}
 
@@ -786,7 +786,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               id="btn-booking-chat-more"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
-                showMoreMenu ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-white hover:bg-stone-800'
+                showMoreMenu ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100'
               }`}
               title="More options"
               aria-label="More options"
@@ -796,7 +796,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             </button>
 
             {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-52 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-stone-200 rounded-xl shadow-sm py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
 
                 {/* Mobile Only: Video call in menu */}
                 {canStartCall && (
@@ -806,10 +806,10 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       setShowMoreMenu(false);
                       handleStartCall(true);
                     }}
-                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                   >
-                    <Video className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Start Video Call</span>
+                    <Video className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Start video call</span>
                   </button>
                 )}
 
@@ -821,16 +821,16 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       setShowMoreMenu(false);
                       handleToggleCalls();
                     }}
-                    className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-800/80 sm:border-0"
+                    className="w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-100 sm:border-0"
                   >
                     <span className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-stone-400" />
-                      <span>Allow Guest Calls</span>
+                      <Phone className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Allow guest calls</span>
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                       isCallsEnabled
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-stone-800 text-stone-400 border border-stone-700'
+                        ? 'bg-emerald-50 text-emerald-800'
+                        : 'bg-stone-100 text-stone-600'
                     }`}>
                       {isCallsEnabled ? 'ON' : 'OFF'}
                     </span>
@@ -845,10 +845,10 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       setShowMoreMenu(false);
                       onMinimize();
                     }}
-                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-300 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                   >
-                    <Minus className="w-3.5 h-3.5 text-stone-400" />
-                    <span>Minimize Chat</span>
+                    <Minus className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Minimize chat</span>
                   </button>
                 )}
 
@@ -861,10 +861,10 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       setShowMoreMenu(false);
                       setShowEndChatConfirm(true);
                     }}
-                    className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    className="w-full text-left px-3.5 py-2.5 text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                   >
-                    <PhoneOff className="w-3.5 h-3.5 text-amber-400" />
-                    <span>End Chat Session</span>
+                    <PhoneOff className="w-3.5 h-3.5 text-amber-700" />
+                    <span>End chat</span>
                   </button>
                 )}
 
@@ -877,14 +877,14 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       setShowMoreMenu(false);
                       handleRestartChat();
                     }}
-                    className="w-full text-left px-3.5 py-2.5 text-emerald-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    className="w-full text-left px-3.5 py-2.5 text-emerald-800 hover:bg-stone-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Reopen Chat</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Reopen chat</span>
                   </button>
                 )}
 
-                {/* Clear Chat History */}
+                {/* Clear chat history */}
                 <button
                   type="button"
                   id="btn-clear-booking-chat-history"
@@ -892,10 +892,10 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     setShowMoreMenu(false);
                     setShowClearConfirm(true);
                   }}
-                  className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                  className="w-full text-left px-3.5 py-2.5 text-red-700 hover:bg-red-50 flex items-center gap-2 cursor-pointer border-t border-stone-100"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Clear Chat History</span>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear chat history</span>
                 </button>
               </div>
             )}
@@ -906,7 +906,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             <button 
               type="button" 
               onClick={onMinimize}
-              className="hidden sm:flex p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+              className="hidden sm:flex p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition cursor-pointer"
               title="Minimize chat"
             >
               <Minus className="w-4 h-4" />
@@ -918,7 +918,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             <button 
               type="button" 
               onClick={onClose}
-              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+              className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition cursor-pointer"
               title="Close chat"
             >
               <X className="w-4 h-4" />
@@ -929,23 +929,23 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
 
       {/* Closed Chat Notice Banner */}
       {isChatEnded && (
-        <div className="bg-stone-900 text-stone-200 text-xs px-4 py-2.5 flex items-center justify-between gap-2 shrink-0 border-b border-stone-800 animate-in fade-in">
+        <div className="bg-amber-50 text-stone-800 text-xs px-4 py-2.5 flex items-center justify-between gap-2 shrink-0 border-b border-amber-100">
           <div className="flex items-center gap-2 min-w-0">
-            <PhoneOff className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="truncate text-stone-300">This chat is closed. Send a message or reopen to continue.</span>
+            <PhoneOff className="w-4 h-4 text-amber-700 shrink-0" />
+            <span className="truncate">This chat is closed. Send a message or reopen to continue.</span>
           </div>
           <button
             type="button"
             onClick={handleRestartChat}
-            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-emerald-400 font-bold rounded-lg transition shrink-0 cursor-pointer"
+            className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
           >
-            Reopen Chat
+            Reopen chat
           </button>
         </div>
       )}
 
-      {/* 2. Interactive Booking Action Bar */}
-      <div className="bg-stone-100/95 border-b border-stone-200/90 px-3.5 py-2 text-xs text-stone-700 relative z-30 shadow-2xs">
+      {/* 2. Booking summary and actions */}
+      <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-2 text-xs text-stone-700 relative z-30">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Stay Quick Summary */}
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -967,9 +967,9 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                 <button
                   type="button"
                   onClick={() => setShowVoucherModal(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs transition text-xs cursor-pointer"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                 >
-                  <Ticket className="w-3.5 h-3.5" /> View Voucher
+                  <Ticket className="w-3.5 h-3.5" /> View voucher
                 </button>
 
                 {isManager && (
@@ -977,37 +977,37 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     type="button"
                     onClick={handleShareCredentials}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 font-medium rounded-lg shadow-2xs transition text-xs cursor-pointer disabled:opacity-50"
-                    title="Send Arrival PIN & Wi-Fi into chat"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
+                    title="Send the arrival PIN and Wi-Fi to the guest"
                   >
-                    <Key className="w-3.5 h-3.5 text-amber-500" /> Share PIN &amp; Wi-Fi
+                    <Key className="w-3.5 h-3.5 text-amber-700" /> Share PIN &amp; Wi-Fi
                   </button>
                 )}
               </>
             ) : liveBooking.status === 'pending' && isManager ? (
               <>
-                {/* Request Deposit Dropdown - Fixed positioning so never cut off */}
+                {/* Request deposit dropdown */}
                 <div className="relative" ref={depositMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowDepositMenu(!showDepositMenu)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 font-semibold rounded-lg shadow-2xs transition text-xs cursor-pointer select-none"
+                    className="tm-btn tm-btn-secondary tm-btn-sm select-none"
                     aria-expanded={showDepositMenu}
                   >
-                    <Wallet className="w-3.5 h-3.5 text-amber-600" /> Request Deposit
+                    <Wallet className="w-3.5 h-3.5 text-amber-700" /> Request deposit
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showDepositMenu ? 'rotate-180' : ''}`} />
                   </button>
 
                   {/* Dropdown Menu - Left aligned to prevent clipping in narrow chat drawers */}
                   {showDepositMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
+                    <div className="absolute left-0 top-full mt-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-xl shadow-sm p-2 z-50 animate-fadeIn space-y-1">
                       <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
-                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
-                          Deposit Instructions
+                        <span className="text-xs font-medium text-stone-500">
+                          Send payment details
                         </span>
                         {depositInfo.depositPercentage && (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            {depositInfo.depositPercentage}% Policy
+                          <span className="tm-tag">
+                            {depositInfo.depositPercentage}% deposit
                           </span>
                         )}
                       </div>
@@ -1015,13 +1015,13 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('mobile_money')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-100 font-bold text-xs">
-                          📱
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <Smartphone className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">Airtel Money &amp; Mpamba</p>
+                          <p className="text-xs font-semibold text-stone-900">Airtel Money &amp; Mpamba</p>
                           <p className="text-[11px] text-stone-500 truncate">
                             {depositInfo.airtelMoneyNumber || 'Airtel'} • {depositInfo.mpambaNumber || 'Mpamba'}
                           </p>
@@ -1031,13 +1031,13 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('bank')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 font-bold text-xs">
-                          🏦
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <Landmark className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">Bank Wire Transfer</p>
+                          <p className="text-xs font-semibold text-stone-900">Bank transfer</p>
                           <p className="text-[11px] text-stone-500 truncate">
                             {depositInfo.bankName || 'Direct bank transfer'}
                           </p>
@@ -1047,14 +1047,14 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       <button
                         type="button"
                         onClick={() => handleInsertDepositSnippet('general')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                        className="w-full text-left p-2 rounded-lg hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-100 font-bold text-xs">
-                          💬
+                        <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <MessageSquare className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-stone-900">General Payment Inquiry</p>
-                          <p className="text-[11px] text-stone-500 truncate">Ask preference &amp; share terms</p>
+                          <p className="text-xs font-semibold text-stone-900">Ask how they want to pay</p>
+                          <p className="text-[11px] text-stone-500 truncate">Share your deposit terms</p>
                         </div>
                       </button>
                     </div>
@@ -1065,11 +1065,11 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                   type="button"
                   onClick={handleApproveAndIssueVoucher}
                   disabled={actionLoading}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-lg shadow-2xs transition text-xs cursor-pointer disabled:opacity-50"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                   title="Accept reservation and generate voucher"
                 >
-                  {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
-                  Confirm Booking
+                  {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  Confirm booking
                 </button>
               </>
             ) : null}
@@ -1077,7 +1077,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         </div>
       </div>
 
-      {/* 3. Messages & Calls Scroll Area */}
+      {/* 3. Messages and calls */}
       <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3.5 bg-stone-50/40">
         {loading ? (
           <div className="h-full flex items-center justify-center">
@@ -1085,12 +1085,12 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           </div>
         ) : timelineItems.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-stone-400 py-8">
-            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-400 mb-3">
+            <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-400 mb-3">
               <MessageSquare className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-stone-700">No messages yet</p>
             <p className="text-xs text-stone-400 mt-1 max-w-xs text-center">
-              Chat directly regarding dates, mobile money deposits, directions, and arrival arrangements.
+              Ask about dates, deposits, directions or arrival.
             </p>
           </div>
         ) : (
@@ -1110,7 +1110,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                 iconColor = 'text-red-500';
               } else if (isVideo) {
                 CallIcon = Video;
-                iconColor = 'text-blue-600';
+                iconColor = 'text-stone-600';
               } else {
                 CallIcon = Phone;
                 iconColor = 'text-emerald-600';
@@ -1135,7 +1135,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-stone-700 text-xs leading-tight">
-                        {isMissed ? (isMe ? 'Unanswered Call' : 'Missed Call') : (isVideo ? 'Video Call' : 'Voice Call')}
+                        {isMissed ? (isMe ? 'Unanswered call' : 'Missed call') : (isVideo ? 'Video call' : 'Voice call')}
                       </span>
                       <span className="text-[10px] text-stone-400 font-medium">
                         {timeFormatted} {durationText && <span className="text-stone-500 font-semibold">• {durationText}</span>}
@@ -1160,7 +1160,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               )
             );
 
-            // Special Interactive Cards
+            // Voucher and arrival-details cards
             const isVoucherMessage = (msg as any).isVoucherNotice || msg.text?.includes('Stay OS Digital Voucher');
             const isCredentialMessage = (msg as any).isCredentialNotice || msg.text?.includes('Arrival PIN:');
 
@@ -1171,25 +1171,25 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                 </span>
                 
                 {isVoucherMessage ? (
-                  <div className="bg-emerald-950 text-white rounded-2xl p-4 max-w-[90%] sm:max-w-md shadow-md border border-emerald-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-emerald-800/80 pb-2.5">
+                  <div className="bg-white text-stone-900 rounded-xl p-4 max-w-[90%] sm:max-w-md shadow-sm border border-emerald-200 space-y-3">
+                    <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                        <span className="font-serif font-bold text-sm tracking-wide text-white">
-                          Travel Malawi Digital Voucher
+                        <ShieldCheck className="w-5 h-5 text-emerald-700" />
+                        <span className="font-serif font-semibold text-sm text-stone-900">
+                          Stay voucher
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono font-bold bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-mono font-semibold bg-stone-100 text-stone-700 px-2 py-0.5 rounded">
                         REF: {liveBooking.reference || liveBooking.id.slice(0, 8)}
                       </span>
                     </div>
 
                     <div className="space-y-1 text-xs">
-                      <p className="font-semibold text-white text-sm">{hotel?.name || 'Confirmed Stay'}</p>
-                      <p className="text-emerald-200">
+                      <p className="font-semibold text-stone-900 text-sm">{hotel?.name || 'Confirmed Stay'}</p>
+                      <p className="text-stone-600">
                         {formatDateStr(liveBooking.checkIn)} – {formatDateStr(liveBooking.checkOut)} · {room?.name || 'Selected Room'}
                       </p>
-                      <p className="text-[11px] text-emerald-300">
+                      <p className="text-[11px] text-stone-500">
                         Balance due on arrival: {liveBooking.currency} {liveBooking.total?.toLocaleString() ?? 0}
                       </p>
                     </div>
@@ -1197,35 +1197,35 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     <button
                       type="button"
                       onClick={() => setShowVoucherModal(true)}
-                      className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="tm-btn tm-btn-primary tm-btn-sm w-full"
                     >
-                      <Ticket className="w-4 h-4" /> Open Digital Voucher
+                      <Ticket className="w-4 h-4" /> Open voucher
                     </button>
                   </div>
                 ) : isCredentialMessage ? (
-                  <div className="bg-amber-950 text-white rounded-2xl p-4 max-w-[90%] sm:max-w-md shadow-md border border-amber-800 space-y-2.5">
-                    <div className="flex items-center gap-2 border-b border-amber-800/80 pb-2">
-                      <Key className="w-4 h-4 text-amber-400" />
-                      <span className="font-serif font-bold text-xs tracking-wide text-amber-200">
-                        Arrival Credentials &amp; Access
+                  <div className="bg-amber-50 text-stone-900 rounded-xl p-4 max-w-[90%] sm:max-w-md border border-amber-200 space-y-2.5">
+                    <div className="flex items-center gap-2 border-b border-amber-200 pb-2">
+                      <Key className="w-4 h-4 text-amber-700" />
+                      <span className="font-serif font-semibold text-xs text-stone-900">
+                        Arrival PIN &amp; Wi-Fi
                       </span>
                     </div>
-                    <p className="text-xs text-amber-100 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-xs text-stone-800 whitespace-pre-wrap break-words leading-relaxed">
                       {msg.text}
                     </p>
                     {liveBooking.status === 'confirmed' && (
                       <button
                         type="button"
                         onClick={() => setShowVoucherModal(true)}
-                        className="w-full mt-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                        className="tm-btn tm-btn-secondary tm-btn-sm w-full mt-1"
                       >
-                        <Ticket className="w-3.5 h-3.5" /> Unlock in Voucher
+                        <Ticket className="w-3.5 h-3.5" /> Open voucher
                       </button>
                     )}
                   </div>
                 ) : (
                   <div 
-                    className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm shadow-2xs leading-relaxed whitespace-pre-wrap ${
+                    className={`px-4 py-2.5 rounded-xl max-w-[85%] text-sm shadow-2xs leading-relaxed whitespace-pre-wrap break-words ${
                       isMe 
                         ? 'bg-stone-900 text-white rounded-tr-xs' 
                         : 'bg-white border border-stone-200 text-stone-800 rounded-tl-xs'
@@ -1271,12 +1271,12 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">
               {otherParticipantName}
             </span>
-            <div className="bg-white border border-stone-200 text-stone-700 px-3.5 py-2.5 rounded-2xl rounded-tl-xs shadow-2xs flex items-center gap-2">
+            <div className="bg-white border border-stone-200 text-stone-700 px-3.5 py-2.5 rounded-xl rounded-tl-xs shadow-2xs flex items-center gap-2">
               <span className="text-xs text-stone-600 font-medium">typing</span>
               <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" />
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-bounce" />
               </div>
             </div>
           </div>
@@ -1285,7 +1285,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         <div ref={messagesEndRef} />
       </div>
       
-      {/* 4. Chat Input Bar with Auto-expanding Textarea - Displays ALL text within the box */}
+      {/* 4. Message box (grows with the text) */}
       <div className="p-3 bg-white border-t border-stone-100 shrink-0">
         <form onSubmit={handleSend} className="flex items-end gap-2">
           <textarea
@@ -1298,7 +1298,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             onFocus={adjustTextareaHeight}
             placeholder={
               isManager 
-                ? "Reply to guest or send deposit details... (Enter to send, Shift+Enter for newline)" 
+                ? "Reply to the guest (Enter to send, Shift+Enter for a new line)" 
                 : "Ask about payment, transport, or arrival..."
             }
             className="flex-1 max-h-[320px] min-h-[54px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 pt-3 pb-4 text-sm transition outline-none resize-y leading-relaxed overflow-y-auto scrollbar-slim"
@@ -1315,7 +1315,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         </form>
       </div>
 
-      {/* 5. Stay Voucher Modal Integration */}
+      {/* 5. Stay voucher */}
       {showVoucherModal && (
         <StayVoucherModal
           booking={{

@@ -239,7 +239,7 @@ export default function SavedProperties() {
             <Heart className="w-10 h-10 text-stone-300 mx-auto mb-3" />
             <h2 className="text-base sm:text-lg font-bold text-stone-900 mb-1">No saved stays yet</h2>
             <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">
-              When you see a property you like on the Explore page, tap the heart icon to save it here and unlock your Trip Planner route.
+              When you see a property you like on the Explore page, tap the heart to save it here and plan a route.
             </p>
             <Link
               to="/"

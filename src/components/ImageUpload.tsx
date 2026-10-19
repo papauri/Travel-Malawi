@@ -135,16 +135,16 @@ export default function ImageUpload({
   return (
     <div className="w-full">
       {/* Header bar */}
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2 min-w-0">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <label className="block text-sm font-bold text-stone-800 tracking-wide">
+            <label className="tm-label mb-0">
               {label}
             </label>
             {tooltip && <Tooltip text={tooltip} />}
           </div>
           {hint && (
-            <div className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+            <div className="text-xs text-stone-500 mt-0.5">
               {hint}
             </div>
           )}
@@ -152,13 +152,13 @@ export default function ImageUpload({
 
         {/* Compact, non-wide mode switcher when adding or replacing photo */}
         {(!value || isChanging) && (
-          <div className="inline-flex items-center bg-stone-100 p-1 rounded-lg border border-stone-200 shrink-0">
+          <div className="inline-flex items-center bg-stone-100 p-0.5 rounded-lg shrink-0">
             <button
               type="button"
               onClick={() => setMode("upload")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 mode === "upload"
-                  ? "bg-white text-stone-900 shadow-xs"
+                  ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
@@ -168,14 +168,14 @@ export default function ImageUpload({
             <button
               type="button"
               onClick={() => setMode("url")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 mode === "url"
-                  ? "bg-white text-stone-900 shadow-xs"
+                  ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
               <LinkIcon className="h-3.5 w-3.5" />
-              <span>Web Link</span>
+              <span>Link</span>
             </button>
             {value && isChanging && (
               <button
@@ -198,7 +198,7 @@ export default function ImageUpload({
           onDragOver={handleDragOverFile}
           onDragLeave={handleDragLeaveFile}
           onDrop={handleDropFile}
-          className="relative rounded-xl overflow-hidden aspect-video bg-stone-100 border border-stone-200 shadow-xs group"
+          className="relative rounded-lg overflow-hidden aspect-video bg-stone-100 border border-stone-200 group"
         >
           <SmartImage
             src={value}
@@ -206,30 +206,29 @@ export default function ImageUpload({
             className="w-full h-full object-cover pointer-events-none"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
           {/* Active Drag Overlay when dragging a photo from gallery over an existing cover */}
           {isDraggingFile && (
-            <div className="absolute inset-0 bg-stone-900/85 backdrop-blur-xs flex flex-col items-center justify-center text-white border-2 border-dashed border-amber-400 z-30 p-4 animate-in fade-in pointer-events-none">
-              <Upload className="w-8 h-8 text-amber-400 mb-1.5 animate-bounce" />
-              <p className="text-xs font-bold">Drop to set as Cover Photo</p>
-              <p className="text-[10px] text-stone-300">Replaces current cover</p>
+            <div className="absolute inset-0 bg-amber-50/95 flex flex-col items-center justify-center text-amber-900 border-2 border-dashed border-amber-400 z-30 p-4 pointer-events-none">
+              <Upload className="w-7 h-7 text-amber-700 mb-1.5" />
+              <p className="text-xs font-semibold">Drop to replace the cover photo</p>
             </div>
           )}
 
           {/* Badge */}
           <div className="absolute top-2.5 left-2.5 pointer-events-none">
-            <span className="px-2.5 py-1 bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-semibold rounded-md shadow-xs">
-              Cover Active
+            <span className="px-2 py-0.5 bg-white/95 text-stone-800 text-xs font-medium rounded-md">
+              Cover
             </span>
           </div>
 
           {/* Action buttons on top-right */}
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+          <div className="absolute top-2.5 right-2.5 flex flex-wrap justify-end items-center gap-1.5 z-20">
             <button
               type="button"
               onClick={() => setIsChanging(true)}
-              className="px-2.5 py-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition-colors backdrop-blur-xs shadow-xs text-xs flex items-center gap-1.5 font-medium cursor-pointer"
+              className="px-2.5 py-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition-colors text-xs flex items-center gap-1.5 font-medium cursor-pointer"
               title="Replace this photo"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Replace
@@ -237,7 +236,7 @@ export default function ImageUpload({
             <button
               type="button"
               onClick={() => onChange("")}
-              className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition-colors backdrop-blur-xs shadow-xs text-xs flex items-center justify-center cursor-pointer"
+              className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition-colors text-xs flex items-center justify-center cursor-pointer"
               title="Remove photo"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -254,11 +253,11 @@ export default function ImageUpload({
             onDragOver={handleDragOverFile}
             onDragLeave={handleDragLeaveFile}
             onDrop={handleDropFile}
-            className={`p-3 bg-stone-50 rounded-xl border transition ${
-              isDraggingFile ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-300' : 'border-stone-200'
-            } space-y-2`}
+            className={`p-3 rounded-lg border transition-colors ${
+              isDraggingFile ? 'border-amber-500 bg-amber-50' : 'border-stone-200'
+            } space-y-2 min-w-0`}
           >
-            <div className="flex gap-2">
+            <div className="flex gap-2 min-w-0">
               <input
                 type="url"
                 value={value}
@@ -266,14 +265,14 @@ export default function ImageUpload({
                   const { url } = resolveShareUrl(e.target.value);
                   onChange(url);
                 }}
-                className="flex-1 rounded-lg border-stone-200 border bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-stone-900 focus:border-stone-900 outline-none transition"
-                placeholder="Paste direct URL or Drive/OneDrive/Dropbox link..."
+                className="tm-input flex-1 min-w-0"
+                placeholder="Paste a photo link (Drive, OneDrive, Dropbox…)"
               />
               {value && (
                 <button
                   type="button"
                   onClick={() => setIsChanging(false)}
-                  className="px-3 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition"
+                  className="tm-btn tm-btn-secondary shrink-0"
                 >
                   Done
                 </button>
@@ -284,17 +283,17 @@ export default function ImageUpload({
               <p className="text-xs text-emerald-700 font-medium">{shareNote}</p>
             )}
 
-            <p className="text-[11px] text-stone-500">
-              Direct links and share links from OneDrive, Google Drive and Dropbox are converted automatically.
+            <p className="text-xs text-stone-500">
+              Share links from OneDrive, Google Drive and Dropbox work too.
             </p>
           </div>
         ) : (
           <div
-            className={`w-full aspect-video rounded-xl border-2 border-dashed ${
+            className={`w-full aspect-video rounded-lg border-2 border-dashed ${
               isDraggingFile
-                ? "border-amber-500 bg-amber-50/40 ring-2 ring-amber-300"
-                : "border-stone-300 bg-stone-50/50 hover:border-amber-500 hover:bg-amber-50/10"
-            } p-4 flex flex-col items-center justify-center text-center transition cursor-pointer group select-none`}
+                ? "border-amber-500 bg-amber-50"
+                : "border-stone-300 hover:border-amber-500"
+            } p-4 flex flex-col items-center justify-center text-center transition-colors cursor-pointer select-none`}
             onClick={() => fileInputRef.current?.click()}
             onDragEnter={handleDragEnterFile}
             onDragOver={handleDragOverFile}
@@ -317,21 +316,15 @@ export default function ImageUpload({
                 )}
               </div>
             ) : isDraggingFile ? (
-              <div className="flex flex-col items-center justify-center animate-pulse pointer-events-none">
-                <Upload className="w-8 h-8 text-amber-600 mb-1.5 animate-bounce" />
-                <p className="text-xs font-bold text-amber-900">Drop here to set as Room Cover</p>
-                <p className="text-[10px] text-amber-700">From gallery or file</p>
+              <div className="flex flex-col items-center justify-center pointer-events-none">
+                <Upload className="w-7 h-7 text-amber-700 mb-1.5" />
+                <p className="text-xs font-semibold text-amber-900">Drop to set as cover</p>
               </div>
             ) : (
               <div className="pointer-events-none flex flex-col items-center">
-                <div className="w-9 h-9 rounded-full bg-stone-200/70 group-hover:bg-amber-100 text-stone-500 group-hover:text-amber-800 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
-                  <ImageIcon className="h-4 w-4" />
-                </div>
-                <p className="text-xs font-bold text-stone-800 mb-0.5">
-                  Click or drag photo here
-                </p>
-                <p className="text-[10px] text-stone-400">
-                  Drop a photo from room gallery or browse device
+                <ImageIcon className="h-5 w-5 text-stone-400 mb-1.5" />
+                <p className="text-xs font-medium text-stone-700">
+                  Drop a photo here or click to choose
                 </p>
               </div>
             )}

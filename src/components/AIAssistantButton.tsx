@@ -85,22 +85,25 @@ export default function AIAssistantButton({
     }
   };
 
+  const choiceClass = (action: 'draft' | 'polish' | 'shorten') =>
+    `tm-btn tm-btn-sm ${activeAction === action ? 'tm-btn-primary' : 'tm-btn-secondary'}`;
+
   return (
     <>
       <button
         type="button"
         onClick={handleOpen}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition border border-stone-200 shadow-2xs cursor-pointer ${className}`}
-        title="Assist with writing description"
+        className={`tm-btn tm-btn-secondary tm-btn-sm ${className}`}
+        title={`Help me write the ${fieldLabel}`}
       >
-        <PenLine className="w-3.5 h-3.5 text-stone-600 stroke-[1.5]" />
-        <span>{hasExistingText ? 'Refine description' : 'Draft description'}</span>
+        <PenLine className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>{hasExistingText ? `Improve ${fieldLabel}` : `Write ${fieldLabel} for me`}</span>
       </button>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div
           data-lenis-prevent="true"
-          className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 text-center bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 text-center bg-stone-900/40 animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsOpen(false);
           }}
@@ -108,161 +111,100 @@ export default function AIAssistantButton({
           <div
             ref={scrollIsolationRef}
             data-lenis-prevent="true"
-            className="bg-white border border-stone-200 rounded-2xl sm:rounded-3xl shadow-2xl max-w-xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 text-left relative max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain my-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Write the ${fieldLabel}`}
+            className="tm-panel shadow-sm max-w-xl w-full space-y-4 text-left relative max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain my-auto min-w-0"
           >
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-stone-100 pb-4">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
-                  <span>Writing Assistant</span>
-                  <span className="text-[10px] font-sans font-semibold tracking-wider uppercase text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200/60">
-                    {status.activeProvider}
-                  </span>
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Generate or refine your {fieldLabel} tailored for guests.
-                </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="tm-h2">{hasExistingText ? `Improve your ${fieldLabel}` : `Write your ${fieldLabel}`}</h3>
+                <p className="tm-muted mt-0.5">Pick a starting point, read the draft, then use it or edit it yourself.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-stone-400 hover:text-stone-600 p-1.5 rounded-lg hover:bg-stone-100 transition"
+                className="tm-btn tm-btn-quiet tm-btn-sm shrink-0"
+                aria-label="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Quick Action Tabs */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={generating}
-                onClick={() => handleRun('draft')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-                  activeAction === 'draft'
-                    ? 'bg-stone-900 text-white border-stone-900'
-                    : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                }`}
-              >
-                Draft From Details
+            <div className="tm-actions">
+              <button type="button" disabled={generating} onClick={() => handleRun('draft')} className={choiceClass('draft')}>
+                Write from my details
               </button>
-
               {hasExistingText && (
                 <>
-                  <button
-                    type="button"
-                    disabled={generating}
-                    onClick={() => handleRun('polish')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-                      activeAction === 'polish'
-                        ? 'bg-stone-900 text-white border-stone-900'
-                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    Polish & Enhance
+                  <button type="button" disabled={generating} onClick={() => handleRun('polish')} className={choiceClass('polish')}>
+                    Tidy it up
                   </button>
-                  <button
-                    type="button"
-                    disabled={generating}
-                    onClick={() => handleRun('shorten')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-                      activeAction === 'shorten'
-                        ? 'bg-stone-900 text-white border-stone-900'
-                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    Make Concise
+                  <button type="button" disabled={generating} onClick={() => handleRun('shorten')} className={choiceClass('shorten')}>
+                    Make it shorter
                   </button>
                 </>
               )}
             </div>
 
-            {/* Extra Guidance */}
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">
-                Custom details or emphasis <span className="text-stone-400 font-normal">(optional)</span>
+              <label htmlFor="ai-assist-note" className="tm-label">
+                Anything to mention? <span className="font-normal text-stone-400">(optional)</span>
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customNote}
-                  onChange={e => setCustomNote(e.target.value)}
-                  placeholder="e.g. mention solar backup, beachfront firepit, or boat trips..."
-                  className="w-full text-xs bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 outline-none focus:border-stone-900 transition"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleRun(activeAction);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={generating}
-                  onClick={() => handleRun(activeAction)}
-                  className="px-3 py-2 text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl border border-stone-200 transition shrink-0"
-                >
-                  Regenerate
-                </button>
-              </div>
+              <input
+                id="ai-assist-note"
+                type="text"
+                value={customNote}
+                onChange={e => setCustomNote(e.target.value)}
+                placeholder="e.g. solar backup, beach fire pit, boat trips"
+                className="tm-input"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRun(activeAction);
+                  }
+                }}
+              />
             </div>
 
-            {/* Preview Box */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-stone-500 font-medium">
-                <span>Suggested Description</span>
-                {generating && (
-                  <span className="inline-flex items-center gap-1.5 text-stone-600">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Drafting...
-                  </span>
-                )}
-              </div>
-
-              <div className="bg-stone-50/80 border border-stone-200 rounded-xl p-4 min-h-[120px] text-sm text-stone-800 leading-relaxed relative">
+            <div className="space-y-1.5">
+              <p className="tm-label mb-0">Draft</p>
+              <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 min-h-[120px] text-sm text-stone-800 leading-relaxed break-words">
                 {generating ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-stone-400 space-y-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-stone-600" />
-                    <span className="text-xs">Formulating authentic description...</span>
+                  <div className="flex items-center justify-center gap-2 py-6 tm-muted">
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    <span>Writing a draft...</span>
                   </div>
                 ) : suggestion ? (
                   <p className="whitespace-pre-line">{suggestion}</p>
                 ) : (
-                  <p className="text-stone-400 text-xs italic">
-                    Click one of the options above to generate a draft.
-                  </p>
+                  <p className="tm-muted">Choose an option above to get a draft.</p>
                 )}
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100 rounded-xl transition"
-              >
+            <div className="tm-divider pt-4 flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={() => setIsOpen(false)} className="tm-btn tm-btn-quiet tm-btn-sm">
                 Cancel
               </button>
-
-              <div className="flex items-center gap-2">
+              <div className="tm-actions">
                 <button
                   type="button"
-                  disabled={generating || !suggestion}
+                  disabled={generating}
                   onClick={() => handleRun(activeAction)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl border border-stone-200 transition disabled:opacity-50"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Try Again</span>
+                  <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Try again</span>
                 </button>
-
                 <button
                   type="button"
                   disabled={generating || !suggestion}
                   onClick={handleApply}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl transition shadow-sm disabled:opacity-50"
+                  className="tm-btn tm-btn-primary tm-btn-sm"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Use This Description</span>
+                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Use this text</span>
                 </button>
               </div>
             </div>

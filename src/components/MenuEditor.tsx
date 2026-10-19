@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown, Upload, Zap, FileText } from 'lucide-react';
+import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import { CurrencyCode, MenuItem, MenuSection, Restaurant } from '../types';
 import { CURRENCIES, CURRENCY_CODES } from '../lib/currency';
 import { MENU_TEMPLATES } from './MenuTemplates';
@@ -34,8 +34,7 @@ export function emptyRestaurant(): Restaurant {
   };
 }
 
-const inputClass =
-  'w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-stone-900 transition';
+const inputClass = 'tm-input';
 
 /**
  * Editor for a property's restaurant: whether it exists, how the menu looks,
@@ -77,39 +76,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
   };
 
   return (
-    <div className="space-y-8">
-      {/* --- Top Spotlight: Import Existing Menu --- */}
-      <div className="bg-gradient-to-br from-stone-900 via-stone-900 to-stone-950 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-stone-800 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Instant Menu Digitizer & Importer</span>
-            </div>
-            <h3 className="font-serif text-2xl md:text-3xl text-white">
-              Import Existing Restaurant Menu
-            </h3>
-            <p className="text-sm text-stone-300 leading-relaxed">
-              Have an existing food or drinks menu? Upload a photo, document, PDF, spreadsheet, or paste your price list. Our system automatically extracts sections, dual currency prices (MWK/USD), and dietary tags into your system.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            <button
-              type="button"
-              id="top-import-menu-btn"
-              onClick={() => {
-                if (!value.enabled) patch({ enabled: true });
-                setShowImporter(true);
-              }}
-              className="flex items-center justify-center gap-2.5 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-sm rounded-full shadow-lg transition active:scale-98 cursor-pointer"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Import Existing Menu</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-6 min-w-0">
       <MenuImporter
         open={showImporter}
         onClose={() => setShowImporter(false)}
@@ -117,9 +84,9 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
         currencies={currencies}
       />
 
-      {/* --- Whether the property has one at all --- */}
-      <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8">
-        <label className="flex items-start gap-3 cursor-pointer">
+      {/* --- Whether the property has one at all, and the menu importer --- */}
+      <div className="tm-panel flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <label className="flex items-start gap-3 cursor-pointer min-w-0">
           <input
             type="checkbox"
             checked={value.enabled}
@@ -133,17 +100,30 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
             </span>
           </span>
         </label>
+        <button
+          type="button"
+          id="top-import-menu-btn"
+          onClick={() => {
+            if (!value.enabled) patch({ enabled: true });
+            setShowImporter(true);
+          }}
+          title="Upload a photo, PDF, spreadsheet or pasted price list"
+          className="tm-btn tm-btn-secondary shrink-0 self-start"
+        >
+          <Upload className="w-4 h-4" />
+          Import a menu
+        </button>
       </div>
 
       {value.enabled && (
         <>
           {/* --- Identity --- */}
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8 space-y-6">
-            <h3 className="font-serif text-xl text-stone-900">Restaurant details</h3>
+          <div className="tm-panel space-y-5">
+            <h3 className="tm-h2">Restaurant details</h3>
 
             <div className="grid md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Name</label>
+                <label className="tm-label">Name</label>
                 <input
                   type="text"
                   value={value.name ?? ''}
@@ -153,7 +133,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Tagline</label>
+                <label className="tm-label">Tagline</label>
                 <input
                   type="text"
                   value={value.tagline ?? ''}
@@ -165,7 +145,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
+              <label className="tm-label">Description</label>
               <textarea
                 rows={2}
                 value={value.description ?? ''}
@@ -207,9 +187,9 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
           </div>
 
           {/* --- Template --- */}
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8">
-            <h3 className="font-serif text-xl text-stone-900 mb-1">Menu design</h3>
-            <p className="text-sm text-stone-500 mb-6">
+          <div className="tm-panel">
+            <h3 className="tm-h2 mb-1">Menu design</h3>
+            <p className="tm-muted mb-4">
               The same dishes, presented six ways. Changing this never changes what is on the menu.
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -221,14 +201,14 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                     type="button"
                     onClick={() => patch({ template: template.id })}
                     aria-pressed={selected}
-                    className={`text-left rounded-2xl border p-4 transition ${
+                    className={`text-left rounded-lg border p-3 transition min-w-0 ${
                       selected
-                        ? 'border-stone-900 bg-stone-900 text-white'
+                        ? 'border-amber-700 bg-amber-50 ring-1 ring-amber-700'
                         : 'border-stone-200 hover:border-stone-400 bg-white'
                     }`}
                   >
                     <span className="block font-semibold mb-1">{template.name}</span>
-                    <span className={`block text-xs leading-relaxed ${selected ? 'text-stone-300' : 'text-stone-500'}`}>
+                    <span className="block text-xs leading-relaxed text-stone-500">
                       {template.description}
                     </span>
                   </button>
@@ -238,22 +218,22 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
           </div>
 
           {/* --- The menu itself --- */}
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8">
-            <div className="flex items-center justify-between mb-6 gap-4">
-              <h3 className="font-serif text-xl text-stone-900">Menu</h3>
-              <div className="flex items-center gap-3">
+          <div className="tm-panel">
+            <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
+              <h3 className="tm-h2">Menu</h3>
+              <div className="tm-actions">
                 <button
                   type="button"
                   onClick={() => setShowImporter(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-full transition"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   <Upload className="w-4 h-4" />
-                  Import Existing Menu
+                  Import
                 </button>
                 <button
                   type="button"
                   onClick={() => patch({ sections: [...value.sections, { id: newId(), name: 'New section', items: [] }] })}
-                  className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-stone-800 transition"
+                  className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
                   <Plus className="h-4 w-4" /> Add section
                 </button>
@@ -261,15 +241,15 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
             </div>
 
             {value.sections.length === 0 && (
-              <p className="text-sm text-stone-500 border border-dashed border-stone-300 rounded-2xl p-8 text-center">
+              <p className="tm-muted border border-dashed border-stone-300 rounded-lg p-6 text-center">
                 No sections yet. Add one for starters, mains, drinks…
               </p>
             )}
 
             <div className="space-y-6">
               {value.sections.map((section, sectionIndex) => (
-                <div key={`menu-sec-${section.id || sectionIndex}-${sectionIndex}`} className="rounded-2xl border border-stone-200 overflow-hidden">
-                  <div className="flex items-center gap-2 bg-stone-50 px-4 py-3 border-b border-stone-200">
+                <div key={`menu-sec-${section.id || sectionIndex}-${sectionIndex}`} className="min-w-0">
+                  <div className="flex items-center gap-1 bg-stone-50 rounded-lg px-3 py-2">
                     <GripVertical className="h-4 w-4 text-stone-300 shrink-0" />
                     <input
                       type="text"
@@ -310,16 +290,16 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                     </button>
                   </div>
 
-                  <div className="p-4 space-y-3">
+                  <div className="pt-1 sm:pl-3 divide-y divide-stone-100">
                     {section.items.map((item, itemIndex) => (
-                      <div key={`menu-item-${item.id || itemIndex}-${sectionIndex}-${itemIndex}`} className="rounded-xl border border-stone-100 bg-stone-50/60 p-3 space-y-2">
+                      <div key={`menu-item-${item.id || itemIndex}-${sectionIndex}-${itemIndex}`} className="py-3 space-y-2 min-w-0">
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={item.name}
                             onChange={e => patchItem(section.id, item.id, { name: e.target.value })}
                             placeholder="Dish name"
-                            className={`${inputClass} bg-white font-medium`}
+                            className={`${inputClass} font-medium`}
                           />
                           <button
                             type="button"
@@ -336,7 +316,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                           value={item.description ?? ''}
                           onChange={e => patchItem(section.id, item.id, { description: e.target.value })}
                           placeholder="Description — optional"
-                          className={`${inputClass} bg-white`}
+                          className={inputClass}
                         />
 
                         <div className="flex flex-wrap gap-3">
@@ -355,7 +335,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                                     prices: { ...(item.prices ?? {}), [code]: Number(e.target.value) },
                                   })
                                 }
-                                className="w-28 bg-white border border-stone-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:border-stone-900"
+                                className="w-24 sm:w-28 bg-white border border-stone-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-stone-500"
                               />
                             </div>
                           ))}
@@ -370,7 +350,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                               })
                             }
                             placeholder="Tags, e.g. v, gf"
-                            className={`${inputClass} bg-white flex-1 min-w-[8rem]`}
+                            className={`${inputClass} flex-1 min-w-[8rem]`}
                           />
                         </div>
                       </div>
@@ -383,9 +363,9 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                           items: [...section.items, { id: newId(), name: '', prices: {} }],
                         })
                       }
-                      className="w-full border border-dashed border-stone-300 rounded-xl py-2.5 text-sm font-medium text-stone-500 hover:border-stone-500 hover:text-stone-900 transition"
+                      className="tm-btn tm-btn-quiet tm-btn-sm mt-1"
                     >
-                      + Add dish
+                      <Plus className="h-4 w-4" /> Add dish
                     </button>
                   </div>
                 </div>
@@ -393,9 +373,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
             </div>
 
             <div className="mt-6">
-              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-                Footnote
-              </label>
+              <label className="tm-label">Footnote</label>
               <input
                 type="text"
                 value={value.footnote ?? ''}

@@ -62,11 +62,11 @@ interface Props {
 }
 
 const TRAVEL_STYLES = [
-  { id: 'balanced', label: 'Balanced Explorer', desc: 'Mix of scenic lake relaxation, culture & game viewing' },
-  { id: 'scenic', label: 'Lakeshore & Leisure', desc: 'Sun, freshwater snorkeling, beach sunrises & slow travel' },
-  { id: 'safari', label: 'Big 5 Safari Focus', desc: 'Game drives, Shire River boat safaris & wildlife photography' },
-  { id: 'romantic', label: 'Romantic Retreat', desc: 'Secluded verandas, candlelit lake dinners & scenic sunsets' },
-  { id: 'adventure', label: 'Highland & Adventure', desc: 'Plateau hikes, tea trails, waterfalls & rugged viewpoints' },
+  { id: 'balanced', label: 'Balanced', desc: 'Some lake time, culture and wildlife' },
+  { id: 'scenic', label: 'Lake and leisure', desc: 'Beaches, snorkelling and slow days' },
+  { id: 'safari', label: 'Safari', desc: 'Game drives and boat safaris' },
+  { id: 'romantic', label: 'Romantic', desc: 'Quiet stays and lake sunsets' },
+  { id: 'adventure', label: 'Hiking and adventure', desc: 'Plateau hikes, tea trails and waterfalls' },
 ];
 
 const SUGGESTED_QUESTIONS = [
@@ -372,25 +372,25 @@ export function buildLocalTripInsights(
   const avgDrivePerLeg = hotels.length > 1 ? totalDriveMins / (hotels.length - 1) : 0;
   const pacingScore =
     hotels.length === 1
-      ? 'Single-Base Immersion'
+      ? 'One base'
       : avgDrivePerLeg <= 140 && totalNights / hotels.length >= 2
-      ? 'Relaxed & Scenic Pacing'
+      ? 'Relaxed pace'
       : avgDrivePerLeg <= 220
-      ? 'Well-Balanced Circuit'
-      : 'Grand Cross-Country Expedition';
+      ? 'Steady pace'
+      : 'Long drives';
 
   const regionParts: string[] = [];
   if (categoriesSet.has('lake')) regionParts.push('Lake Malawi');
-  if (categoriesSet.has('safari')) regionParts.push('Bush Safari');
-  if (categoriesSet.has('highlands')) regionParts.push('Highland Peaks');
-  if (categoriesSet.has('central') || categoriesSet.has('south')) regionParts.push('Cultural Hubs');
+  if (categoriesSet.has('safari')) regionParts.push('safari');
+  if (categoriesSet.has('highlands')) regionParts.push('highlands');
+  if (categoriesSet.has('central') || categoriesSet.has('south')) regionParts.push('towns');
 
   const routeThemeTitle =
     regionParts.length >= 2
-      ? `The ${regionParts.slice(0, 3).join(' & ')} Circuit`
+      ? `${regionParts.slice(0, 3).join(', ').replace(/, ([^,]*)$/, ' and $1')} trip`
       : hotels.length === 1
-      ? `${hotels[0].name} Retreat Blueprint`
-      : `Malawi ${styleObj.label} Route`;
+      ? `Your stay at ${hotels[0].name}`
+      : `Your ${styleObj.label.toLowerCase()} trip in Malawi`;
 
   const totalHoursStr =
     totalDriveMins >= 60
@@ -399,8 +399,8 @@ export function buildLocalTripInsights(
 
   const summary =
     hotels.length === 1
-      ? `A focused ${totalNights}-night stay at ${hotels[0].name} in ${hotels[0].location || 'Malawi'}, curated for ${styleObj.desc.toLowerCase()}. Book directly with your host for 0% platform commission and tailored local excursions.`
-      : `Spanning ${hotels.length} handpicked stays over ${totalNights} nights (~${totalRoadKm} km road distance, ${totalHoursStr}), this ${styleObj.label.toLowerCase()} route links ${hotels.map(h => h.name).join(' → ')}. Each leg is timed for comfortable daytime driving along Malawi's scenic Rift Valley and highland corridors.`;
+      ? `A ${totalNights}-night stay at ${hotels[0].name} in ${hotels[0].location || 'Malawi'}. Good for: ${styleObj.desc.toLowerCase()}. Book directly with your host, with no platform commission.`
+      : `${hotels.length} stays over ${totalNights} nights (about ${totalRoadKm} km, ${totalHoursStr}): ${hotels.map(h => h.name).join(' → ')}. Each leg is planned for daytime driving.`;
 
   const hasSafari = categoriesSet.has('safari');
   const hasLake = categoriesSet.has('lake');
@@ -545,10 +545,10 @@ export default function TripAIInsights({ hotels, nightsByHotel, onOpenListing }:
           // ignore
         }
       }
-      toast.success('Route blueprint updated with your custom notes');
+      toast.success('Trip plan updated');
     } catch (err: any) {
       // Keep the current blueprint and say honestly that the refresh failed.
-      toast.error(err?.message || 'Ulendo could not refresh the route blueprint. Please try again.');
+      toast.error(err?.message || "Ulendo couldn't update the plan just now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -646,413 +646,244 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
 
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success('Full trip plan copied to clipboard!');
+    toast.success('Trip plan copied');
     setTimeout(() => setCopied(false), 3000);
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Configuration & Style Selection Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-100">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-800 border border-stone-200 text-xs font-bold uppercase tracking-wider">
-              <Compass className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Journey Route Intelligence</span>
-            </div>
-            <h3 className="font-serif text-2xl font-bold text-stone-900 tracking-tight">
-              Curate Your Route Focus
-            </h3>
-            <p className="text-stone-500 text-xs sm:text-sm">
-              Tailored day-by-day pacing, highway corridors, and regional Malawian highlights for your {hotels.length} saved stay{hotels.length === 1 ? '' : 's'}.
-            </p>
-          </div>
-
-          {isAIAvailable && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleRefreshWithCustomNotes}
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Updating Route...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-3.5 h-3.5 text-stone-300" />
-                    <span>Refresh with Custom Notes</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+    <div className="space-y-6 min-w-0">
+      {/* 1. Travel style and notes */}
+      <section className="tm-panel space-y-4">
+        <div className="space-y-1">
+          <h3 className="tm-h2">Plan your route</h3>
+          <p className="tm-muted">
+            A day-by-day order, driving times and local tips for your {hotels.length} saved stay{hotels.length === 1 ? '' : 's'}.
+          </p>
         </div>
 
-        {/* Travel Style Selector */}
-        <div className="space-y-3">
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
-            Select Your Travel Style
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+        <fieldset className="space-y-2">
+          <legend className="tm-label">How do you like to travel?</legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
             {TRAVEL_STYLES.map((style, sIdx) => {
               const isSelected = selectedStyle === style.id;
               return (
                 <button
                   key={`${style.id}-${sIdx}`}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => setSelectedStyle(style.id)}
-                  className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                  className={`rounded-lg border p-3 text-left transition-colors min-w-0 ${
                     isSelected
-                      ? 'bg-stone-900 border-stone-900 text-white shadow-xs'
-                      : 'bg-stone-50/70 border-stone-200 hover:border-stone-300 text-stone-700 hover:text-stone-900'
+                      ? 'border-amber-700 bg-amber-50 text-stone-900'
+                      : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-stone-900'}`}>
-                      {style.label}
-                    </span>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                  </div>
-                  <span className={`text-[11px] leading-snug ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
-                    {style.desc}
-                  </span>
+                  <span className="block text-sm font-medium">{style.label}</span>
+                  <span className="block text-xs text-stone-500 mt-0.5">{style.desc}</span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
-        {/* Optional Custom Preference Input (only shown when AI service is active) */}
         {isAIAvailable && (
-          <div className="pt-1">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={customNotes}
               onChange={e => setCustomNotes(e.target.value)}
-              placeholder="Optional custom notes (e.g., traveling with kids, prefer self-drive 4x4, focus on birdwatching) — then click Refresh above"
-              className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+              placeholder="Anything else? e.g. travelling with kids, self-drive, birdwatching"
+              aria-label="Notes for your trip plan"
+              className="tm-input flex-1"
             />
+            <button
+              type="button"
+              onClick={handleRefreshWithCustomNotes}
+              disabled={loading}
+              className="tm-btn tm-btn-primary shrink-0"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                  <span>Update plan</span>
+                </>
+              )}
+            </button>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 2. Loading State Skeleton */}
+      {/* 2. Loading */}
       {loading && (
-        <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-xs text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto text-stone-800 animate-pulse">
-            <Compass className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-serif font-bold text-lg text-stone-900">
-              Updating Your Malawi Route Blueprint
-            </h4>
-            <p className="text-stone-500 text-xs max-w-md mx-auto">
-              Calculating highway legs between {hotels.map(h => h.name).join(' & ')}, road conditions, and regional stops...
-            </p>
-          </div>
+        <div className="tm-panel flex items-center gap-2 tm-muted">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+          <span>Working out the drives between {hotels.map(h => h.name).join(' and ')}...</span>
         </div>
       )}
 
-      {/* 3. Route Insights View */}
+      {/* 3. The plan */}
       {insights && !loading && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          {/* Executive Overview Header Card */}
-          <div className="bg-[#FAF8F5] rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200/70">
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                    {insights.tripVibe}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
-                    {insights.pacingScore}
-                  </span>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <section className="tm-panel space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="tm-tag">{insights.tripVibe}</span>
+                  <span className="tm-tag">{insights.pacingScore}</span>
                 </div>
-                <h3 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-                  {insights.title}
-                </h3>
+                <h3 className="tm-h2 break-words">{insights.title}</h3>
+                <p className="tm-muted">
+                  {insights.recommendedTotalDays} {insights.recommendedTotalDays === 1 ? 'night' : 'nights'} · {insights.estimatedTotalDistance}
+                </p>
               </div>
-
-              <button
-                type="button"
-                onClick={handleCopyItinerary}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition shadow-xs cursor-pointer shrink-0 w-fit"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copied Full Plan!' : 'Copy Full Plan'}</span>
+              <button type="button" onClick={handleCopyItinerary} className="tm-btn tm-btn-secondary tm-btn-sm shrink-0 w-fit">
+                {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+                <span>{copied ? 'Copied' : 'Copy plan'}</span>
               </button>
             </div>
 
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white p-3.5 rounded-2xl border border-stone-200/70">
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">Duration</span>
-                <span className="text-sm sm:text-base font-bold text-stone-900 font-serif">
-                  {insights.recommendedTotalDays} {insights.recommendedTotalDays === 1 ? 'Night' : 'Nights'}
-                </span>
-              </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-stone-200/70">
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">Total Corridor</span>
-                <span className="text-sm sm:text-base font-bold text-stone-900 font-serif">{insights.estimatedTotalDistance}</span>
-              </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-stone-200/70">
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">Primary Spine</span>
-                <span className="text-sm sm:text-base font-bold text-emerald-700 font-serif">M1 / M3 / M5</span>
-              </div>
-              <div className="bg-white p-3.5 rounded-2xl border border-stone-200/70">
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">Host Terms</span>
-                <span className="text-sm sm:text-base font-bold text-emerald-700 font-serif">0% Comm. Direct</span>
-              </div>
-            </div>
-
-            <p className="text-stone-700 text-sm sm:text-base leading-relaxed">
-              {insights.summary}
-            </p>
+            <p className="text-sm text-stone-700 leading-relaxed">{insights.summary}</p>
             {insights.aiNotice && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                {insights.aiNotice}
-              </p>
+              <p className="text-sm text-amber-900 bg-amber-50 rounded-lg px-3 py-2">{insights.aiNotice}</p>
             )}
-          </div>
 
-          {/* Day-by-Day Journey Breakdown */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-5">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-emerald-700" />
-              <h4 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
-                Sequenced Journey Blueprint
-              </h4>
-            </div>
-
-            <div className="space-y-4">
+            <ol className="tm-divider divide-y divide-stone-200">
               {insights.dayByDay.map((leg, idx) => {
                 const hotelMatch =
                   hotels.find(h => h.name.toLowerCase() === leg.stopName.toLowerCase()) || hotels[idx];
 
                 return (
-                  <div
-                    key={`leg-${leg.dayNumber || idx}-${idx}`}
-                    className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-stone-50/40 hover:bg-stone-50 transition space-y-3"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 rounded-full bg-stone-900 text-white text-xs font-bold font-mono">
-                          {leg.dayNumber}
-                        </span>
-                        <div>
-                          <h5 className="font-serif font-bold text-stone-900 text-base">
-                            {leg.stopName}
-                          </h5>
-                          <span className="text-xs text-stone-500 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-stone-400" />
-                            {leg.location}
-                          </span>
-                        </div>
+                  <li key={`leg-${leg.dayNumber || idx}-${idx}`} className="py-4 space-y-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-amber-800">{leg.dayNumber}</p>
+                        <h4 className="font-serif font-semibold text-stone-900 text-base break-words">{leg.stopName}</h4>
+                        <p className="text-xs text-stone-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+                          <span className="break-words">{leg.location}</span>
+                        </p>
                       </div>
-
                       {hotelMatch && onOpenListing && (
                         <button
                           type="button"
                           onClick={() => onOpenListing(hotelMatch.id!)}
-                          className="text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1 cursor-pointer w-fit"
+                          className="tm-link text-sm inline-flex items-center gap-1"
                         >
-                          <span>View Property</span>
-                          <ExternalLink className="w-3 h-3" />
+                          <span>See this stay</span>
+                          <ExternalLink className="w-3 h-3" aria-hidden="true" />
                         </button>
                       )}
                     </div>
-
-                    {/* Highlights Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                      <div className="p-3 bg-white rounded-xl border border-stone-200/60 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-800">
-                          <Compass className="w-3.5 h-3.5" />
-                          <span>Signature Activity</span>
-                        </span>
-                        <p className="text-stone-600 leading-relaxed">
-                          {leg.activityHighlight}
-                        </p>
+                    <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                      <div className="min-w-0">
+                        <dt className="font-medium text-stone-800">Things to do</dt>
+                        <dd className="text-stone-600 leading-relaxed">{leg.activityHighlight}</dd>
                       </div>
-
-                      <div className="p-3 bg-white rounded-xl border border-stone-200/60 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-800">
-                          <Car className="w-3.5 h-3.5" />
-                          <span>Route &amp; Transit</span>
-                        </span>
-                        <p className="text-stone-600 leading-relaxed">
-                          {leg.scenicTransitNote}
-                        </p>
+                      <div className="min-w-0">
+                        <dt className="font-medium text-stone-800">Getting there</dt>
+                        <dd className="text-stone-600 leading-relaxed">{leg.scenicTransitNote}</dd>
                       </div>
-
-                      <div className="p-3 bg-white rounded-xl border border-stone-200/60 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-stone-800">
-                          <Utensils className="w-3.5 h-3.5" />
-                          <span>Local Table &amp; Flavours</span>
-                        </span>
-                        <p className="text-stone-600 leading-relaxed">
-                          {leg.diningOrLocalPerk}
-                        </p>
+                      <div className="min-w-0">
+                        <dt className="font-medium text-stone-800">Food</dt>
+                        <dd className="text-stone-600 leading-relaxed">{leg.diningOrLocalPerk}</dd>
                       </div>
-                    </div>
-                  </div>
+                    </dl>
+                  </li>
                 );
               })}
-            </div>
-          </div>
+            </ol>
+          </section>
 
-          {/* Insider Secrets & Hidden Gems */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-4">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-amber-700" />
-              <h4 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
-                Malawi Route Field Notes
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-stone-700">
+          <section className="tm-panel space-y-3">
+            <h4 className="tm-h2">Local tips</h4>
+            <ol className="list-decimal pl-5 space-y-2 text-sm text-stone-700 leading-relaxed marker:text-stone-400">
               {insights.insiderSecrets.map((tip, idx) => (
-                <div
-                  key={`secret-${idx}`}
-                  className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200/60 flex items-start gap-2.5"
-                >
-                  <span className="w-5 h-5 rounded-full bg-amber-200/80 text-amber-900 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <p className="leading-relaxed">{tip}</p>
-                </div>
+                <li key={`secret-${idx}`}>{tip}</li>
               ))}
-            </div>
-          </div>
+            </ol>
+          </section>
 
-          {/* Practical Logistics & Gear Intelligence */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Logistics Grid */}
-            <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-700" />
-                <h4 className="font-serif text-lg font-bold text-stone-900">
-                  Malawi Road &amp; Field Logistics
-                </h4>
+          <section className="tm-panel space-y-4">
+            <h4 className="tm-h2">Before you go</h4>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <div className="min-w-0">
+                <dt className="font-medium text-stone-800">Car</dt>
+                <dd className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.roadAndVehicle}</dd>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
-                  <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Vehicle Recommendation</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.roadAndVehicle}</p>
-                </div>
-                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
-                  <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                    <Sun className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Daylight Driving Windows</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.bestTimeToDrive}</p>
-                </div>
-                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
-                  <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5 text-stone-700" />
-                    <span>Currency &amp; Cash Needs</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.currencyAndCash}</p>
-                </div>
-                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
-                  <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                    <Smartphone className="w-3.5 h-3.5 text-stone-700" />
-                    <span>SIM &amp; 4G Data Connectivity</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.simAndConnectivity}</p>
-                </div>
+              <div className="min-w-0">
+                <dt className="font-medium text-stone-800">When to drive</dt>
+                <dd className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.bestTimeToDrive}</dd>
               </div>
-            </div>
-
-            {/* Packing Highlights */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Backpack className="w-5 h-5 text-emerald-700" />
-                  <h4 className="font-serif text-lg font-bold text-stone-900">
-                    Route Packing
-                  </h4>
-                </div>
-                <ul className="space-y-2 text-xs text-stone-600">
-                  {insights.packingHighlights.map((item, idx) => (
-                    <li key={`pack-${idx}`} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="min-w-0">
+                <dt className="font-medium text-stone-800">Money</dt>
+                <dd className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.currencyAndCash}</dd>
               </div>
-
-              <div className="pt-4 border-t border-stone-100 text-[11px] text-stone-400">
-                Tailored for warm lakeshore days, cool plateau evenings &amp; national park game loops.
+              <div className="min-w-0">
+                <dt className="font-medium text-stone-800">Phone and data</dt>
+                <dd className="text-stone-600 leading-relaxed">{insights.logisticsAdvice.simAndConnectivity}</dd>
               </div>
-            </div>
-          </div>
+            </dl>
+            <details className="tm-divider pt-3">
+              <summary className="cursor-pointer text-sm font-medium text-stone-800">What to pack</summary>
+              <ul className="list-disc pl-5 mt-2 space-y-1.5 text-sm text-stone-600 marker:text-stone-400">
+                {insights.packingHighlights.map((item, idx) => (
+                  <li key={`pack-${idx}`}>{item}</li>
+                ))}
+              </ul>
+            </details>
+          </section>
         </motion.div>
       )}
 
-      {/* 4. Interactive Route Concierge (Rendered ONLY when isAIAvailable is true) */}
+      {/* 4. Ask Ulendo (only when an AI provider is available) */}
       {isAIAvailable && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-emerald-700" />
-                <h4 className="font-serif text-xl font-bold text-stone-900">
-                  Ask Ulendo — Malawi Route Concierge
-                </h4>
-              </div>
-              <p className="text-xs text-stone-500">
-                Have specific questions about road tarmac, park entry fees, fuel stops, or travel timing for your itinerary?
-              </p>
+        <section className="tm-panel space-y-4">
+          <div className="space-y-1">
+            <h4 className="tm-h2 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-amber-800" aria-hidden="true" />
+              <span>Ask Ulendo</span>
+            </h4>
+            <p className="tm-muted">Questions about roads, park fees, fuel or timing on this trip? Just ask.</p>
+          </div>
+
+          {chatMessages.length === 0 && (
+            <div className="tm-actions">
+              {SUGGESTED_QUESTIONS.map((q, i) => (
+                <button
+                  key={`sug-q-${i}`}
+                  type="button"
+                  onClick={() => handleSendMessage(q)}
+                  disabled={chatLoading}
+                  className="tm-btn tm-btn-secondary tm-btn-sm h-auto whitespace-normal text-left"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold w-fit">
-              Route Q&amp;A
-            </span>
-          </div>
+          )}
 
-          {/* Quick Suggestion Pills */}
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.map((q, i) => (
-              <button
-                key={`sug-q-${i}`}
-                type="button"
-                onClick={() => handleSendMessage(q)}
-                className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200/80 text-stone-700 transition cursor-pointer text-left"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-
-          {/* Conversation Stream */}
           {chatMessages.length > 0 && (
-            <div className="space-y-3 max-h-[360px] overflow-y-auto p-4 rounded-2xl bg-stone-50 border border-stone-200/70 text-xs">
+            <div className="space-y-3 max-h-[360px] overflow-y-auto rounded-lg bg-stone-50 p-3 sm:p-4 text-sm" aria-live="polite">
               {chatMessages.map((msg, i) => (
                 <div
                   key={`chat-msg-${msg.id || i}-${i}`}
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
+                  {msg.role !== 'user' && <span className="text-xs text-stone-500 mb-0.5">Ulendo</span>}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 leading-relaxed ${
+                    className={`max-w-[85%] rounded-xl px-3.5 py-2 leading-relaxed break-words ${
                       msg.role === 'user'
-                        ? 'bg-stone-900 text-white rounded-br-xs'
-                        : 'bg-white text-stone-800 border border-stone-200 rounded-bl-xs shadow-2xs'
+                        ? 'bg-stone-800 text-stone-50'
+                        : 'bg-white text-stone-800 border border-stone-200'
                     }`}
                   >
                     <p className="whitespace-pre-line">{msg.text}</p>
-                    <span className="block text-[10px] mt-1 text-right text-stone-400">
+                    <span className={`block text-[11px] mt-1 text-right ${msg.role === 'user' ? 'text-stone-300' : 'text-stone-400'}`}>
                       {msg.time}
                     </span>
                   </div>
@@ -1060,16 +891,15 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
               ))}
 
               {chatLoading && (
-                <div className="flex items-center gap-2 p-3 bg-white rounded-2xl border border-stone-200 text-stone-500 w-fit">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                  <span>Consulting Malawi road &amp; lodge records...</span>
-                </div>
+                <p className="flex items-center gap-2 text-stone-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  <span>Ulendo is writing...</span>
+                </p>
               )}
               <div ref={chatEndRef} />
             </div>
           )}
 
-          {/* Chat Input Bar */}
           <form
             onSubmit={e => {
               e.preventDefault();
@@ -1081,19 +911,20 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
               type="text"
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
-              placeholder="Ask about road conditions, fuel stops, park fees, or local dining..."
-              className="flex-1 px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+              placeholder="Ask about roads, fuel, park fees or food"
+              aria-label="Your question for Ulendo"
+              className="tm-input flex-1 min-w-0"
             />
             <button
               type="submit"
               disabled={!chatInput.trim() || chatLoading}
-              className="p-3 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white transition disabled:opacity-40 cursor-pointer shrink-0"
-              aria-label="Send message"
+              className="tm-btn tm-btn-secondary shrink-0"
+              aria-label="Send"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4" aria-hidden="true" />
             </button>
           </form>
-        </div>
+        </section>
       )}
     </div>
   );

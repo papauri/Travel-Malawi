@@ -37,7 +37,6 @@ import {
   CheckCircle2,
   Info,
   SlidersHorizontal,
-  Layers,
   Calendar,
   ArrowUpDown,
   Eye,
@@ -393,14 +392,14 @@ export default function AdminLogs() {
     const isFailed = status === 'Failed' || type === 'error';
     if (isFailed) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+        <span className="tm-tag tm-tag-bad">
           <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
           <span>Failed</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+      <span className="tm-tag tm-tag-good">
         <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
         <span>Success</span>
       </span>
@@ -410,18 +409,18 @@ export default function AdminLogs() {
   // Category Badge
   const renderCategoryBadge = (cat?: LogCategory) => {
     const map: Record<string, { label: string; bg: string; text: string }> = {
-      admin: { label: 'Role-Based Access Control', bg: 'bg-stone-900 border-stone-800', text: 'text-amber-300' },
-      security: { label: 'Security & Suspensions', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' },
+      admin: { label: 'Access and roles', bg: 'bg-stone-100 border-stone-300', text: 'text-stone-900' },
+      security: { label: 'Security', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' },
       auth: { label: 'Authentication', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800' },
-      session: { label: 'Session & Device', bg: 'bg-stone-100 border-stone-200', text: 'text-stone-700' },
-      booking: { label: 'Reservations & Bookings', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
-      property: { label: 'Property Management', bg: 'bg-amber-50/80 border-amber-200', text: 'text-amber-900' },
-      ai: { label: 'Ulendo Concierge AI', bg: 'bg-stone-100 border-stone-300', text: 'text-stone-800' },
-      system: { label: 'System Configuration', bg: 'bg-stone-50 border-stone-200', text: 'text-stone-600' },
+      session: { label: 'Sessions', bg: 'bg-stone-100 border-stone-200', text: 'text-stone-700' },
+      booking: { label: 'Bookings', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
+      property: { label: 'Properties', bg: 'bg-amber-50/80 border-amber-200', text: 'text-amber-900' },
+      ai: { label: 'Ulendo', bg: 'bg-stone-100 border-stone-300', text: 'text-stone-800' },
+      system: { label: 'System', bg: 'bg-stone-50 border-stone-200', text: 'text-stone-600' },
     };
     const c = (cat && map[cat]) || { label: cat || 'General', bg: 'bg-stone-100 border-stone-200', text: 'text-stone-700' };
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${c.bg} ${c.text}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${c.bg} ${c.text}`}>
         {c.label}
       </span>
     );
@@ -430,7 +429,7 @@ export default function AdminLogs() {
   // User Role Badge
   const renderRoleBadge = (role?: string) => {
     if (!role) {
-      return <span className="text-[11px] text-stone-400 italic">System Core</span>;
+      return <span className="text-xs text-stone-400">System</span>;
     }
     const rLower = role.toLowerCase();
     let badgeClass = 'bg-stone-100 text-stone-700 border-stone-200';
@@ -442,7 +441,7 @@ export default function AdminLogs() {
       badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
     }
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${badgeClass}`}>
         <User className="w-2.5 h-2.5" />
         <span className="capitalize">{role}</span>
       </span>
@@ -451,10 +450,9 @@ export default function AdminLogs() {
 
   if (loading) {
     return (
-      <div className="p-8 sm:p-14 text-center bg-white rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="tm-panel p-8 sm:p-14 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-900 border-t-transparent mx-auto mb-3"></div>
-        <p className="text-sm font-semibold text-stone-900">Loading Audit &amp; Session Telemetry...</p>
-        <p className="text-xs text-stone-500 mt-1">Connecting to live Firestore activity streams</p>
+        <p className="text-sm font-medium text-stone-900">Loading logs...</p>
       </div>
     );
   }
@@ -462,28 +460,22 @@ export default function AdminLogs() {
   return (
     <div className="space-y-5">
       {/* Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Audit Logs</h2>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Live
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-            System activity, authentication events, and administrative actions across the platform.
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200">
+        <div className="min-w-0">
+          <h2 className="tm-h1">Activity log</h2>
+          <p className="tm-muted mt-0.5">
+            Sign-ins, admin actions and system events.
           </p>
         </div>
 
         {/* Action Toolbar */}
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+        <div className="tm-actions">
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 text-xs font-medium rounded-lg transition flex items-center gap-1.5 cursor-pointer"
-              title="Export Audit Data"
+              className="tm-btn tm-btn-secondary tm-btn-sm"
+              title="Export logs"
             >
               <Download className="w-3.5 h-3.5 text-stone-500" />
               <span>Export</span>
@@ -493,7 +485,7 @@ export default function AdminLogs() {
             {showExportMenu && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setShowExportMenu(false)} />
-                <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-stone-200 p-1 z-30 space-y-0.5">
+                <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-xl shadow-sm border border-stone-200 p-1 z-30 space-y-0.5">
                   <button
                     type="button"
                     onClick={handleExportCSV}
@@ -517,21 +509,21 @@ export default function AdminLogs() {
 
           {logs.length > 0 && (
             confirmClear ? (
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="tm-actions shrink-0">
                 <button
                   type="button"
                   onClick={handleClearAllLogs}
                   disabled={clearing}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                  className="tm-btn tm-btn-danger tm-btn-sm"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>{clearing ? 'Deleting…' : 'Confirm Clear'}</span>
+                  <span>{clearing ? 'Deleting…' : 'Confirm clear'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmClear(false)}
                   disabled={clearing}
-                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium rounded-lg transition cursor-pointer"
+                  className="tm-btn tm-btn-quiet tm-btn-sm"
                 >
                   Cancel
                 </button>
@@ -541,11 +533,11 @@ export default function AdminLogs() {
                 type="button"
                 onClick={() => setConfirmClear(true)}
                 disabled={clearing}
-                className="px-3 py-1.5 bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-700 text-xs font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer border border-stone-200 shrink-0"
+                className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                 title="Clear all stored logs"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear Logs</span>
+                <span>Clear logs</span>
               </button>
             )
           )}
@@ -554,16 +546,16 @@ export default function AdminLogs() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
-            <span>Total Events</span>
+            <span>Events</span>
             <Activity className="w-4 h-4 text-stone-400" />
           </div>
           <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.totalEvents}</div>
-          <div className="text-[11px] text-stone-400 mt-0.5">Recorded audit entries</div>
+          
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
             <span>Success Rate</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -572,16 +564,16 @@ export default function AdminLogs() {
           <div className="text-[11px] text-stone-400 mt-0.5">{metrics.successCount} completed actions</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
-            <span>Active Sessions</span>
+            <span>Active now</span>
             <Monitor className="w-4 h-4 text-stone-400" />
           </div>
           <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.activeSessions}</div>
           <div className="text-[11px] text-stone-400 mt-0.5">Active in last 15 mins</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+        <div className="tm-panel min-w-0">
           <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
             <span>Locations</span>
             <Globe className="w-4 h-4 text-stone-400" />
@@ -596,19 +588,19 @@ export default function AdminLogs() {
       </div>
 
       {/* View Switcher & Filters */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
+      <div className="tm-panel min-w-0 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-3">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setMainView('intune_table')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 mainView === 'intune_table'
-                  ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                  ? 'bg-stone-900 text-white font-semibold'
                   : 'bg-stone-100 text-stone-600 hover:text-stone-900'
               }`}
             >
-              <span>Activity Log</span>
+              <span>Activity</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                 mainView === 'intune_table' ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-600'
               }`}>
@@ -621,11 +613,11 @@ export default function AdminLogs() {
               onClick={() => setMainView('session_bundles')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 mainView === 'session_bundles'
-                  ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                  ? 'bg-stone-900 text-white font-semibold'
                   : 'bg-stone-100 text-stone-600 hover:text-stone-900'
               }`}
             >
-              <span>Sessions by User</span>
+              <span>Sessions</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                 mainView === 'session_bundles' ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-600'
               }`}>
@@ -643,7 +635,7 @@ export default function AdminLogs() {
                   onClick={() => setMobileTableStyle('responsive_cards')}
                   className={`px-2 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                     mobileTableStyle === 'responsive_cards'
-                      ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                      ? 'bg-white text-stone-900 font-semibold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
@@ -654,7 +646,7 @@ export default function AdminLogs() {
                   onClick={() => setMobileTableStyle('dense_table')}
                   className={`px-2 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                     mobileTableStyle === 'dense_table'
-                      ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                      ? 'bg-white text-stone-900 font-semibold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
@@ -673,8 +665,8 @@ export default function AdminLogs() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search activity, target, user, IP..."
-              className="w-full pl-8 pr-7 py-1.5 bg-stone-50 focus:bg-white text-stone-900 text-xs rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 transition"
+              placeholder="Search activity, user or IP"
+              className="tm-input pl-8 pr-7"
             />
             {searchQuery && (
               <button
@@ -691,12 +683,12 @@ export default function AdminLogs() {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRangeFilter)}
-              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
+              className="tm-input cursor-pointer"
             >
-              <option value="all">All Dates</option>
-              <option value="24h">Past 24 Hours</option>
-              <option value="7d">Past 7 Days</option>
-              <option value="30d">Past 30 Days</option>
+              <option value="all">All dates</option>
+              <option value="24h">Past 24 hours</option>
+              <option value="7d">Past 7 days</option>
+              <option value="30d">Past 30 days</option>
             </select>
           </div>
 
@@ -704,16 +696,16 @@ export default function AdminLogs() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
+              className="tm-input cursor-pointer"
             >
-              <option value="all">All Categories</option>
-              <option value="admin">Access &amp; Roles</option>
+              <option value="all">All categories</option>
+              <option value="admin">Access and roles</option>
               <option value="property">Properties</option>
               <option value="booking">Bookings</option>
               <option value="security">Security</option>
               <option value="auth">Authentication</option>
               <option value="session">Sessions</option>
-              <option value="ai">Assistant &amp; Automation</option>
+              <option value="ai">Assistant</option>
             </select>
           </div>
 
@@ -721,11 +713,11 @@ export default function AdminLogs() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as StatusFilter)}
-              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
+              className="tm-input cursor-pointer"
             >
-              <option value="all">All Statuses</option>
-              <option value="Success">Success Only</option>
-              <option value="Failed">Failed / Errors Only</option>
+              <option value="all">All statuses</option>
+              <option value="Success">Success only</option>
+              <option value="Failed">Failed only</option>
             </select>
           </div>
         </div>
@@ -757,11 +749,11 @@ export default function AdminLogs() {
       {mainView === 'intune_table' && (
         <div className="space-y-3">
           {sortedLogs.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-10 text-center">
+            <div className="tm-panel p-10 text-center">
               <ShieldCheck className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-              <h4 className="font-bold text-stone-900 text-base">No Audit Records Found</h4>
-              <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-                No events matched your current filters. Try resetting the search query or date range.
+              <h4 className="font-medium text-stone-900 text-base">No records found</h4>
+              <p className="tm-muted mt-1 max-w-sm mx-auto">
+                Nothing matches these filters. Reset them to see everything.
               </p>
             </div>
           ) : (
@@ -776,7 +768,7 @@ export default function AdminLogs() {
                     <div
                       key={log.id}
                       onClick={() => setSelectedLog(log)}
-                      className="bg-white rounded-2xl border border-stone-200 hover:border-stone-400 p-4 transition-all shadow-xs cursor-pointer active:bg-stone-50"
+                      className="tm-panel min-w-0 hover:border-stone-400 transition-colors cursor-pointer active:bg-stone-50"
                     >
                       {/* Top Bar: Status + Category + Relative time */}
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-100">
@@ -824,14 +816,14 @@ export default function AdminLogs() {
 
               {/* DESKTOP & DENSE INTUNE TABLE */}
               <div
-                className={`bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden ${
+                className={`bg-white rounded-xl border border-stone-200 overflow-hidden ${
                   mobileTableStyle === 'responsive_cards' ? 'hidden md:block' : 'block'
                 }`}
               >
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 text-[10px] font-bold uppercase tracking-wider select-none">
+                      <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 text-xs font-medium select-none">
                         <th
                           className="px-3 py-2.5 w-32 cursor-pointer hover:bg-stone-100/80 transition"
                           onClick={() => {
@@ -840,7 +832,7 @@ export default function AdminLogs() {
                           }}
                         >
                           <div className="flex items-center gap-1">
-                            <span>Date & Time</span>
+                            <span>Date and time</span>
                             <ArrowUpDown className="w-2.5 h-2.5 text-stone-400" />
                           </div>
                         </th>
@@ -853,7 +845,7 @@ export default function AdminLogs() {
                           }}
                         >
                           <div className="flex items-center gap-1">
-                            <span>Activity & Target</span>
+                            <span>Activity</span>
                             <ArrowUpDown className="w-2.5 h-2.5 text-stone-400" />
                           </div>
                         </th>
@@ -871,8 +863,8 @@ export default function AdminLogs() {
                           </div>
                         </th>
 
-                        <th className="px-3 py-2.5 w-32">Status & Category</th>
-                        <th className="px-3 py-2.5 w-44">Client Telemetry</th>
+                        <th className="px-3 py-2.5 w-32">Status</th>
+                        <th className="px-3 py-2.5 w-44">Location and device</th>
                         <th className="px-2 py-2.5 w-12 text-right">View</th>
                       </tr>
                     </thead>
@@ -905,7 +897,7 @@ export default function AdminLogs() {
                                 <div className="text-[11px] text-stone-600 truncate max-w-[220px] mt-0.5">
                                   <span className="text-stone-400 font-semibold text-[10px]">Target:</span> {log.target}
                                   {log.targetType && (
-                                    <span className="text-[9px] uppercase font-bold text-stone-400 ml-1">({log.targetType})</span>
+                                    <span className="text-[10px] text-stone-400 ml-1">({log.targetType})</span>
                                   )}
                                 </div>
                               )}
@@ -915,7 +907,7 @@ export default function AdminLogs() {
                             <td className="px-3 py-2.5 align-top">
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-semibold text-stone-900 truncate max-w-[130px] text-xs leading-tight">
-                                  {log.userName || log.userEmail || 'System Core'}
+                                  {log.userName || log.userEmail || 'System'}
                                 </span>
                                 <div>{renderRoleBadge(log.userRole)}</div>
                               </div>
@@ -936,7 +928,7 @@ export default function AdminLogs() {
                                   <span>{log.location?.flag || '🌐'}</span>
                                   <span className="truncate max-w-[120px]">{log.location?.city || log.location?.country || 'Malawi'}</span>
                                 </div>
-                                <div className="text-[10px] text-stone-400 font-mono flex items-center gap-1 mt-0.5">
+                                <div className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
                                   {renderDeviceIcon(log.device?.type)}
                                   <span className="truncate max-w-[130px]">
                                     {log.ip || '—'} · {log.device?.os || log.device?.browser || 'Web'}
@@ -967,10 +959,10 @@ export default function AdminLogs() {
                 </div>
               </div>
               
-              <div className="p-3 sm:px-4 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 rounded-b-xl">
+              <div className="py-2 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span>
-                    Showing <span className="font-semibold text-stone-900 font-mono">{sortedLogs.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentPage * itemsPerPage, sortedLogs.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{sortedLogs.length}</span> records
+                    Showing <span className="font-semibold text-stone-900 tabular-nums">{sortedLogs.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 tabular-nums">{Math.min(currentPage * itemsPerPage, sortedLogs.length)}</span> of <span className="font-semibold text-stone-900 tabular-nums">{sortedLogs.length}</span> records
                   </span>
                   <div className="flex items-center gap-1.5 text-stone-400">
                     <span>Rows:</span>
@@ -980,7 +972,7 @@ export default function AdminLogs() {
                         setItemsPerPage(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="bg-white border border-stone-200 rounded-lg px-2 py-0.5 text-xs text-stone-700 outline-none shadow-2xs cursor-pointer"
+                      className="bg-white border border-stone-200 rounded-lg px-2 py-0.5 text-xs text-stone-700 outline-none cursor-pointer"
                     >
                       <option value={15}>15</option>
                       <option value={20}>20</option>
@@ -1006,21 +998,10 @@ export default function AdminLogs() {
       {/* ================= TAB 2: USER SESSION BUNDLES ================= */}
       {mainView === 'session_bundles' && (
         <div className="space-y-4">
-          <div className="bg-amber-50/50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
-            <Layers className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-                User Session Bundles Active
-              </h4>
-              <p className="text-xs text-amber-800/90 mt-0.5">
-                Activity records are grouped by individual user account. Under each user, browser sessions are packaged
-                with their IP address, geolocation, device telemetry, and full chronological activity timeline.
-              </p>
-            </div>
-          </div>
+          <p className="tm-muted">Records grouped by user, with each browser session, location and device.</p>
 
           {userBundles.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-10 text-center">
+            <div className="bg-white rounded-xl border border-stone-200 shadow-xs p-10 text-center">
               <User className="w-10 h-10 text-stone-300 mx-auto mb-3" />
               <h4 className="font-bold text-stone-900 text-base">No User Sessions Found</h4>
               <p className="text-xs text-stone-500 mt-1">
@@ -1037,7 +1018,7 @@ export default function AdminLogs() {
                 return (
                   <div
                     key={group.userKey}
-                    className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden transition-all"
+                    className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden transition-all"
                   >
                     {/* User Header Accordion Trigger (Min 44px height for mobile touch) */}
                     <div
@@ -1046,7 +1027,7 @@ export default function AdminLogs() {
                     >
                       <div className="flex items-start sm:items-center gap-3.5">
                         {/* Avatar / Initial */}
-                        <div className="h-11 w-11 rounded-xl bg-stone-900 text-amber-300 font-bold flex items-center justify-center shrink-0 text-sm shadow-xs uppercase">
+                        <div className="h-11 w-11 rounded-lg bg-stone-100 text-stone-700 font-semibold flex items-center justify-center shrink-0 text-sm uppercase">
                           {group.userName.substring(0, 2) || 'TM'}
                         </div>
 
@@ -1121,7 +1102,7 @@ export default function AdminLogs() {
                     {/* EXPANDED SESSIONS LIST */}
                     {isUserExpanded && (
                       <div className="border-t border-stone-200 bg-stone-50/50 p-3 sm:p-5 space-y-3">
-                        <div className="text-xs font-bold text-stone-500 uppercase tracking-wider px-1">
+                        <div className="text-xs font-medium text-stone-500 px-1">
                           Bundled Browser & Mobile Sessions ({group.sessions.length})
                         </div>
 
@@ -1250,7 +1231,7 @@ export default function AdminLogs() {
                                                 </span>
                                                 {renderStatusBadge(event.status, event.type)}
                                               </div>
-                                              <span className="text-[11px] font-mono text-stone-400">{timeStr}</span>
+                                              <span className="text-[11px] text-stone-400 tabular-nums">{timeStr}</span>
                                             </div>
 
                                             <div className="text-xs text-stone-500 mt-1">
@@ -1292,18 +1273,18 @@ export default function AdminLogs() {
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-stone-900/40 transition-opacity"
             onClick={() => setSelectedLog(null)}
           />
 
           {/* Blade Panel (Slide over on desktop, full sheet on mobile) */}
-          <div className="relative w-full sm:w-[540px] md:w-[620px] bg-white h-full shadow-2xl z-10 flex flex-col border-l border-stone-200 overflow-hidden animate-in slide-in-from-right duration-200">
+          <div className="relative w-full sm:w-[540px] md:w-[620px] bg-white h-full shadow-sm z-10 flex flex-col border-l border-stone-200 overflow-hidden animate-in slide-in-from-right duration-200">
             
             {/* Blade Header */}
             <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50 flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                  <span className="text-xs text-stone-500">
                     Audit Event Details
                   </span>
                   {renderStatusBadge(selectedLog.status, selectedLog.type)}
@@ -1395,7 +1376,7 @@ export default function AdminLogs() {
                 <div className="space-y-4">
                   <div className="bg-stone-50 rounded-xl p-4 border border-stone-200 space-y-3">
                     <div>
-                      <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                      <div className="text-xs font-medium text-stone-500">
                         Activity Display Name
                       </div>
                       <div className="text-sm font-semibold text-stone-900 mt-0.5">
@@ -1405,7 +1386,7 @@ export default function AdminLogs() {
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200/70">
                       <div>
-                        <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                        <div className="text-xs font-medium text-stone-500">
                           Date and Time (Local)
                         </div>
                         <div className="text-xs font-medium text-stone-800 mt-0.5">
@@ -1414,10 +1395,10 @@ export default function AdminLogs() {
                       </div>
 
                       <div>
-                        <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                          UTC ISO Timestamp
+                        <div className="text-xs font-medium text-stone-500">
+                          Time (UTC)
                         </div>
-                        <div className="text-xs font-mono text-stone-600 mt-0.5 break-all">
+                        <div className="text-xs text-stone-600 mt-0.5 break-all tabular-nums">
                           {new Date(selectedLog.timestamp).toISOString()}
                         </div>
                       </div>
@@ -1425,14 +1406,14 @@ export default function AdminLogs() {
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200/70">
                       <div>
-                        <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                        <div className="text-xs font-medium text-stone-500">
                           Category
                         </div>
                         <div className="mt-1">{renderCategoryBadge(selectedLog.category)}</div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                        <div className="text-xs font-medium text-stone-500">
                           Result
                         </div>
                         <div className="mt-1">{renderStatusBadge(selectedLog.status, selectedLog.type)}</div>
@@ -1442,8 +1423,8 @@ export default function AdminLogs() {
                     {selectedLog.sessionId && (
                       <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between">
                         <div>
-                          <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                            Correlation / Session ID
+                          <div className="text-xs font-medium text-stone-500">
+                            Session ID
                           </div>
                           <div className="text-xs font-mono text-stone-800 mt-0.5">
                             {selectedLog.sessionId}
@@ -1464,7 +1445,7 @@ export default function AdminLogs() {
 
                   {/* Primary Narrative Message */}
                   <div className="p-4 rounded-xl border border-stone-200 bg-white space-y-1">
-                    <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    <div className="text-xs font-medium text-stone-500">
                       Audit Log Message
                     </div>
                     <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-medium">
@@ -1481,33 +1462,33 @@ export default function AdminLogs() {
                   <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 space-y-3">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-stone-700" />
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                      <h4 className="text-sm font-medium text-stone-900">
                         Initiated By (User Identity)
                       </h4>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200">
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Display Name</div>
+                        <div className="text-xs font-medium text-stone-500">Display Name</div>
                         <div className="text-xs font-semibold text-stone-900 mt-0.5">
                           {selectedLog.userName || 'System Automated Process'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">User Principal Name (Email)</div>
-                        <div className="text-xs font-mono text-stone-800 mt-0.5 break-all">
+                        <div className="text-xs font-medium text-stone-500">Email</div>
+                        <div className="text-xs text-stone-800 mt-0.5 break-all">
                           {selectedLog.userEmail || 'system@travelmalawi.internal'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Role Assignment</div>
+                        <div className="text-xs font-medium text-stone-500">Role Assignment</div>
                         <div className="mt-1">{renderRoleBadge(selectedLog.userRole)}</div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">User ID (UID)</div>
+                        <div className="text-xs font-medium text-stone-500">User ID (UID)</div>
                         <div className="text-xs font-mono text-stone-600 mt-0.5 break-all">
                           {selectedLog.userId || 'N/A'}
                         </div>
@@ -1520,7 +1501,7 @@ export default function AdminLogs() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-stone-700" />
-                        <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                        <h4 className="text-sm font-medium text-stone-900">
                           Client IP & Geolocation Telemetry
                         </h4>
                       </div>
@@ -1539,14 +1520,14 @@ export default function AdminLogs() {
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200">
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Client IP Address</div>
-                        <div className="text-xs font-mono font-bold text-stone-900 mt-0.5">
-                          {selectedLog.ip || selectedLog.location?.ip || '127.0.0.1 (Local)'}
+                        <div className="text-xs font-medium text-stone-500">IP address</div>
+                        <div className="text-xs font-medium text-stone-900 mt-0.5 tabular-nums">
+                          {selectedLog.ip || selectedLog.location?.ip || 'Local'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Location & Flag</div>
+                        <div className="text-xs font-medium text-stone-500">Location & Flag</div>
                         <div className="text-xs font-semibold text-stone-900 mt-0.5 flex items-center gap-1.5">
                           <span>{selectedLog.location?.flag || '🇲🇼'}</span>
                           <span>
@@ -1556,14 +1537,14 @@ export default function AdminLogs() {
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Timezone</div>
+                        <div className="text-xs font-medium text-stone-500">Timezone</div>
                         <div className="text-xs text-stone-800 mt-0.5">
                           {selectedLog.location?.timezone || selectedLog.device?.timezone || 'Africa/Blantyre'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Network ISP / ASN</div>
+                        <div className="text-xs font-medium text-stone-500">Network ISP / ASN</div>
                         <div className="text-xs text-stone-600 mt-0.5">
                           {selectedLog.location?.org || 'Malawi Gateway Network'}
                         </div>
@@ -1575,14 +1556,14 @@ export default function AdminLogs() {
                   <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 space-y-3">
                     <div className="flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-stone-700" />
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                      <h4 className="text-sm font-medium text-stone-900">
                         Client Device & Environment
                       </h4>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200">
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Device Form Factor</div>
+                        <div className="text-xs font-medium text-stone-500">Device Form Factor</div>
                         <div className="text-xs font-semibold text-stone-900 mt-0.5 flex items-center gap-1.5">
                           {renderDeviceIcon(selectedLog.device?.type)}
                           <span>{selectedLog.device?.type || 'Desktop'}</span>
@@ -1590,30 +1571,30 @@ export default function AdminLogs() {
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Operating System</div>
+                        <div className="text-xs font-medium text-stone-500">Operating System</div>
                         <div className="text-xs font-medium text-stone-900 mt-0.5">
                           {selectedLog.device?.os || 'Standard OS'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Web Browser</div>
+                        <div className="text-xs font-medium text-stone-500">Web Browser</div>
                         <div className="text-xs font-medium text-stone-900 mt-0.5">
                           {selectedLog.device?.browser || 'Chrome / Safari'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Display Resolution</div>
-                        <div className="text-xs font-mono text-stone-700 mt-0.5">
-                          {selectedLog.device?.screen || 'Responsive Canvas'}
+                        <div className="text-xs font-medium text-stone-500">Screen</div>
+                        <div className="text-xs text-stone-700 mt-0.5">
+                          {selectedLog.device?.screen || 'Unknown'}
                         </div>
                       </div>
                     </div>
 
                     {selectedLog.userAgent && (
                       <div className="pt-2 border-t border-stone-200">
-                        <div className="text-[10px] font-bold text-stone-400 uppercase">User-Agent Header</div>
+                        <div className="text-[10px] font-bold text-stone-400 uppercase">Browser</div>
                         <div className="text-[11px] font-mono text-stone-600 break-all mt-0.5">
                           {selectedLog.userAgent}
                         </div>
@@ -1627,7 +1608,7 @@ export default function AdminLogs() {
               {bladeTab === 'target' && (
                 <div className="space-y-4">
                   <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 space-y-3">
-                    <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    <div className="text-xs font-medium text-stone-500">
                       Affected Resource Target
                     </div>
                     <div className="text-base font-bold text-stone-900">
@@ -1636,14 +1617,14 @@ export default function AdminLogs() {
 
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-200">
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Target Resource Type</div>
+                        <div className="text-xs font-medium text-stone-500">Target Resource Type</div>
                         <div className="text-xs font-semibold text-stone-800 mt-0.5">
                           {selectedLog.targetType || 'System Resource'}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-[11px] text-stone-500 font-bold">Target Identifier</div>
+                        <div className="text-xs font-medium text-stone-500">Target Identifier</div>
                         <div className="text-xs font-mono text-stone-700 mt-0.5 break-all">
                           {selectedLog.details?.hotelId ||
                             selectedLog.details?.bookingId ||
@@ -1658,7 +1639,7 @@ export default function AdminLogs() {
                   {/* Target details breakdown */}
                   {selectedLog.details && (
                     <div className="p-4 rounded-xl border border-stone-200 bg-white space-y-2">
-                      <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                      <div className="text-xs font-medium text-stone-500">
                         Contextual Target Attributes
                       </div>
                       <div className="space-y-1.5 text-xs text-stone-700">
@@ -1688,13 +1669,13 @@ export default function AdminLogs() {
                     <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-xs">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-stone-50 border-b border-stone-200 text-stone-500 font-bold uppercase tracking-wider text-[10px]">
+                          <tr className="bg-stone-50 border-b border-stone-200 text-stone-500 font-bold text-[10px]">
                             <th className="px-3.5 py-2.5">Property Name</th>
                             <th className="px-3.5 py-2.5">Old Value</th>
                             <th className="px-3.5 py-2.5">New Value</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-stone-100 font-mono">
+                        <tbody className="divide-y divide-stone-100">
                           {/* Status diff if available */}
                           {selectedLog.details.previousStatus && selectedLog.details.newStatus && (
                             <tr>
@@ -1754,20 +1735,20 @@ export default function AdminLogs() {
               {bladeTab === 'payload' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
-                      Complete Document Payload
+                    <span className="text-sm font-medium text-stone-700">
+                      Full record
                     </span>
                     <button
                       type="button"
                       onClick={() => handleCopyText('json', JSON.stringify(selectedLog, null, 2))}
-                      className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-stone-100 text-xs font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+                      className="tm-btn tm-btn-secondary tm-btn-sm"
                     >
-                      {copiedKey === 'json' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedKey === 'json' ? 'Copied JSON' : 'Copy JSON'}</span>
+                      {copiedKey === 'json' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey === 'json' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
 
-                  <pre className="p-4 bg-stone-900 text-amber-200/90 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed max-h-[480px]">
+                  <pre className="p-4 bg-stone-50 border border-stone-200 text-stone-800 rounded-xl font-mono text-xs overflow-auto leading-relaxed max-h-[480px]">
                     {JSON.stringify(selectedLog, null, 2)}
                   </pre>
                 </div>
@@ -1775,20 +1756,20 @@ export default function AdminLogs() {
             </div>
 
             {/* Blade Footer Actions */}
-            <div className="p-4 sm:p-5 border-t border-stone-200 bg-stone-50 flex items-center justify-between gap-3">
+            <div className="p-4 sm:p-5 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => handleDeleteLog(selectedLog.id)}
-                className="min-h-[44px] px-3.5 py-2 text-rose-700 hover:bg-rose-50 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer border border-rose-200/80"
+                className="tm-btn tm-btn-danger"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Delete Log Entry</span>
+                <span>Delete entry</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="min-h-[44px] px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+                className="tm-btn tm-btn-primary"
               >
                 Close
               </button>
