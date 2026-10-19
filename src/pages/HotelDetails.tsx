@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import SEOHead from '../components/SEOHead';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { useManagerPresence } from '../hooks/usePresence';
+import { useManagerPresence, PresenceStatus } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, HardDrive, Monitor, Building, ExternalLink, X } from 'lucide-react';
@@ -35,6 +35,8 @@ import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/
 import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining, normalizeBlockedDates } from '../lib/availability';
 import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact';
+import { hasSocialLinks } from '../lib/social';
+import SocialLinks from '../components/SocialLinks';
 import { resolveHotelCoordinates, isValidLatLng } from '../lib/geo';
 import { getSingleCachedHotel, saveSingleCachedHotel, getCachedRooms } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
@@ -245,6 +247,12 @@ export default function HotelDetails() {
   const { isOnline } = useNetworkStatus();
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
   const managerPresence = useManagerPresence(hotel?.managerId);
+  // The host's own "Show as online" switch wins over activity: set to away, they read as away.
+  const hostStatus: PresenceStatus = !managerPresence
+    ? 'offline'
+    : managerPresence.status === 'online' && hotel?.isOnline === false ? 'away' : managerPresence.status;
+  // Chat is offered whether or not the host is online; offline hosts get the message by email.
+  const canChat = Boolean(hotel && hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [conferenceRooms, setConferenceRooms] = useState<ConferenceRoom[]>([]);
   const [activeSpaceTab, setActiveSpaceTab] = useState<'rooms' | 'conferences'>('rooms');
@@ -1530,7 +1538,7 @@ export default function HotelDetails() {
 
                 {/* Details & Hospitality */}
                 <div className="border-t border-stone-100 my-1"></div>
-                {hasAnyContact(hotel) && (
+                {(hasAnyContact(hotel) || canChat || hasSocialLinks(hotel)) && (
                   <a
                     href="#contact-host-section"
                     onClick={(e) => {
@@ -1543,7 +1551,7 @@ export default function HotelDetails() {
                       <PhoneCall className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                       <span>Contact host</span>
                     </span>
-                    <span className={`w-2 h-2 rounded-full ${managerPresence?.status === 'online' ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                    <span className={`w-2 h-2 rounded-full ${hostStatus === 'online' ? 'bg-emerald-500' : 'bg-stone-300'}`} />
                   </a>
                 )}
                 <a
@@ -2752,7 +2760,7 @@ export default function HotelDetails() {
             )}
 
             {/* Reach the property directly */}
-            {hasAnyContact(hotel) && (
+            {(hasAnyContact(hotel) || canChat || hasSocialLinks(hotel)) && (
               <div id="contact-host-section" className="tm-panel scroll-mt-28 sm:scroll-mt-32 mt-6 sm:mt-8 min-w-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                   <div>
@@ -2762,22 +2770,28 @@ export default function HotelDetails() {
                       </h3>
                       <div className="flex items-center gap-1.5">
                         <span className="relative flex h-2.5 w-2.5">
-                          {managerPresence?.status === 'online' && (
+                          {hostStatus === 'online' && (
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60"></span>
                           )}
-                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${managerPresence?.status === 'online' ? 'bg-emerald-500' : managerPresence?.status === 'away' ? 'bg-amber-400' : 'bg-stone-300'}`}></span>
+                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hostStatus === 'online' ? 'bg-emerald-500' : hostStatus === 'away' ? 'bg-amber-400' : 'bg-stone-300'}`}></span>
                         </span>
                         <span className="text-xs font-medium text-stone-500">
-                          {managerPresence?.status === 'online' ? 'Online' : managerPresence?.status === 'away' ? 'Away' : 'Offline'}
+                          {hostStatus === 'online' ? 'Online' : hostStatus === 'away' ? 'Away' : 'Offline'}
                         </span>
                       </div>
                     </div>
                     <p className="tm-muted">
                       Ask about activities, special requests or your arrival.
                     </p>
+                    <SocialLinks
+                      facebook={hotel.socialFacebook}
+                      instagram={hotel.socialInstagram}
+                      name={hotel.name}
+                      className="-ml-2 mt-1"
+                    />
                   </div>
                   <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto mt-3 md:mt-0">
-                    {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && (
+                    {canChat && (
                       <div className="relative inline-block w-full sm:w-auto">
                         <button
                           type="button"
@@ -2786,7 +2800,7 @@ export default function HotelDetails() {
                           className="tm-btn tm-btn-secondary w-full sm:w-auto"
                         >
                           <MessageSquare className="h-4 w-4" />
-                          <span>{managerPresence?.status === 'online' ? 'Chat with the host' : 'Send a message'}</span>
+                          <span>{hostStatus === 'online' ? 'Chat with the host' : 'Send a message'}</span>
                         </button>
                         <WalkthroughTooltip
                           id="walkthrough-hotel-host-chat"
@@ -2837,7 +2851,7 @@ export default function HotelDetails() {
                     <p className="tm-muted">Contact the property to reserve a room or ask about event packages.</p>
                   </div>
                   <div className="tm-actions shrink-0">
-                    {hotel.isOnline && user?.uid !== hotel.managerId && (
+                    {canChat && (
                       <button
                         type="button"
                         onClick={handleOpenChat}
@@ -3751,7 +3765,7 @@ export default function HotelDetails() {
       
       {/* Floating Chat Trigger Button.
           Hidden whenever a dialog is up or when chat is already open/active in the global persistent dock. */}
-      {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && !anyDialogOpen && !activeChat && (
+      {canChat && !anyDialogOpen && !activeChat && (
         <div 
           className={`fixed bottom-6 z-50 pointer-events-none transition-all duration-200 ${
             user && (isAdmin(user) || isHotelManager(user))
@@ -3765,14 +3779,14 @@ export default function HotelDetails() {
             onClick={handleOpenChat}
             className="pointer-events-auto relative flex items-center justify-center w-12 h-12 rounded-full bg-stone-900 hover:bg-stone-800 text-white shadow-sm transition-colors cursor-pointer select-none"
             whileTap={{ scale: 0.96 }}
-            title={managerPresence?.status === 'online' ? 'Chat with the host (online)' : 'Chat with the host'}
+            title={hostStatus === 'online' ? 'Chat with the host (online)' : 'Chat with the host'}
             aria-label="Chat with the host"
           >
             <div className="relative flex items-center justify-center">
               <MessageSquare className="w-5 h-5" />
               <span 
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
-                  managerPresence?.status === 'online' ? 'bg-emerald-500' : 'bg-stone-400'
+                  hostStatus === 'online' ? 'bg-emerald-500' : 'bg-stone-400'
                 }`} 
               />
             </div>

@@ -7,7 +7,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { isSoundEnabled, setSoundEnabled } from '../lib/notificationSound';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isHotelManager } from '../lib/roles';
+import { useIsHost } from '../hooks/useIsHost';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import WalkthroughTooltip from './WalkthroughTooltip';
@@ -45,7 +45,7 @@ export default function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
 
-  const isManager = isHotelManager(user);
+  const isManager = useIsHost();
   const totalAlertsCount = unreadCount + unreadBroadcasts;
 
   // Whenever opened, if no unread messages, default to active chats tab

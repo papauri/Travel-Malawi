@@ -10,7 +10,6 @@ export interface SystemSettings {
   refundPolicy?: string;
   socialFacebook?: string;
   socialInstagram?: string;
-  socialTwitter?: string;
   platformDomain?: string;
 }
 

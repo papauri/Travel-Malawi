@@ -3,7 +3,7 @@ import { collection, query, where, onSnapshot, getDoc, doc, updateDoc } from 'fi
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Booking, Hotel } from '../types';
-import { isHotelManager } from '../lib/roles';
+import { useIsHost } from '../hooks/useIsHost';
 import { playChime, startRinging, stopRinging } from '../lib/notificationSound';
 import { lastMessageTime } from '../lib/chatDeletion';
 import { useChatModal } from '../contexts/ChatModalContext';
@@ -42,6 +42,7 @@ export const requestBrowserNotifications = async (): Promise<NotificationPermiss
 
 export default function GlobalNotificationManager() {
   const { user } = useAuth();
+  const isHost = useIsHost();
   const { activeChat, isMinimized, openInquiryChat, openBookingChat } = useChatModal();
   const navigate = useNavigate();
 
@@ -107,7 +108,7 @@ export default function GlobalNotificationManager() {
       void requestBrowserNotifications();
     }
 
-    const isManager = isHotelManager(user);
+    const isManager = isHost;
 
     // Helper to check if the current user currently has this specific chat open and active
     const isChatCurrentlyOpen = (hotelId: string, guestId?: string, chatData?: any) => {
@@ -692,7 +693,7 @@ export default function GlobalNotificationManager() {
       latestCallContext.current = {};
       stopRinging();
     };
-  }, [user]);
+  }, [user, isHost]);
 
   return null;
 }

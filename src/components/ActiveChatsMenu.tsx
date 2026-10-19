@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { ActiveChatItem } from '../hooks/useUnreadMessages';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
-import { isHotelManager } from '../lib/roles';
+import { useIsHost } from '../hooks/useIsHost';
 
 function formatTimeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -64,7 +64,7 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const isManager = isHotelManager(user);
+  const isManager = useIsHost();
   const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
 
   // Close dropdown on outside click

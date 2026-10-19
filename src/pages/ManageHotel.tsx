@@ -1,5 +1,6 @@
 import PromotionsManager from '../components/PromotionsManager';
 import { safeRunTransactionAvailability, confirmErrorMessage } from '../lib/transactions';
+import { socialUrl } from '../lib/social';
 import { updateBookingWithSlot, updateBookingWithSlotTx, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
@@ -129,6 +130,8 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactEmail: data.contactEmail ?? '',
     contactPhone: data.contactPhone ?? '',
     contactWhatsapp: data.contactWhatsapp ?? '',
+    socialFacebook: data.socialFacebook ?? '',
+    socialInstagram: data.socialInstagram ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
@@ -176,6 +179,8 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
     contactEmail: data.contactEmail ?? '',
     contactPhone: data.contactPhone ?? '',
     contactWhatsapp: data.contactWhatsapp ?? '',
+    socialFacebook: data.socialFacebook ?? '',
+    socialInstagram: data.socialInstagram ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
@@ -2842,6 +2847,32 @@ export default function ManageHotel() {
                   )}
               </div>
 
+              {/* Optional: an icon appears on the listing only when a link is filled in. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2">
+                {([
+                  ['socialFacebook', 'facebook', 'Facebook page', 'https://facebook.com/yourlodge'],
+                  ['socialInstagram', 'instagram', 'Instagram', '@yourlodge or a link'],
+                ] as const).map(([field, network, label, placeholder]) => {
+                  const value = editHotelData[field] ?? '';
+                  const invalid = value.trim() !== '' && !socialUrl(value, network);
+                  return (
+                    <div key={field}>
+                      <label className="tm-label">{label} <span className="font-normal text-stone-400">(optional)</span></label>
+                      <input
+                        type="text"
+                        inputMode="url"
+                        autoComplete="off"
+                        value={value}
+                        onChange={e => setEditHotelData({ ...editHotelData, [field]: e.target.value })}
+                        className="tm-input"
+                        placeholder={placeholder}
+                      />
+                      <FieldError message={invalid ? `That doesn't look like a ${label.split(' ')[0]} link.` : undefined} />
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on
                   every listing, whatever the property actually did. */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 pt-2">
@@ -3251,7 +3282,7 @@ export default function ManageHotel() {
                     <textarea 
                       value={editHotelData.outOfOfficeMessage || ''} 
                       onChange={e => setEditHotelData({...editHotelData, outOfOfficeMessage: e.target.value})}
-                      disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false || editHotelData.isOnline === true}
+                      disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
                       className="tm-input h-20 sm:h-24 resize-none disabled:opacity-50"
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />

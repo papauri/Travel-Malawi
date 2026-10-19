@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { isHotelManager } from '../lib/roles';
+import { useIsHost } from './useIsHost';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
 
@@ -63,6 +63,7 @@ export function useManagerPresence(managerId?: string) {
 
 export function usePresence() {
   const { user } = useAuth();
+  const isHost = useIsHost();
   const [presence, setPresence] = useState<Presence | null>(null);
   // A manager's chosen 'away'/'offline' must survive the heartbeat and tab
   // switches; choosing 'online' hands control back to activity tracking.
@@ -90,9 +91,9 @@ export function usePresence() {
     return unsub;
   }, [user]);
 
-  // Activity tracking for managers
+  // Activity tracking for anyone hosting guests (role or own listing)
   useEffect(() => {
-    if (!user || !isHotelManager(user)) return;
+    if (!user || !isHost) return;
 
     let isActive = true;
 
@@ -149,7 +150,7 @@ export function usePresence() {
       window.removeEventListener('scroll', handleActivity);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user]);
+  }, [user, isHost]);
 
   const setManualStatus = async (status: PresenceStatus) => {
     if (!user) return;

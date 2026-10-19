@@ -10,12 +10,13 @@ import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare, WifiOff, UserCheck } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
-import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller, canShadowManager } from '../lib/roles';
+import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isTraveller, canShadowManager } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
+import { useIsHost } from '../hooks/useIsHost';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import NotificationBell from './NotificationBell';
 import ActiveChatsMenu from './ActiveChatsMenu';
@@ -29,6 +30,8 @@ export default function Navbar() {
   const unreadBroadcasts = useUnreadBroadcasts();
   const { activeChatsCount } = useUnreadMessages();
   const { presence, setManualStatus } = usePresence();
+  // Role or own listing; fresh accounts listing their first property count too.
+  const hosting = useIsHost();
   const { isOnline } = useNetworkStatus();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showShadowModal, setShowShadowModal] = useState(false);
@@ -64,7 +67,7 @@ export default function Navbar() {
   useEffect(() => onSoundPreferenceChange(setSoundOn), []);
 
   useEffect(() => {
-    if (isHotelManager(user)) {
+    if (user && hosting) {
       const q = query(
         collection(db, 'bookings'),
         where('managerId', '==', user.uid),
@@ -83,36 +86,13 @@ export default function Navbar() {
     }
     // Otherwise clear any count left over from a previous session.
     setPendingCount(0);
-  }, [user]);
+  }, [user, hosting]);
 
   // User initials for avatar
   const initials = user?.displayName
     ? user.displayName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
 
-  const [hasProperties, setHasProperties] = useState(false);
-  useEffect(() => {
-    // Reset first so a previous account's result never leaks into the next one.
-    setHasProperties(false);
-    if (user && !isHotelManager(user)) {
-      let cancelled = false;
-      const checkProperties = async () => {
-        try {
-          const q = query(collection(db, 'hotels'), where('managerId', '==', user.uid), limit(1));
-          const snapshot = await getDocs(q);
-          if (!cancelled && !snapshot.empty) {
-            setHasProperties(true);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-      checkProperties();
-      return () => { cancelled = true; };
-    }
-  }, [user]);
-
-  const hosting = isHotelManager(user) || hasProperties;
 
   return (
     <nav className="sticky top-0 z-[100] w-full bg-white border-b border-stone-200/70 shadow-2xs transition-all">

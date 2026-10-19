@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { isHotelManager } from '../lib/roles';
+import { useIsHost } from './useIsHost';
 import { playDingSound } from '../lib/notificationSound';
 import { Booking } from '../types';
 import { fastDeleteOrClearChat, clearedAtFor, lastMessageTime } from '../lib/chatDeletion';
@@ -44,6 +44,7 @@ export type UnreadMessageItem = ActiveChatItem;
  */
 export function useUnreadMessagesSource() {
   const { user } = useAuth();
+  const isHost = useIsHost();
   const [unreadItems, setUnreadItems] = useState<ActiveChatItem[]>([]);
   const [activeChats, setActiveChats] = useState<ActiveChatItem[]>([]);
   const [inactiveChats, setInactiveChats] = useState<ActiveChatItem[]>([]);
@@ -79,7 +80,7 @@ export function useUnreadMessagesSource() {
       return;
     }
 
-    const isManager = isHotelManager(user);
+    const isManager = isHost;
     const unsubs: (() => void)[] = [];
     isInitialLoad.current = true;
 
@@ -432,7 +433,7 @@ export function useUnreadMessagesSource() {
         clearTimeout(vibrationTimeoutRef.current);
       }
     };
-  }, [user, triggerVibration]);
+  }, [user, isHost, triggerVibration]);
 
   // Action: Mark Conversation As Read
   const markAsRead = async (item: ActiveChatItem) => {

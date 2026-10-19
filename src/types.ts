@@ -226,6 +226,9 @@ export interface Hotel {
   contactPhone?: string;
   /** Optional; falls back to `contactPhone` when the property uses one number. */
   contactWhatsapp?: string;
+  /** Optional profile links; the listing shows an icon only for the ones filled in. */
+  socialFacebook?: string;
+  socialInstagram?: string;
   /**
    * Promoted onto the home page's featured row by an admin. Set only through
    * the admin dashboard: the security rules hold it immutable for the owning

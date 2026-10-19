@@ -78,7 +78,8 @@ export default function PropertyChat({
   // Real-time live hotel status so online/offline updates instantly on guest screen
   const [liveHotel, setLiveHotel] = useState<Hotel>(hotel);
   const managerPresence = useManagerPresence(hotel.managerId);
-  const hostIsOnline = managerPresence?.status === 'online';
+  // Active on the site and not switched to away by the host.
+  const hostIsOnline = managerPresence?.status === 'online' && liveHotel.isOnline !== false;
 
   const [showEndChatConfirm, setShowEndChatConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -601,8 +602,10 @@ export default function PropertyChat({
         updatedAt: now
       }, { merge: true });
       
-      // Trigger offline notification if sending to offline manager
-      if (!isManager && !liveHotel.isOnline && liveHotel.managerEmail) {
+      // Email the host only when they won't see it live: not active on the
+      // site (or set to away) and not sitting in this chat.
+      const hostWillSeeIt = otherInChat || hostIsOnline;
+      if (!isManager && !hostWillSeeIt && liveHotel.managerEmail) {
         fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -9,6 +9,7 @@ import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/curr
 import { CurrencyCode } from '../types';
 
 import TypewriterCredit from './TypewriterCredit';
+import SocialLinks from './SocialLinks';
 
 export default function Footer() {
   const { settings } = useSystemSettings();
@@ -34,6 +35,13 @@ export default function Footer() {
           <p className="text-stone-400 text-xs sm:text-sm leading-relaxed max-w-sm lg:max-w-none">
             Discover Malawi. Direct bookings with independent cottages, lodges, guest houses, and safari camps.
           </p>
+          <SocialLinks
+            facebook={settings.socialFacebook}
+            instagram={settings.socialInstagram}
+            name="Travel Malawi"
+            tone="dark"
+            className="-ml-2"
+          />
         </div>
         
         <div>

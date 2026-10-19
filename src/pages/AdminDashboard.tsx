@@ -3021,38 +3021,29 @@ export default function AdminDashboard() {
 
               <div>
                 <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Social links</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="tm-label">Facebook URL</label>
+                    <label className="tm-label">Facebook page</label>
                     <input
-                      type="url"
+                      type="text" inputMode="url" autoComplete="off"
                       value={contentSettings.socialFacebook || ''}
                       onChange={e => setContentSettings({...contentSettings, socialFacebook: e.target.value})}
-                      placeholder="https://facebook.com/..."
+                      placeholder="https://facebook.com/travelmalawi"
                       className="tm-input"
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Instagram URL</label>
+                    <label className="tm-label">Instagram</label>
                     <input
-                      type="url"
+                      type="text" inputMode="url" autoComplete="off"
                       value={contentSettings.socialInstagram || ''}
                       onChange={e => setContentSettings({...contentSettings, socialInstagram: e.target.value})}
-                      placeholder="https://instagram.com/..."
-                      className="tm-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="tm-label">X / Twitter URL</label>
-                    <input
-                      type="url"
-                      value={contentSettings.socialTwitter || ''}
-                      onChange={e => setContentSettings({...contentSettings, socialTwitter: e.target.value})}
-                      placeholder="https://twitter.com/..."
+                      placeholder="@travelmalawi or a link"
                       className="tm-input"
                     />
                   </div>
                 </div>
+                <p className="tm-muted mt-2 text-xs">Shown as icons in the footer. Leave one blank to hide its icon.</p>
               </div>
 
               <div>
