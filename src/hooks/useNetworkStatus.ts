@@ -66,7 +66,7 @@ if (typeof window !== 'undefined') {
 
 /**
  * Hook providing real-time network connectivity, active ping checking,
- * and seamless PWA offline state management.
+ * and reliable PWA offline state management.
  */
 export function useNetworkStatus(): NetworkStatus {
   const [, setTick] = useState(0);

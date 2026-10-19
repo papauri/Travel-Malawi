@@ -164,7 +164,7 @@ export default function AdminEmailSettings() {
         fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
         replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
-      toast.success('Applied Namecheap Private Email preset (mail.privateemail.com:465)');
+      toast.success('Namecheap Private Email preset applied (mail.privateemail.com:465)');
     } else if (preset === 'gmail') {
       setForm(prev => ({
         ...prev,
@@ -175,7 +175,7 @@ export default function AdminEmailSettings() {
         fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
         replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
-      toast.success('Applied Gmail / Google Workspace preset');
+      toast.success('Gmail preset applied');
     } else if (preset === 'sendgrid') {
       setForm(prev => ({
         ...prev,
@@ -187,7 +187,7 @@ export default function AdminEmailSettings() {
         fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
         replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
-      toast.success('Applied SendGrid preset');
+      toast.success('SendGrid preset applied');
     } else if (preset === 'mailgun') {
       setForm(prev => ({
         ...prev,
@@ -198,7 +198,7 @@ export default function AdminEmailSettings() {
         fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
         replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
-      toast.success('Applied Mailgun preset');
+      toast.success('Mailgun preset applied');
     } else if (preset === 'office365') {
       setForm(prev => ({
         ...prev,
@@ -209,7 +209,7 @@ export default function AdminEmailSettings() {
         fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
         replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
-      toast.success('Applied Microsoft 365 preset');
+      toast.success('Microsoft 365 preset applied');
     }
   };
 
@@ -217,7 +217,7 @@ export default function AdminEmailSettings() {
     return (
       <div className="flex items-center justify-center py-20 text-stone-500 gap-3">
         <RefreshCw className="w-5 h-5 animate-spin text-stone-700" />
-        <span className="text-sm">Loading email configuration...</span>
+        <span className="text-sm">Loading email settings…</span>
       </div>
     );
   }
@@ -252,7 +252,7 @@ export default function AdminEmailSettings() {
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${form.isConfigured ? 'bg-emerald-500' : 'bg-stone-400'}`} />
               <h3 className="font-semibold text-stone-900 text-sm">
-                {form.isConfigured ? 'SMTP Mailer Operational' : 'SMTP Server Not Configured'}
+                {form.isConfigured ? 'Email sending is on' : 'Email sending is not set up'}
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
@@ -274,7 +274,7 @@ export default function AdminEmailSettings() {
               className="tm-btn tm-btn-primary"
             >
               {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>{saving ? 'Saving...' : 'Save Config'}</span>
+              <span>{saving ? 'Saving…' : 'Save changes'}</span>
             </button>
           </div>
         </div>
@@ -287,7 +287,7 @@ export default function AdminEmailSettings() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4 text-stone-700" />
-              <h3 className="font-serif font-bold text-lg text-stone-900">Server Credentials</h3>
+              <h3 className="font-serif font-bold text-lg text-stone-900">Server login</h3>
             </div>
 
             {/* Presets */}
@@ -343,7 +343,7 @@ export default function AdminEmailSettings() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  SMTP Host Server
+                  SMTP host
                 </label>
                 <input
                   type="text"
@@ -384,7 +384,7 @@ export default function AdminEmailSettings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  SMTP Username / Auth Email
+                  SMTP username
                 </label>
                 <input
                   type="text"
@@ -398,7 +398,7 @@ export default function AdminEmailSettings() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-stone-700">
-                    SMTP Password / App Key
+                    SMTP password or app key
                   </label>
                   {form.hasPassword && (
                     <span className="text-[10px] text-stone-500">
@@ -428,13 +428,13 @@ export default function AdminEmailSettings() {
 
             <div className="pt-3 border-t border-stone-100">
               <span className="text-[11px] font-semibold text-stone-400 mb-2 block">
-                Sender Presentation &amp; Return Address
+                Sender and reply address
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Sender Name
+                    Sender name
                   </label>
                   <input
                     type="text"
@@ -447,7 +447,7 @@ export default function AdminEmailSettings() {
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Sender Email
+                    Sender email
                   </label>
                   <input
                     type="email"
@@ -480,7 +480,7 @@ export default function AdminEmailSettings() {
                 className="tm-btn tm-btn-primary"
               >
                 {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+                <span>{saving ? 'Saving…' : 'Save changes'}</span>
               </button>
             </div>
           </form>
@@ -498,7 +498,7 @@ export default function AdminEmailSettings() {
 
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-stone-700">
-                Send Test Email To:
+                Send test email to:
               </label>
               <input
                 type="email"
@@ -518,12 +518,12 @@ export default function AdminEmailSettings() {
               {testing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Testing Connection...</span>
+                  <span>Testing connection…</span>
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5 text-stone-700" />
-                  <span>Send Test Email</span>
+                  <span>Send test email</span>
                 </>
               )}
             </button>
@@ -541,7 +541,7 @@ export default function AdminEmailSettings() {
                     ) : (
                       <AlertCircle className="w-3.5 h-3.5 text-red-600" />
                     )}
-                    <span>{testResult.success ? 'Connected' : 'Connection Failed'}</span>
+                    <span>{testResult.success ? 'Connected' : 'Connection failed'}</span>
                   </div>
                   <button
                     type="button"
@@ -557,7 +557,7 @@ export default function AdminEmailSettings() {
           </div>
 
           <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-500 space-y-1">
-            <h4 className="font-semibold text-stone-800 text-xs">Security Note</h4>
+            <h4 className="font-semibold text-stone-800 text-xs">Security note</h4>
             <p className="leading-relaxed">
               SMTP secrets are stored in local server storage and handled exclusively in backend Node routes. No credentials leak into client bundles.
             </p>

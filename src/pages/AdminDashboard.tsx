@@ -39,19 +39,47 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'traffic' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings' | 'channels';
+type Tab = 'overview' | 'properties' | 'bookings' | 'users' | 'analytics' | 'reviews' | 'destinations' | 'content' | 'settings';
+type AnalyticsSub = 'stats' | 'traffic';
+type ContentSub = 'content' | 'docs';
+type SettingsSub = 'channels' | 'whatsapp' | 'email' | 'ai' | 'logs';
+
+const TAB_IDS: Tab[] = ['overview', 'properties', 'bookings', 'users', 'analytics', 'reviews', 'destinations', 'content', 'settings'];
+const ANALYTICS_SUBS: AnalyticsSub[] = ['stats', 'traffic'];
+const CONTENT_SUBS: ContentSub[] = ['content', 'docs'];
+const SETTINGS_SUBS: SettingsSub[] = ['channels', 'whatsapp', 'email', 'ai', 'logs'];
+
+// Old ?tab= values from before the tabs were merged keep working.
+const LEGACY_TABS: Record<string, { tab: Tab; sub: string }> = {
+  traffic: { tab: 'analytics', sub: 'traffic' },
+  docs: { tab: 'content', sub: 'docs' },
+  ai: { tab: 'settings', sub: 'ai' },
+  logs: { tab: 'settings', sub: 'logs' },
+  channels: { tab: 'settings', sub: 'channels' },
+};
+
+function readTabParams(params: URLSearchParams): { tab: Tab; sub: string | null } {
+  const raw = params.get('tab') || '';
+  const sub = params.get('sub');
+  if (LEGACY_TABS[raw]) return { tab: LEGACY_TABS[raw].tab, sub: sub || LEGACY_TABS[raw].sub };
+  if ((TAB_IDS as string[]).includes(raw)) return { tab: raw as Tab, sub };
+  return { tab: 'overview', sub: null };
+}
 
 export default function AdminDashboard() {
   const { user, actualUser, loading: authLoading, resetPassword } = useAuth();
   const confirmFlow = useConfirmBooking();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  const urlTab = searchParams.get('tab') as Tab | null;
-  const validTabs: Tab[] = ['overview', 'traffic', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings', 'channels'];
-  const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'overview';
-  
-  const [activeTab, setActiveTabState] = useState<Tab>(initialTab);
+
+  const initialParams = readTabParams(searchParams);
+  const [activeTab, setActiveTabState] = useState<Tab>(initialParams.tab);
+  const [analyticsSub, setAnalyticsSub] = useState<AnalyticsSub>(
+    initialParams.tab === 'analytics' && (ANALYTICS_SUBS as string[]).includes(initialParams.sub || '') ? initialParams.sub as AnalyticsSub : 'stats');
+  const [contentSub, setContentSub] = useState<ContentSub>(
+    initialParams.tab === 'content' && (CONTENT_SUBS as string[]).includes(initialParams.sub || '') ? initialParams.sub as ContentSub : 'content');
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSub>(
+    initialParams.tab === 'settings' && (SETTINGS_SUBS as string[]).includes(initialParams.sub || '') ? initialParams.sub as SettingsSub : 'channels');
 
   const scrollToTopInstant = () => {
     if (typeof window === 'undefined') return;
@@ -66,48 +94,55 @@ export default function AdminDashboard() {
     if (document.body) document.body.scrollTop = 0;
   };
 
-  const setActiveTab = (tab: Tab) => {
+  // Keep the URL in step with the open tab (and sub-tab when it is not the first one).
+  const writeUrl = (tab: Tab, sub?: string) => {
+    const next: Record<string, string> = {};
+    if (tab !== 'overview') next.tab = tab;
+    if (sub) next.sub = sub;
+    setSearchParams(next, { replace: true });
+  };
+
+  const setActiveTab = (tab: Tab, sub?: string) => {
     setActiveTabState(tab);
-    setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+    let urlSub: string | undefined;
+    if (tab === 'analytics') {
+      const next = (ANALYTICS_SUBS as string[]).includes(sub || '') ? sub as AnalyticsSub : analyticsSub;
+      setAnalyticsSub(next);
+      urlSub = next === 'stats' ? undefined : next;
+    } else if (tab === 'content') {
+      const next = (CONTENT_SUBS as string[]).includes(sub || '') ? sub as ContentSub : contentSub;
+      setContentSub(next);
+      urlSub = next === 'content' ? undefined : next;
+    } else if (tab === 'settings') {
+      const next = (SETTINGS_SUBS as string[]).includes(sub || '') ? sub as SettingsSub : settingsSubTab;
+      setSettingsSubTab(next);
+      urlSub = next === 'channels' ? undefined : next;
+    }
+    writeUrl(tab, urlSub);
     scrollToTopInstant();
   };
 
+  const setSubTab = (kind: 'analytics' | 'content' | 'settings', sub: string) => {
+    if (kind === 'analytics') setAnalyticsSub(sub as AnalyticsSub);
+    if (kind === 'content') setContentSub(sub as ContentSub);
+    if (kind === 'settings') setSettingsSubTab(sub as SettingsSub);
+    const isFirst = (kind === 'analytics' && sub === 'stats') || (kind === 'content' && sub === 'content') || (kind === 'settings' && sub === 'channels');
+    writeUrl(kind, isFirst ? undefined : sub);
+  };
+
+  // Follow back/forward and links that change ?tab= / ?sub= while the page is open.
   useEffect(() => {
-    const currentTab = searchParams.get('tab') as Tab | null;
-    if (currentTab && validTabs.includes(currentTab) && currentTab !== activeTab) {
-      setActiveTabState(currentTab);
-    } else if (!currentTab && activeTab !== 'overview') {
-      setActiveTabState('overview');
-    }
+    const { tab, sub } = readTabParams(searchParams);
+    setActiveTabState(tab);
+    if (tab === 'analytics') setAnalyticsSub((ANALYTICS_SUBS as string[]).includes(sub || '') ? sub as AnalyticsSub : 'stats');
+    if (tab === 'content') setContentSub((CONTENT_SUBS as string[]).includes(sub || '') ? sub as ContentSub : 'content');
+    if (tab === 'settings') setSettingsSubTab((SETTINGS_SUBS as string[]).includes(sub || '') ? sub as SettingsSub : 'channels');
   }, [searchParams]);
 
-  const [settingsSubTab, setSettingsSubTab] = useState<'channels' | 'whatsapp' | 'email'>('channels');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const activeTabRef = useRef<HTMLButtonElement | null>(null);
-  const navContainerRef = useRef<HTMLElement | null>(null);
-
-  // Reset main page scroll to top when switching Admin sections, and keep active tab visible inside sidebar nav container only
+  // Reset main page scroll to top when switching Admin sections
   useEffect(() => {
     scrollToTopInstant();
-    const rafId = requestAnimationFrame(() => {
-      scrollToTopInstant();
-      if (activeTabRef.current && navContainerRef.current) {
-        const container = navContainerRef.current;
-        const btn = activeTabRef.current;
-        const btnTop = btn.offsetTop;
-        const btnBottom = btnTop + btn.offsetHeight;
-        const viewTop = container.scrollTop;
-        const viewBottom = viewTop + container.clientHeight;
-        if (btnTop < viewTop) {
-          container.scrollTop = Math.max(0, btnTop - 12);
-        } else if (btnBottom > viewBottom) {
-          container.scrollTop = btnBottom - container.clientHeight + 12;
-        }
-      }
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, [activeTab, settingsSubTab]);
+  }, [activeTab, analyticsSub, contentSub, settingsSubTab]);
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [rooms, setRooms] = useState<RoomType[]>([]);
@@ -138,12 +173,12 @@ export default function AdminDashboard() {
   const [savingContent, setSavingContent] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'content') {
+    if (activeTab === 'content' && contentSub === 'content') {
       getDoc(doc(db, 'system', 'content')).then(snap => {
         if(snap.exists()) setContentSettings(snap.data() as SystemSettings);
       });
     }
-  }, [activeTab]);
+  }, [activeTab, contentSub]);
 
   const handleSaveContent = async () => {
     setSavingContent(true);
@@ -981,29 +1016,55 @@ export default function AdminDashboard() {
 
   const adminTabs = useMemo(() => {
     return [
-      { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
-      { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
-      { id: 'bookings' as Tab, label: 'Bookings', icon: CalendarRange },
-      { id: 'users' as Tab, label: 'Users', icon: Users, visible: isAdmin(user) || isMarketing(user) },
-      { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
-      { id: 'traffic' as Tab, label: 'Live Visitors', icon: Radio, visible: isGlobalAdmin(user) || isMarketing(user) },
-      { id: 'reviews' as Tab, label: 'Reviews', icon: Star },
-      { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
-      { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user) },
-      { id: 'ai' as Tab, label: 'AI Providers', icon: Cpu, visible: isGlobalAdmin(user) },
-      { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
-      { id: 'logs' as Tab, label: 'Audit Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
-      { id: 'docs' as Tab, label: 'Partner Docs', icon: BookOpen },
+      { id: 'overview' as Tab, label: 'Overview' },
+      { id: 'properties' as Tab, label: 'Properties' },
+      { id: 'bookings' as Tab, label: 'Bookings' },
+      { id: 'users' as Tab, label: 'Users', visible: isAdmin(user) || isMarketing(user) },
+      { id: 'analytics' as Tab, label: 'Analytics' },
+      { id: 'reviews' as Tab, label: 'Reviews' },
+      { id: 'destinations' as Tab, label: 'Destinations' },
+      { id: 'content' as Tab, label: 'Content' },
+      { id: 'settings' as Tab, label: 'Settings', visible: isGlobalAdmin(user) },
     ].filter(t => t.visible !== false);
   }, [user]);
 
   // A tab hidden from this role must not render even when reached through ?tab=
   const canViewTab = (id: Tab) => adminTabs.some(t => t.id === id);
 
-  const currentTabItem = useMemo(() => {
-    return adminTabs.find(t => t.id === activeTab) || adminTabs[0];
-  }, [adminTabs, activeTab]);
-  const CurrentTabIcon = currentTabItem.icon;
+  // Sub-tabs per parent tab. A role only sees the ones it could open as its own tab before the merge.
+  const analyticsSubs = useMemo(() => [
+    { id: 'stats' as AnalyticsSub, label: 'Analytics' },
+    { id: 'traffic' as AnalyticsSub, label: 'Live visitors', visible: isGlobalAdmin(user) || isMarketing(user) },
+  ].filter(t => t.visible !== false), [user]);
+  const contentSubs = [
+    { id: 'content' as ContentSub, label: 'Content and legal' },
+    { id: 'docs' as ContentSub, label: 'Partner docs' },
+  ];
+  const settingsSubs = [
+    { id: 'channels' as SettingsSub, label: 'iCal and channels' },
+    { id: 'whatsapp' as SettingsSub, label: 'WhatsApp' },
+    { id: 'email' as SettingsSub, label: 'Email' },
+    { id: 'ai' as SettingsSub, label: 'AI providers' },
+    { id: 'logs' as SettingsSub, label: 'Audit logs' },
+  ];
+  const shownAnalyticsSub: AnalyticsSub = analyticsSubs.some(t => t.id === analyticsSub) ? analyticsSub : 'stats';
+
+  const renderSubTabs = <T extends string>(items: { id: T; label: string }[], current: T, kind: 'analytics' | 'content' | 'settings') => (
+    <div className="tm-tabs" role="tablist" aria-label="Section">
+      {items.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={current === item.id}
+          onClick={() => setSubTab(kind, item.id)}
+          className={`tm-tab text-xs! py-1.5! cursor-pointer ${current === item.id ? 'tm-tab-active' : ''}`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -1014,7 +1075,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 w-full flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 w-full min-h-screen">
       
       <PriceMismatchNotice
         mismatch={confirmFlow.mismatch}
@@ -1023,207 +1084,44 @@ export default function AdminDashboard() {
         onDismiss={confirmFlow.dismiss}
       />
 
-      {/* Sidebar Navigation */}
-      <div className="w-full lg:w-60 xl:w-64 shrink-0 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:flex lg:flex-col min-w-0">
-        <div className="flex items-center justify-between px-1 lg:px-2 pb-3 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0">
-              <Shield className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="tm-h1 leading-tight">Admin</h1>
-              <p className="text-stone-500 text-xs sm:text-sm font-medium truncate mt-0.5">
-                {isGlobalAdmin(user) ? 'Global Admin' : isMarketing(user) ? 'Marketing' : 'Platform Management'}
-              </p>
-            </div>
+      {/* Header and main tabs */}
+      <header className="mb-6 min-w-0">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <div className="min-w-0">
+            <h1 className="tm-h1 leading-tight">Admin</h1>
+            <p className="tm-muted mt-0.5 truncate">
+              {isGlobalAdmin(user) ? 'Global admin' : isMarketing(user) ? 'Marketing' : 'Platform management'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" aria-label="Partner resources">
+            <Link to="/concept-validation" target="_blank" className="tm-link">Concept survey (PDF)</Link>
+            <Link to="/stay-owner-leaflet" target="_blank" className="tm-link">Stay owner leaflet</Link>
+            <Link to="/marketing" target="_blank" className="tm-link">Marketing playbook</Link>
+            <Link to="/host-guide" target="_blank" className="tm-link">Host starter pack</Link>
           </div>
         </div>
-        
-        {/* Mobile & Tablet Collapsible Menu Trigger */}
-        <div className="lg:hidden space-y-2 mb-4">
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <CurrentTabIcon className="w-4 h-4 text-stone-500 shrink-0" />
-              <span className="truncate">{currentTabItem.label}</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {/* Collapsible Drawer on Mobile & Tablet */}
-          {isMobileMenuOpen && (
-            <div 
-              id="mobile-admin-drawer"
-              className="mt-2 p-2.5 bg-white rounded-xl border border-stone-200 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
+        <nav className="tm-tabs mt-4" role="tablist" aria-label="Admin sections">
+          {adminTabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`tm-tab cursor-pointer ${activeTab === tab.id ? 'tm-tab-active' : ''}`}
             >
-              <div className="flex items-center justify-between px-2 pt-1">
-                <span className="text-xs font-medium text-stone-500">Sections</span>
-                <span className="text-xs text-stone-400">{adminTabs.length}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-[55vh] overflow-y-auto pr-1">
-                {adminTabs.map(tab => {
-                  const TabIcon = tab.icon;
-                  const isSelected = activeTab === tab.id;
-                  return (
-                    <button
-                      key={`mob-tab-${tab.id}`}
-                      onClick={() => {
-                        setActiveTab(tab.id);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left min-h-[44px] ${
-                        isSelected
-                          ? 'bg-stone-900 text-white'
-                          : 'text-stone-700 hover:bg-stone-100'
-                      }`}
-                    >
-                      <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-stone-500'}`} />
-                      <span className="truncate">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Team Resources inside mobile drawer */}
-              <div className="pt-2 border-t border-stone-100 space-y-1.5">
-                <span className="text-xs font-medium text-stone-500 px-2 block">Partner resources</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  <Link
-                    to="/concept-validation"
-                    target="_blank"
-                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-medium border border-stone-200/60"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                      <span>Concept Survey (PDF)</span>
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-stone-400" />
-                  </Link>
-                  <Link
-                    to="/stay-owner-leaflet"
-                    target="_blank"
-                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-medium border border-stone-200/60"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                      <span>Stay Owner Leaflet</span>
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-stone-400" />
-                  </Link>
-                  <Link
-                    to="/marketing"
-                    target="_blank"
-                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Target className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                      <span>Marketing Playbook</span>
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-stone-400" />
-                  </Link>
-                  <Link
-                    to="/host-guide"
-                    target="_blank"
-                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                      <span>Host Starter Pack</span>
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-stone-400" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop Vertical Navigation */}
-        <nav 
-          ref={navContainerRef}
-          className="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-slim pr-1.5 space-y-4 pt-1 w-full min-w-0 overscroll-contain"
-          role="tablist"
-          aria-label="Admin Sections"
-        >
-          {/* Navigation Tabs */}
-          <div className="flex flex-col gap-0.5 w-full min-w-0">
-            {adminTabs.map(tab => {
-              const TabIcon = tab.icon;
-              const isSelected = activeTab === tab.id;
-              return (
-                <button
-                  key={`desk-tab-${tab.id}`}
-                  ref={isSelected ? activeTabRef : undefined}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer min-h-[36px] text-left min-w-0 ${
-                    isSelected
-                      ? 'bg-stone-900 text-white font-semibold'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/80'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5 truncate">
-                    <TabIcon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{tab.label}</span>
-                  </span>
-                  {tab.id === 'properties' && stats.pendingProperties > 0 && (
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
-                      isSelected ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-                    }`}>
-                      {stats.pendingProperties}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Partner Resources */}
-          <div className="pt-3 border-t border-stone-200/70 space-y-1 w-full min-w-0 pb-4">
-            <span className="text-xs font-medium text-stone-500 px-3 block">
-              Partner resources
-            </span>
-            <Link
-              to="/concept-validation"
-              target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
-            >
-              <span className="truncate">Concept Survey (PDF)</span>
-              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
-            </Link>
-            <Link
-              to="/stay-owner-leaflet"
-              target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
-            >
-              <span className="truncate">Stay Owner Leaflet</span>
-              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
-            </Link>
-            <Link
-              to="/marketing"
-              target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
-            >
-              <span className="truncate">Marketing Playbook</span>
-              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
-            </Link>
-            <Link
-              to="/host-guide"
-              target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
-            >
-              <span className="truncate">Host Starter Pack</span>
-              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
-            </Link>
-          </div>
+              {tab.label}
+              {tab.id === 'properties' && stats.pendingProperties > 0 && (
+                <span className="tm-tag tm-tag-warn ml-1.5">{stats.pendingProperties}</span>
+              )}
+            </button>
+          ))}
         </nav>
-      </div>
+      </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 w-full">
-        
+      <div className="min-w-0 w-full">
+
         {/* ===================== OVERVIEW TAB ===================== */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -1233,70 +1131,35 @@ export default function AdminDashboard() {
             </div>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <button
-                onClick={() => setActiveTab('properties')}
-                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Total Properties</span>
-                  <Building2 className="w-4 h-4 text-stone-400" />
-                </div>
-                <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalProperties}</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">{stats.approvedProperties} live · {stats.pendingProperties} pending</p>
+              <button onClick={() => setActiveTab('properties')} className="tm-stat text-left hover:border-stone-300 transition cursor-pointer">
+                <p className="tm-stat-label">Properties</p>
+                <p className="tm-stat-value">{stats.totalProperties}</p>
+                <p className="tm-muted truncate">{stats.approvedProperties} live · {stats.pendingProperties} pending</p>
               </button>
-              
-              <button
-                onClick={() => setActiveTab('users')}
-                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Total Users</span>
-                  <Users className="w-4 h-4 text-stone-400" />
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalUsers}</p>
-                  <span className="text-xs text-stone-400 font-normal">· {stats.managersCount} hosts</span>
-                </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">Guests &amp; property managers</p>
+
+              <button onClick={() => setActiveTab('users')} className="tm-stat text-left hover:border-stone-300 transition cursor-pointer">
+                <p className="tm-stat-label">Users</p>
+                <p className="tm-stat-value">{stats.totalUsers}</p>
+                <p className="tm-muted truncate">{stats.managersCount} hosts</p>
               </button>
-              
-              <button
-                onClick={() => setActiveTab('bookings')}
-                className="tm-panel min-w-0 text-left hover:border-stone-300 transition cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Total Bookings</span>
-                  <CalendarRange className="w-4 h-4 text-stone-400" />
-                </div>
-                <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalBookings}</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">Recorded reservations</p>
+
+              <button onClick={() => setActiveTab('bookings')} className="tm-stat text-left hover:border-stone-300 transition cursor-pointer">
+                <p className="tm-stat-label">Bookings</p>
+                <p className="tm-stat-value">{stats.totalBookings}</p>
+                <p className="tm-muted truncate">Recorded reservations</p>
               </button>
-              
+
               <button
                 onClick={() => {
                   setActiveTab('properties');
                   setHotelStatusFilter('pending');
                   setCurrentHotelPage(1);
                 }}
-                className={`rounded-xl border p-4 min-w-0 text-left transition cursor-pointer ${
-                  stats.pendingProperties > 0 
-                    ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' 
-                    : 'bg-white border-stone-200 hover:border-stone-300'
-                }`}
+                className={`tm-stat text-left transition cursor-pointer ${stats.pendingProperties > 0 ? 'border-amber-300 hover:border-amber-400' : 'hover:border-stone-300'}`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Pending Review</span>
-                  <Clock className={`w-4 h-4 ${stats.pendingProperties > 0 ? 'text-amber-600' : 'text-stone-400'}`} />
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <p className={`text-2xl font-serif font-bold tabular-nums ${stats.pendingProperties > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
-                    {stats.pendingProperties}
-                  </p>
-                  {stats.pendingProperties > 0 && (
-                    <span className="text-xs text-amber-700 font-medium">awaiting approval</span>
-                  )}
-                </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">Click to open review queue</p>
+                <p className="tm-stat-label">Waiting for review</p>
+                <p className="tm-stat-value">{stats.pendingProperties}</p>
+                <p className="tm-muted truncate">Open the review queue</p>
               </button>
             </div>
 
@@ -1309,7 +1172,7 @@ export default function AdminDashboard() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('traffic')}
+                  onClick={() => setActiveTab('analytics', 'traffic')}
                   className="tm-btn tm-btn-secondary tm-btn-sm"
                 >
                   <span>All visitors</span>
@@ -1326,7 +1189,7 @@ export default function AdminDashboard() {
                 <h3 className="tm-h2">Partner documents</h3>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('docs')}
+                  onClick={() => setActiveTab('content', 'docs')}
                   className="tm-link cursor-pointer text-sm"
                 >
                   All documents
@@ -1377,96 +1240,48 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ===================== LIVE TRAFFIC & WAITING TAB ===================== */}
-        {activeTab === 'traffic' && canViewTab('traffic') && (
+        {/* ===================== ANALYTICS TAB ===================== */}
+        {activeTab === 'analytics' && analyticsSubs.length > 1 && (
+          <div className="mb-4 min-w-0">{renderSubTabs(analyticsSubs, shownAnalyticsSub, 'analytics')}</div>
+        )}
+        {activeTab === 'analytics' && shownAnalyticsSub === 'traffic' && (
           <AdminTrafficMonitor />
         )}
-        
-        {/* ===================== ANALYTICS TAB ===================== */}
-        {activeTab === 'analytics' && (
+        {activeTab === 'analytics' && shownAnalyticsSub === 'stats' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
               <h2 className="tm-h1">Analytics</h2>
               <p className="tm-muted mt-0.5">Bookings, growth and featured stays.</p>
             </div>
 
-            {/* Platform Telemetry & Dual-Currency Revenue Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="tm-panel min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Confirmed volume</span>
-                  <TrendingUp className="w-4 h-4 text-emerald-700" />
-                </div>
-                <p className="text-xl font-serif font-bold text-stone-900 tabular-nums">
-                  MK {stats.revenueMWK.toLocaleString()}
-                </p>
-                <div className="flex items-center justify-between mt-1 text-[11px]">
-                  <span className="font-semibold text-emerald-800">
-                    + USD ${stats.revenueUSD.toLocaleString()}
-                  </span>
-                  <span className="text-stone-400">0% platform fee</span>
-                </div>
+            {/* Summary numbers */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="tm-stat">
+                <p className="tm-stat-label">Confirmed volume</p>
+                <p className="tm-stat-value">MK {stats.revenueMWK.toLocaleString()}</p>
+                <p className="tm-muted truncate">+ USD ${stats.revenueUSD.toLocaleString()} · no platform fee</p>
               </div>
-
-              <div className="tm-panel min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Reservations</span>
-                  <CalendarRange className="w-4 h-4 text-stone-400" />
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
-                    {stats.confirmedBookingsCount}
-                  </p>
-                  <span className="text-xs text-emerald-700 font-semibold">
-                    confirmed ({stats.conversionRate}%)
-                  </span>
-                </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">
-                  {stats.pendingBookingsCount} pending · {stats.totalBookings} total requests
-                </p>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Confirmed reservations</p>
+                <p className="tm-stat-value">{stats.confirmedBookingsCount}</p>
+                <p className="tm-muted truncate">{stats.conversionRate}% of {stats.totalBookings} · {stats.pendingBookingsCount} pending</p>
               </div>
-
-              <div className="tm-panel min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Rooms</span>
-                  <Building2 className="w-4 h-4 text-stone-400" />
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
-                    {stats.totalRoomUnits}
-                  </p>
-                  <span className="text-xs text-stone-500 font-medium">
-                    units ({stats.totalRoomTypes} types)
-                  </span>
-                </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">
-                  Across {stats.approvedProperties} live · {stats.pendingProperties} pending stays
-                </p>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Room units</p>
+                <p className="tm-stat-value">{stats.totalRoomUnits}</p>
+                <p className="tm-muted truncate">{stats.totalRoomTypes} types · {stats.approvedProperties} live stays</p>
               </div>
-
-              <div className="tm-panel min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-stone-500 text-xs font-medium">Hosts</span>
-                  <CalendarSync className="w-4 h-4 text-emerald-700" />
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
-                    {stats.managersCount}
-                  </p>
-                  <span className="text-xs text-stone-500 font-medium">
-                    active hosts
-                  </span>
-                </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">
-                  {stats.syncedPropertiesCount} properties connected via 2-way iCal
-                </p>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Hosts</p>
+                <p className="tm-stat-value">{stats.managersCount}</p>
+                <p className="tm-muted truncate">{stats.syncedPropertiesCount} synced by iCal</p>
               </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {/* Bookings Trend Chart */}
               <div className="tm-panel min-w-0 flex flex-col h-full">
-                <h3 className="tm-h2 mb-0.5">Booking Volume</h3>
+                <h3 className="tm-h2 mb-0.5">Booking volume</h3>
                 <p className="text-xs text-stone-500 mb-4">Confirmed bookings over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1492,7 +1307,7 @@ export default function AdminDashboard() {
 
               {/* Users Growth Chart */}
               <div className="tm-panel min-w-0 flex flex-col h-full">
-                <h3 className="tm-h2 mb-0.5">User Sign-Ups</h3>
+                <h3 className="tm-h2 mb-0.5">User sign-ups</h3>
                 <p className="text-xs text-stone-500 mb-4">New user accounts over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1518,7 +1333,7 @@ export default function AdminDashboard() {
 
               {/* Property Growth Chart */}
               <div className="tm-panel min-w-0 flex flex-col h-full">
-                <h3 className="tm-h2 mb-0.5">Property Listings</h3>
+                <h3 className="tm-h2 mb-0.5">Property listings</h3>
                 <p className="text-xs text-stone-500 mb-4">New properties onboarded over the last 6 months.</p>
                 <div className="flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1578,7 +1393,7 @@ export default function AdminDashboard() {
                 {featuredMode === 'auto' && 'Featured stays come first; open slots fill with the highest-rated stays.'}
               </p>
 
-              <div className="overflow-x-auto border border-stone-200 rounded-lg">
+              <div className="tm-table-wrap border border-stone-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-stone-50 text-stone-500 text-xs font-medium border-b border-stone-200">
                     <tr>
@@ -1688,7 +1503,7 @@ export default function AdminDashboard() {
 
             {/* Unified Filter & Search Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <div className="tm-tabs" role="tablist" aria-label="Filter by status">
                 {[
                   { id: 'all', label: 'All', count: stats.totalProperties },
                   { id: 'pending', label: 'Pending', count: stats.pendingProperties, highlight: stats.pendingProperties > 0 },
@@ -1704,20 +1519,12 @@ export default function AdminDashboard() {
                         setHotelStatusFilter(pill.id as any);
                         setCurrentHotelPage(1);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-stone-900 text-white font-semibold'
-                          : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
-                      }`}
+                      role="tab"
+                      aria-selected={isSelected}
+                      className={`tm-tab cursor-pointer flex items-center gap-1.5 ${isSelected ? 'tm-tab-active' : ''}`}
                     >
                       <span>{pill.label}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${
-                        isSelected
-                          ? 'bg-stone-800 text-stone-200'
-                          : pill.highlight
-                            ? 'bg-amber-100 text-amber-900 font-semibold'
-                            : 'bg-stone-100 text-stone-600'
-                      }`}>
+                      <span className={`tm-tag ${pill.highlight ? 'tm-tag-warn' : ''}`}>
                         {pill.count}
                       </span>
                     </button>
@@ -2037,7 +1844,7 @@ export default function AdminDashboard() {
                 return (
                   <>
                     {/* Wide screens: table. Below xl the sidebar leaves too little width, so rows stack as cards. */}
-                    <div className="hidden xl:block">
+                    <div className="hidden xl:block tm-table-wrap">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
@@ -2567,7 +2374,7 @@ export default function AdminDashboard() {
                               }}
                               className="w-full px-3 py-1.5 text-xs text-stone-900 font-semibold hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
                             >
-                              <span>Global Admin</span>
+                              <span>Global admin</span>
                               {rolesList.includes('global_admin') && (
                                 <Check className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                               )}
@@ -2655,7 +2462,7 @@ export default function AdminDashboard() {
                 return (
                   <>
                     {/* Desktop & Laptop Table (md+) */}
-                    <div className="hidden md:block min-h-[300px]">
+                    <div className="hidden md:block tm-table-wrap min-h-[300px]">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="border-b border-stone-200 bg-stone-50 text-xs font-medium text-stone-500">
@@ -2674,7 +2481,7 @@ export default function AdminDashboard() {
                               <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
                                 <td className="px-4 py-3.5 min-w-0">
                                   <p className="font-medium text-stone-900 flex items-center gap-2 text-sm min-w-0">
-                                    <span className="truncate max-w-[240px]">{u.displayName || 'No Name'}</span>
+                                    <span className="truncate max-w-[240px]">{u.displayName || 'No name'}</span>
                                     {(u.status === 'suspended' || u.accessRevoked) && (
                                       <span className="tm-tag tm-tag-bad shrink-0">
                                         Suspended
@@ -2721,7 +2528,7 @@ export default function AdminDashboard() {
                             <div className="flex items-start justify-between gap-2.5">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="font-semibold text-stone-900 text-sm truncate">{u.displayName || 'No Name'}</p>
+                                  <p className="font-semibold text-stone-900 text-sm truncate">{u.displayName || 'No name'}</p>
                                   {(u.status === 'suspended' || u.accessRevoked) && (
                                     <span className="tm-tag tm-tag-bad shrink-0">
                                       Suspended
@@ -2855,7 +2662,7 @@ export default function AdminDashboard() {
 
             <div className="rounded-xl border border-stone-200 bg-white overflow-hidden flex flex-col">
               {/* Table from xl; below that the sidebar leaves too little width, so rows stack. */}
-              <div className="hidden xl:block overflow-x-auto">
+              <div className="hidden xl:block tm-table-wrap">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-stone-200 bg-stone-50 text-xs font-medium text-stone-500">
@@ -2870,14 +2677,14 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-stone-100">
                     {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
-                      const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
+                      const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown property';
                       return (
                         <tr key={`admin-booking-${b.id || index}-${index}`} className="hover:bg-stone-50/70 transition">
                           <td className="px-4 py-3.5 text-xs font-mono text-stone-500 whitespace-nowrap">{b.reference || 'N/A'}</td>
                           <td className="px-4 py-3.5 text-xs font-semibold text-stone-900 max-w-[180px] truncate" title={hotelName}>{hotelName}</td>
                           <td className="px-4 py-3.5 text-xs text-stone-700 max-w-[180px]">
                             <div className="truncate font-medium">{b.guestName}</div>
-                            <div className="text-[11px] text-stone-400 truncate">{b.guestEmail || 'No Email'}</div>
+                            <div className="text-[11px] text-stone-400 truncate">{b.guestEmail || 'No email'}</div>
                           </td>
                           <td className="px-4 py-3.5 text-xs text-stone-600 whitespace-nowrap">
                             {b.checkIn} <br/>to {b.checkOut}
@@ -2900,7 +2707,7 @@ export default function AdminDashboard() {
                               <select
                                 value={b.status}
                                 onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
-                                className="tm-input w-auto! max-w-[125px] py-1.5! text-xs cursor-pointer"
+                                className="tm-input w-auto! min-w-[8rem] py-1.5! text-xs cursor-pointer"
                               >
                                 <option value="pending">Pending</option>
                                 <option value="confirmed">Confirmed</option>
@@ -2934,7 +2741,7 @@ export default function AdminDashboard() {
               {/* Mobile Stacked Card List (<md) */}
               <div className="xl:hidden divide-y divide-stone-100">
                 {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
-                  const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
+                  const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown property';
                   return (
                     <div key={`admin-booking-card-${b.id || index}-${index}`} className="p-3.5 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
@@ -2956,7 +2763,7 @@ export default function AdminDashboard() {
                         <div className="min-w-0">
                           <span className="text-xs text-stone-500 block">Guest</span>
                           <div className="font-medium text-stone-900 truncate mt-0.5">{b.guestName}</div>
-                          <div className="text-[11px] text-stone-500 truncate">{b.guestEmail || 'No Email'}</div>
+                          <div className="text-[11px] text-stone-500 truncate">{b.guestEmail || 'No email'}</div>
                         </div>
                         <div className="min-w-0">
                           <span className="text-xs text-stone-500 block">Stay and total</span>
@@ -3043,7 +2850,7 @@ export default function AdminDashboard() {
                   disabled={savingDestinations}
                   className="tm-btn tm-btn-primary"
                 >
-                  {savingDestinations ? 'Saving...' : 'Save changes'}
+                  {savingDestinations ? 'Saving…' : 'Save changes'}
                 </button>
               </div>
             </div>
@@ -3152,6 +2959,9 @@ export default function AdminDashboard() {
 
         {/* ===================== CONTENT TAB ===================== */}
         {activeTab === 'content' && (
+          <div className="mb-4 min-w-0">{renderSubTabs(contentSubs, contentSub, 'content')}</div>
+        )}
+        {activeTab === 'content' && contentSub === 'content' && (
           <div className="space-y-6 animate-in fade-in duration-200 pb-20">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200">
               <div className="min-w-0">
@@ -3284,68 +3094,15 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ===================== AI CONFIGURATION TAB ===================== */}
-        {activeTab === 'ai' && canViewTab('ai') && (
-          <AdminAISettings />
-        )}
-
-        {/* ===================== SYSTEM LOGS TAB ===================== */}
-        {activeTab === 'logs' && canViewTab('logs') && (
-          <AdminLogs />
-        )}
-
-        {/* ===================== EXECUTIVE DOCS TAB ===================== */}
-        {activeTab === 'docs' && (
+        {/* ===================== PARTNER DOCS (CONTENT SUB-TAB) ===================== */}
+        {activeTab === 'content' && contentSub === 'docs' && (
           <AdminDocsHub />
         )}
 
-        {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
+        {/* ===================== SETTINGS TAB (GLOBAL ADMIN ONLY) ===================== */}
         {activeTab === 'settings' && canViewTab('settings') && (
           <div className="space-y-6">
-            <div className="flex items-center gap-5 sm:gap-8 border-b border-stone-200 pb-0 w-full max-w-full overflow-x-auto no-scrollbar" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsSubTab === 'channels'}
-                onClick={() => setSettingsSubTab('channels')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
-                  settingsSubTab === 'channels'
-                    ? 'border-stone-900 text-stone-900 font-semibold'
-                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-                }`}
-              >
-                <CalendarSync className="w-3.5 h-3.5 shrink-0" />
-                <span>iCal and channels</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsSubTab === 'whatsapp'}
-                onClick={() => setSettingsSubTab('whatsapp')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
-                  settingsSubTab === 'whatsapp'
-                    ? 'border-stone-900 text-stone-900 font-semibold'
-                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-                }`}
-              >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                <span>WhatsApp</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsSubTab === 'email'}
-                onClick={() => setSettingsSubTab('email')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
-                  settingsSubTab === 'email'
-                    ? 'border-stone-900 text-stone-900 font-semibold'
-                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-                }`}
-              >
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-                <span>Email</span>
-              </button>
-            </div>
+            {renderSubTabs(settingsSubs, settingsSubTab, 'settings')}
 
             {settingsSubTab === 'channels' && (
               <AdminIcalMonitor
@@ -3357,17 +3114,9 @@ export default function AdminDashboard() {
             )}
             {settingsSubTab === 'whatsapp' && <AdminWhatsAppSettings />}
             {settingsSubTab === 'email' && <AdminEmailSettings />}
+            {settingsSubTab === 'ai' && <AdminAISettings />}
+            {settingsSubTab === 'logs' && <AdminLogs />}
           </div>
-        )}
-
-        {/* ===================== DIRECT CHANNELS & ICAL MONITOR TAB ===================== */}
-        {activeTab === 'channels' && (
-          <AdminIcalMonitor
-            hotels={hotels}
-            rooms={rooms}
-            onHotelsUpdated={setHotels}
-            onRoomsUpdated={setRooms}
-          />
         )}
 
         {/* ===================== REVIEW SCRAPER TAB ===================== */}
@@ -3402,7 +3151,7 @@ export default function AdminDashboard() {
           isOpen={!!hotelToDelete}
           title="Delete property listing"
           message={`Are you sure you want to permanently delete "${hotelToDelete?.name}"? All associated room types, inventory, and configurations will be permanently deleted from the database. This action cannot be undone.`}
-          confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete listing"}
+          confirmText={isDeletingHotel ? "Deleting…" : "Yes, delete listing"}
           cancelText="Cancel"
           isDestructive={true}
           onConfirm={handleConfirmDeleteHotel}
@@ -3415,7 +3164,7 @@ export default function AdminDashboard() {
           isOpen={!!bookingToDelete}
           title="Delete booking"
           message={`Are you sure you want to permanently delete booking Ref #${bookingToDelete?.reference || bookingToDelete?.id?.slice(0, 8)} for ${bookingToDelete?.guestName}? Room availability will be restored and any automated reminders will be cancelled.`}
-          confirmText={isDeletingBooking ? "Deleting..." : "Yes, delete booking"}
+          confirmText={isDeletingBooking ? "Deleting…" : "Yes, delete booking"}
           cancelText="Cancel"
           isDestructive={true}
           onConfirm={confirmDeleteBooking}
@@ -3428,7 +3177,7 @@ export default function AdminDashboard() {
           isOpen={!!userToDelete}
           title="Delete user profile"
           message={`Are you sure you want to permanently delete the profile for ${userToDelete?.email || userToDelete?.displayName || userToDelete?.uid}? This will remove all their access and data.`}
-          confirmText={isDeletingUser ? "Deleting..." : "Yes, delete user"}
+          confirmText={isDeletingUser ? "Deleting…" : "Yes, delete user"}
           cancelText="Cancel"
           isDestructive={true}
           onConfirm={confirmDeleteUser}
@@ -3468,9 +3217,9 @@ export default function AdminDashboard() {
 
         <ConfirmDialog
           isOpen={!!userToToggleSuspension}
-          title={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore User Access' : 'Suspend User Access'}
+          title={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore user access' : 'Suspend user access'}
           message={`Are you sure you want to ${userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'restore' : 'suspend'} access for ${userToToggleSuspension?.email}?`}
-          confirmText={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore Access' : 'Suspend Access'}
+          confirmText={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore access' : 'Suspend access'}
           cancelText="Cancel"
           isDestructive={!(userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked)}
           onConfirm={confirmToggleUserSuspension}
@@ -3594,7 +3343,7 @@ export default function AdminDashboard() {
                   onClick={handleSaveManagerAssignment}
                   className="tm-btn tm-btn-primary"
                 >
-                  {isAssigningManager ? 'Saving...' : 'Save assignment'}
+                  {isAssigningManager ? 'Saving…' : 'Save assignment'}
                 </button>
               </div>
             </div>

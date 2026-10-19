@@ -43,3 +43,14 @@ status: in-progress
 - [H-orch-D2] DONE
 - [settings-36] P2 FIXED src/components/ReviewModal.tsx:371 — neon emerald-400 icon on dark button removed, label 'Publish review' (D2)
 status: done
+status: in-progress
+- [settings-37] P2 FIXED src/pages/AdminDashboard.tsx — 13 tabs merged to 9 (Overview, Properties, Bookings, Users, Analytics, Reviews, Destinations, Content, Settings) with tm-tabs bar + sub-tabs (analytics: stats/live visitors; content: content/docs; settings: channels/whatsapp/email/ai/logs); sidebar+mobile menu removed; legacy ?tab=traffic|docs|ai|logs|channels mapped to parent+sub, per-role visibility unchanged (D2)
+- [settings-38] P2 FIXED src/pages/AdminDashboard.tsx — tm-table-wrap on hotels/users/bookings/review tables, booking status select min-w-8rem, status filter pills -> tm-tabs, Overview + Analytics stat tiles -> tm-stat (D2)
+- [settings-39] P2 FIXED src/components/AdminLogs.tsx — stat tiles -> tm-stat, view/blade tabs -> tm-tabs/tm-tab, tables in tm-table-wrap, Title Case/jargon labels -> plain sentence case ('Event details', 'Who and where', 'Changes'…) (D2)
+- [settings-40] P2 FIXED src/components/AdminIcalMonitor.tsx — stat tiles -> tm-stat, table in tm-table-wrap, sentence-case wording (D2)
+- [settings-41] P2 FIXED src/components/AdminReviewScraper.tsx — stat tiles -> tm-stat, sub-tabs/append-replace -> tm-tabs, source pills -> tm-btn, wording simplified (D2)
+- [settings-42] P2 FIXED src/components/AdminDocsHub.tsx — Documents/Surveys toggle -> tm-tabs, table in tm-table-wrap, sentence-case labels (D2)
+- [settings-43] P2 FIXED src/components/AdminTrafficMonitor.tsx — stat tiles (compact + full) -> tm-stat, filter pills -> tm-tabs, tables in tm-table-wrap, sentence-case labels (D2)
+- [settings-44] P2 FIXED AdminEmailSettings, AdminWhatsAppSettings, Profile, ReviewModal, DocEditorModal — save buttons 'Save changes' (Profile password 'Save new password'), sentence-case/plain labels, … instead of ..., Profile secondary button on tm-btn-secondary (D2)
+- [settings-45] P2 LOGGED all /admin?tab= links in src/server (ManageHotel properties, opsPrompt properties/users) still valid after the merge; legacy values mapped in AdminDashboard readTabParams
+status: done

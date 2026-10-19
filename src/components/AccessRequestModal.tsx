@@ -268,7 +268,7 @@ export default function AccessRequestModal() {
               className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 px-2 py-0.5 rounded-md transition cursor-pointer disabled:opacity-50"
             >
               <Locate className={`w-3 h-3 ${isLocatingGPS ? 'animate-spin' : ''}`} />
-              <span>{isLocatingGPS ? 'Locating...' : 'Use Device GPS'}</span>
+              <span>{isLocatingGPS ? 'Locating…' : 'Use my location'}</span>
             </button>
           </div>
 

@@ -158,7 +158,7 @@ export default function MobileNav() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {user && (
-                  <div className="mb-4 px-4 py-4 bg-stone-50 rounded-2xl border border-stone-100">
+                  <div className="mb-4 px-4 py-4 bg-stone-50 rounded-xl border border-stone-100">
                     <p className="text-sm font-bold text-stone-900 truncate">{user.displayName || user.email}</p>
                     <p className="text-xs text-stone-500 mt-0.5">{describeRoles(user)}</p>
                   </div>
@@ -167,7 +167,7 @@ export default function MobileNav() {
                 <div className="space-y-1">
                   <Link
                     to="/"
-                    className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition ${pathname === '/' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                   >
                     <Search className="w-5 h-5" />
                     <span>Explore</span>
@@ -177,14 +177,14 @@ export default function MobileNav() {
                     <>
                       <Link
                         to="/saved"
-                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/saved' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition ${pathname === '/saved' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <Heart className="w-5 h-5" />
                         <span>Saved</span>
                       </Link>
                       <Link
                         to="/my-bookings"
-                        className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition ${pathname === '/my-bookings' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition ${pathname === '/my-bookings' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <div className="flex items-center gap-4">
                           <Briefcase className="w-5 h-5" />
@@ -212,14 +212,14 @@ export default function MobileNav() {
                     <>
                       <Link
                         to="/dashboard"
-                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname.startsWith('/dashboard') ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition ${pathname.startsWith('/dashboard') ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <Building2 className="w-5 h-5 text-stone-700" />
                         <span>Host Dashboard</span>
                       </Link>
                       <Link
                         to="/host-guide"
-                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/host-guide' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition ${pathname === '/host-guide' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <BookOpen className="w-5 h-5 text-stone-500" />
                         <span>Host Starter Pack</span>
@@ -228,7 +228,7 @@ export default function MobileNav() {
                   ) : (
                     <Link
                       to="/list-your-property"
-                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl transition bg-stone-100 hover:bg-stone-200/70 text-stone-800 font-medium border border-stone-200/80"
+                      className="flex items-center justify-between px-4 py-3.5 rounded-xl transition bg-stone-100 hover:bg-stone-200/70 text-stone-800 font-medium border border-stone-200/80"
                     >
                       <div className="flex items-center gap-3">
                         <Building2 className="w-5 h-5 text-stone-500" />
@@ -241,7 +241,7 @@ export default function MobileNav() {
                     <>
                       <Link
                         to="/profile"
-                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/profile' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition ${pathname === '/profile' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <Settings className="w-5 h-5" />
                         <span>Profile Settings</span>
@@ -249,14 +249,14 @@ export default function MobileNav() {
                       <button
                         type="button"
                         onClick={() => { setIsOpen(false); openAccessPermissionsModal(); }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
                       >
                         <ShieldCheck className="w-5 h-5 text-emerald-600" />
                         <span>Device Permissions</span>
                       </button>
                       <button
                         onClick={() => { logOut(); setIsOpen(false); }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-red-600 hover:bg-red-50 cursor-pointer"
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition text-red-600 hover:bg-red-50 cursor-pointer"
                       >
                         <LogOut className="w-5 h-5" />
                         <span>Sign out</span>
@@ -267,14 +267,14 @@ export default function MobileNav() {
                       <button
                         type="button"
                         onClick={() => { setIsOpen(false); openAccessPermissionsModal(); }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
                       >
                         <ShieldCheck className="w-5 h-5 text-emerald-600" />
                         <span>Device Permissions</span>
                       </button>
                       <button
                         onClick={() => { openAuth('signin'); setIsOpen(false); }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-900 font-medium hover:bg-stone-50 cursor-pointer"
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition text-stone-900 font-medium hover:bg-stone-50 cursor-pointer"
                       >
                         <LogIn className="w-5 h-5" />
                         <span>Sign in to your account</span>

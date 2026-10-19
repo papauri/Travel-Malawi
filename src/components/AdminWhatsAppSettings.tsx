@@ -99,7 +99,7 @@ export default function AdminWhatsAppSettings() {
 
   const handleTest = async () => {
     if (form.provider === 'cloud_api' && (!form.phoneNumberId || (!form.accessToken && !form.hasToken))) {
-      toast.error('Please specify Phone Number ID and Access Token to test Meta Cloud API.');
+      toast.error('Enter the phone number ID and access token to test the Meta Cloud API.');
       return;
     }
 
@@ -165,7 +165,7 @@ export default function AdminWhatsAppSettings() {
         provider: 'direct',
         defaultCountryCode: '+265',
       }));
-      toast.success('Applied Direct wa.me preset');
+      toast.success('Direct wa.me preset applied');
       return;
     }
 
@@ -184,7 +184,7 @@ export default function AdminWhatsAppSettings() {
     return (
       <div className="flex items-center justify-center py-20 text-stone-500 gap-3">
         <RefreshCw className="w-5 h-5 animate-spin text-stone-700" />
-        <span className="text-sm">Loading WhatsApp configuration...</span>
+        <span className="text-sm">Loading WhatsApp settings…</span>
       </div>
     );
   }
@@ -194,7 +194,7 @@ export default function AdminWhatsAppSettings() {
       {/* 1. Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
         <div>
-          <h2 className="tm-h1">WhatsApp Business &amp; Messaging</h2>
+          <h2 className="tm-h1">WhatsApp messaging</h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
             Configure automated arrival PINs, 3-day welcome notes, and instant booking reminders.
           </p>
@@ -219,7 +219,7 @@ export default function AdminWhatsAppSettings() {
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${form.enabled ? 'bg-emerald-500' : 'bg-stone-400'}`} />
               <h3 className="font-semibold text-stone-900 text-sm">
-                {form.enabled ? 'WhatsApp Integration Operational' : 'WhatsApp Integration Disabled'}
+                {form.enabled ? 'WhatsApp is on' : 'WhatsApp is off'}
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
@@ -247,7 +247,7 @@ export default function AdminWhatsAppSettings() {
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>{form.enabled ? 'Disable WhatsApp' : 'Enable WhatsApp'}</span>
+              <span>{form.enabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}</span>
             </button>
           </div>
         </div>
@@ -301,7 +301,7 @@ export default function AdminWhatsAppSettings() {
           <form onSubmit={handleSave} className="space-y-4">
             {/* Mode selection segmented */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-stone-700">Messaging Provider Mode</label>
+              <label className="block text-xs font-semibold text-stone-700">Messaging provider</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label 
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${
@@ -342,7 +342,7 @@ export default function AdminWhatsAppSettings() {
                     className="mt-0.5 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
-                    <span className="text-xs font-semibold text-stone-900 block">Direct Click-to-Chat (wa.me)</span>
+                    <span className="text-xs font-semibold text-stone-900 block">Click-to-chat (wa.me)</span>
                     <span className="text-[11px] text-stone-500 leading-tight block mt-0.5">
                       Zero credentials required. Launches WhatsApp Web or app pre-filled with template message.
                     </span>
@@ -385,16 +385,16 @@ export default function AdminWhatsAppSettings() {
                       className="tm-input"
                     />
                     <p className="text-[10px] text-stone-400 mt-1">
-                      Optional Meta WABA identification code.
+                      Optional Meta WABA ID.
                     </p>
                   </div>
                 </div>
 
-                {/* System User Access Token */}
+                {/* System user access token */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-stone-700">
-                      System User Access Token <span className="text-red-500">*</span>
+                      System user access token <span className="text-red-500">*</span>
                     </label>
                     {form.hasToken && (
                       <span className="text-[11px] text-stone-500 flex items-center gap-1">
@@ -430,7 +430,7 @@ export default function AdminWhatsAppSettings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-stone-100">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Default Country Calling Code <span className="text-red-500">*</span>
+                  Default country code <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Globe className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5" />
@@ -449,7 +449,7 @@ export default function AdminWhatsAppSettings() {
 
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Sender / Verified WhatsApp Number
+                  Verified WhatsApp number
                 </label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5" />
@@ -481,12 +481,12 @@ export default function AdminWhatsAppSettings() {
                 {saving ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Saving...</span>
+                    <span>Saving…</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Settings</span>
+                    <span>Save changes</span>
                   </>
                 )}
               </button>
@@ -498,15 +498,15 @@ export default function AdminWhatsAppSettings() {
         <div className="space-y-4">
           <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
             <div>
-              <h3 className="font-serif font-bold text-base text-stone-900">Connection Diagnostics</h3>
+              <h3 className="font-serif font-bold text-base text-stone-900">Test connection</h3>
               <p className="text-xs text-stone-500 mt-0.5">
-                Dispatch an end-to-end verification ping to any WhatsApp mobile number.
+                Send a test message to any WhatsApp number.
               </p>
             </div>
 
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-stone-700">
-                Recipient Test Phone Number
+                Test phone number
               </label>
               <input
                 type="text"
@@ -526,12 +526,12 @@ export default function AdminWhatsAppSettings() {
               {testing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Connecting...</span>
+                  <span>Connecting…</span>
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send Test Ping</span>
+                  <span>Send test message</span>
                 </>
               )}
             </button>

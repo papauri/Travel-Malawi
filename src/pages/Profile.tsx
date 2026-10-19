@@ -84,7 +84,7 @@ export default function Profile() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
         <UserCircle className="w-16 h-16 text-stone-300 mb-5" />
-        <h1 className="tm-h1">Account Profile</h1>
+        <h1 className="tm-h1">Your profile</h1>
         <p className="text-stone-500 max-w-md mb-6 text-sm">
           Sign in to manage your personal details, password, and property host settings.
         </p>
@@ -184,7 +184,7 @@ export default function Profile() {
         setNeedsReauth(true);
         toast.error('For security, please enter your current/temporary password to confirm this change.');
       } else if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
-        toast.error('Current password is incorrect. You can also click "Email Reset Link" instead.');
+        toast.error('Current password is incorrect. You can also click "Email a reset link" instead.');
       } else {
         toast.error(err?.message || 'Could not update password. Try sending a reset email instead.');
       }
@@ -197,7 +197,7 @@ export default function Profile() {
     setIsActivatingHost(true);
     try {
       await becomeHost();
-      toast.success('Property Host tools activated on your account!');
+      toast.success('Host tools are now on for your account.');
     } catch (err: any) {
       toast.error(err?.message || 'Could not activate host tools');
     } finally {
@@ -227,17 +227,17 @@ export default function Profile() {
               className="tm-btn tm-btn-primary"
             >
               <Building2 className="w-3.5 h-3.5" />
-              Property Hub
+              Property hub
             </Link>
           )}
           <button
             type="button"
             onClick={handlePasswordReset}
             disabled={isResetting}
-            className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-full border border-stone-300 bg-white px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-stone-700 hover:bg-stone-50 transition disabled:opacity-50 cursor-pointer"
+            className="tm-btn tm-btn-secondary"
           >
             {isResetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-            Email Password Reset
+            Email a reset link
           </button>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function Profile() {
       <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-stone-400">Account Access</span>
+            <span className="text-xs font-bold text-stone-400">Account access</span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-800 border border-stone-200">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
               Traveller
@@ -283,7 +283,7 @@ export default function Profile() {
                 to="/dashboard"
                 className="tm-btn tm-btn-primary"
               >
-                <span>Manage Properties</span>
+                <span>Manage properties</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <Link
@@ -291,7 +291,7 @@ export default function Profile() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 text-xs font-semibold hover:bg-stone-100 transition"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Property</span>
+                <span>Add property</span>
               </Link>
             </>
           ) : (
@@ -302,23 +302,23 @@ export default function Profile() {
               className="tm-btn tm-btn-primary"
             >
               {isActivatingHost ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
-              <span>Activate Property Host Tools</span>
+              <span>Turn on host tools</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Personal Information & Preferences Form */}
+      {/* Personal information & Preferences Form */}
       <form
         onSubmit={handleSave}
         className="space-y-5 sm:space-y-7 bg-white p-3.5 sm:p-6 md:p-8 rounded-xl sm:rounded-xl border border-stone-200"
       >
         <div className="space-y-4 sm:space-y-5">
-          <h2 className="tm-h2">Personal Information</h2>
+          <h2 className="tm-h2">Personal information</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Display Name</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Display name</label>
               <input
                 type="text"
                 value={displayName}
@@ -329,7 +329,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Email Address</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Email address</label>
               <input
                 type="email"
                 value={user.email || ''}
@@ -340,7 +340,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Phone Number</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Phone number</label>
               <input
                 type="tel"
                 value={phone}
@@ -357,7 +357,7 @@ export default function Profile() {
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
-                placeholder="+265 ..."
+                placeholder="+265 …"
               />
             </div>
 
@@ -390,7 +390,7 @@ export default function Profile() {
                 onChange={(e) => setBio(e.target.value)}
                 rows={3}
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
-                placeholder="A little bit about yourself..."
+                placeholder="A little about you…"
               />
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function Profile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Preferred Currency</label>
+                <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Preferred currency</label>
                 <select
                   value={preferredCurrency}
                   onChange={(e) => setPreferredCurrency(e.target.value as CurrencyCode)}
@@ -473,7 +473,7 @@ export default function Profile() {
             className="tm-btn tm-btn-primary w-full sm:w-auto"
           >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Save Profile Changes
+            Save changes
           </button>
         </div>
       </form>
@@ -512,7 +512,7 @@ export default function Profile() {
           )}
 
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">New Password</label>
+            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">New password</label>
             <div className="relative">
               <input
                 type={showNewPassword ? 'text' : 'password'}
@@ -533,7 +533,7 @@ export default function Profile() {
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Confirm New Password</label>
+            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Confirm new password</label>
             <input
               type={showNewPassword ? 'text' : 'password'}
               value={confirmPassword}
@@ -551,7 +551,7 @@ export default function Profile() {
             disabled={isResetting}
             className="text-xs font-semibold text-stone-600 hover:text-stone-900 underline text-left cursor-pointer"
           >
-            {isResetting ? 'Sending reset email...' : `Prefer an email link? Send reset email to ${user.email}`}
+            {isResetting ? 'Sending reset email…' : `Prefer an email link? Send reset email to ${user.email}`}
           </button>
           <button
             type="submit"
@@ -559,7 +559,7 @@ export default function Profile() {
             className="tm-btn tm-btn-primary w-full sm:w-auto"
           >
             {isUpdatingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-            Update Password
+            Save new password
           </button>
         </div>
       </form>

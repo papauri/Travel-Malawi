@@ -719,7 +719,7 @@ ROOMS & RATES:
                       }
                       className={inputClass}
                     >
-                      <option value="">Select category...</option>
+                      <option value="">Choose a category</option>
                       {PROPERTY_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
@@ -773,7 +773,7 @@ ROOMS & RATES:
                       type="text"
                       value={draftData.ownerPhone || ''}
                       onChange={(e) => updateField('ownerPhone', e.target.value)}
-                      placeholder="+265 99..."
+                      placeholder="+265 99…"
                       className={inputClass}
                     />
                   </div>
@@ -806,7 +806,7 @@ ROOMS & RATES:
                       type="text"
                       value={draftData.managerPhone || ''}
                       onChange={(e) => updateField('managerPhone', e.target.value)}
-                      placeholder="+265 88..."
+                      placeholder="+265 88…"
                       className={inputClass}
                     />
                   </div>
@@ -833,7 +833,7 @@ ROOMS & RATES:
                       type="text"
                       value={draftData.contactPhone || ''}
                       onChange={(e) => updateField('contactPhone', e.target.value)}
-                      placeholder="+265 99..."
+                      placeholder="+265 99…"
                       className={inputClass}
                     />
                   </div>
@@ -843,7 +843,7 @@ ROOMS & RATES:
                       type="text"
                       value={draftData.contactWhatsapp || ''}
                       onChange={(e) => updateField('contactWhatsapp', e.target.value)}
-                      placeholder="+265 99..."
+                      placeholder="+265 99…"
                       className={inputClass}
                     />
                   </div>
@@ -891,7 +891,7 @@ ROOMS & RATES:
                     rows={3}
                     value={draftData.description || ''}
                     onChange={(e) => updateField('description', e.target.value)}
-                    placeholder="Overview of your stay, surroundings, and hospitality..."
+                    placeholder="Your stay, the setting and what guests can expect."
                     className={`${inputClass} resize-none leading-relaxed`}
                   />
                 </div>
@@ -957,11 +957,11 @@ ROOMS & RATES:
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-stone-200">
                   {draftData.rooms.map((room, idx) => (
                     <div
                       key={`deciphered-room-${idx}`}
-                      className="p-3.5 rounded-xl border border-stone-200 space-y-3"
+                      className="py-4 first:pt-0 space-y-3"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold text-stone-600">
@@ -1120,7 +1120,7 @@ ROOMS & RATES:
                   onClick={() => setStep(3)}
                   className="tm-btn tm-btn-primary"
                 >
-                  <span>Next: rooms</span>
+                  <span>Continue</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

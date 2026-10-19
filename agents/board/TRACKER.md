@@ -4,13 +4,13 @@
 |---|---|---|---|---|
 | platform | done | 20 | 5 | - |
 | booking | done | 52 | 4 | - |
-| property | done | 57 | 1 | - |
-| onboarding | done | 34 | 2 | - |
+| property | done | 65 | 1 | - |
+| onboarding | done | 39 | 2 | - |
 | ai | done | 38 | 1 | - |
 | messaging | done | 38 | 0 | - |
-| settings | done | 34 | 2 | - |
+| settings | done | 42 | 3 | - |
 | ui | done | 28 | 5 | - |
-| ux | done | 30 | 1 | - |
+| ux | done | 33 | 1 | - |
 | cleanup | done | 2 | 3 | - |
 
 **Next:** Verify: npm run lint && npm run build && npm run check:validation, then commit + push

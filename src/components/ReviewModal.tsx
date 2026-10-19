@@ -19,10 +19,10 @@ interface ReviewModalProps {
 
 const RATING_DESCRIPTIONS: Record<number, { label: string; color: string }> = {
   1: { label: 'Disappointing', color: 'text-rose-600' },
-  2: { label: 'Fair / Needed Improvement', color: 'text-amber-700' },
-  3: { label: 'Good / Decent Stay', color: 'text-amber-600' },
-  4: { label: 'Great / Very Satisfied', color: 'text-emerald-700' },
-  5: { label: 'Exceptional / Highly Recommended', color: 'text-emerald-600' },
+  2: { label: 'Fair', color: 'text-amber-700' },
+  3: { label: 'Good', color: 'text-amber-600' },
+  4: { label: 'Great', color: 'text-emerald-700' },
+  5: { label: 'Exceptional', color: 'text-emerald-600' },
 };
 
 export function ReviewModal({
@@ -160,7 +160,7 @@ export function ReviewModal({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h4 className="font-serif font-bold text-stone-900 text-base">Sign In Required</h4>
+            <h4 className="font-serif font-bold text-stone-900 text-base">Sign in required</h4>
             <p className="text-stone-500 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
               You must be signed in with the account used for your booking to submit a verified guest review.
             </p>
@@ -189,7 +189,7 @@ export function ReviewModal({
               </div>
               <div className="space-y-1">
                 <h4 className="font-serif font-bold text-amber-950 text-sm sm:text-base">
-                  Authentic Stay Policy
+                  Honest reviews only
                 </h4>
                 <p className="text-amber-900 text-xs leading-relaxed">
                   To protect travelers from fake, sponsored, or bot-generated feedback, reviews on Travel Malawi can only be posted by <strong>verified guests with a confirmed booking</strong> at {hotelName || 'this property'}.
@@ -238,7 +238,7 @@ export function ReviewModal({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
               <span className="font-semibold text-emerald-900">
-                Verified Guest Stay Confirmed
+                Verified stay
               </span>
             </div>
             {userBookings.length > 1 && (
@@ -265,7 +265,7 @@ export function ReviewModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-stone-800">
-                Overall Rating
+                Overall rating
               </label>
               <span className={`text-xs font-semibold ${ratingInfo.color}`}>
                 {ratingInfo.label}
@@ -317,7 +317,7 @@ export function ReviewModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-stone-800">
-                Your Authentic Experience
+                Your experience
               </label>
               <span className={`text-[11px] ${text.length > 1900 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
                 {text.length}/2000
@@ -331,7 +331,7 @@ export function ReviewModal({
               }}
               rows={4}
               className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs sm:text-sm text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition resize-none leading-relaxed"
-              placeholder="Tell other travelers about your stay — room comfort, lake views or safari sightings, food quality, access road conditions, and how welcoming the hosts were..."
+              placeholder="Tell other travelers about your stay — room comfort, lake views or safari sightings, food quality, access road conditions, and how welcoming the hosts were…"
               required
               maxLength={2000}
             />
@@ -364,7 +364,7 @@ export function ReviewModal({
               {submitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Publishing...</span>
+                  <span>Publishing…</span>
                 </>
               ) : (
                 <>

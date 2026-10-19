@@ -62,25 +62,25 @@ const NO_SEARCH: AppliedSearch = {
 };
 
 export const STAY_TYPE_OPTIONS = [
-  { id: 'All', label: 'All Stays' },
-  { id: 'entire_place', label: 'Entire Place' },
-  { id: 'whole_guest_house', label: 'Guest Houses' },
-  { id: 'cottage_chalet', label: 'Cottages & Chalets' },
-  { id: 'villa_holiday_home', label: 'Villas & Homes' },
-  { id: 'rooms', label: 'Rooms & Suites' },
-  { id: 'safari_lodge', label: 'Safari Camps & Lodges' },
-  { id: 'bnb_guesthouse', label: 'Bed & Breakfasts' },
+  { id: 'All', label: 'All stays' },
+  { id: 'entire_place', label: 'Entire place' },
+  { id: 'whole_guest_house', label: 'Guest houses' },
+  { id: 'cottage_chalet', label: 'Cottages and chalets' },
+  { id: 'villa_holiday_home', label: 'Villas and homes' },
+  { id: 'rooms', label: 'Rooms and suites' },
+  { id: 'safari_lodge', label: 'Safari camps and lodges' },
+  { id: 'bnb_guesthouse', label: 'Bed and breakfasts' },
 ] as const;
 
 export const STAY_TYPE_LABELS: Record<string, string> = {
-  All: 'All Stays',
-  entire_place: 'Entire Place',
-  whole_guest_house: 'Guest House',
-  cottage_chalet: 'Cottage & Chalet',
-  villa_holiday_home: 'Villa & Home',
-  rooms: 'Rooms & Suites',
-  safari_lodge: 'Safari Camp & Lodge',
-  bnb_guesthouse: 'Bed & Breakfast',
+  All: 'All stays',
+  entire_place: 'Entire place',
+  whole_guest_house: 'Guest house',
+  cottage_chalet: 'Cottage and chalet',
+  villa_holiday_home: 'Villa or home',
+  rooms: 'Rooms and suites',
+  safari_lodge: 'Safari camp or lodge',
+  bnb_guesthouse: 'Bed and breakfast',
 };
 
 export function matchesStayType(hotel: Hotel, stayType: string): boolean {
@@ -109,7 +109,7 @@ export function matchesStayType(hotel: Hotel, stayType: string): boolean {
       return (
         entireStyle.includes('cottage') || 
         entireStyle.includes('chalet') || 
-        categories.includes('Cottage & Chalet') ||
+        categories.includes('Cottage and chalet') ||
         nameLower.includes('cottage') || 
         nameLower.includes('chalet')
       );
@@ -138,7 +138,7 @@ export function matchesStayType(hotel: Hotel, stayType: string): boolean {
     case 'bnb_guesthouse':
       return (
         !isEntire && (
-          categories.includes('Bed & Breakfast') || 
+          categories.includes('Bed and breakfast') || 
           categories.includes('Guest House') ||
           nameLower.includes('b&b') || 
           nameLower.includes('guest house')
@@ -1403,8 +1403,8 @@ export default function Home() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={`relative bg-[#FBF9F5]/98 rounded-2xl md:rounded-full p-2 sm:p-2.5 md:p-1.5
-                     shadow-[0_20px_45px_-12px_rgba(28,25,23,0.18)] border border-stone-200/90 ring-1 ring-stone-900/5
+          className={`relative bg-[#FBF9F5]/98 rounded-2xl p-2 sm:p-2.5 md:p-1.5
+                     shadow-sm border border-stone-200
                      w-full transition-all ${
                        showRecentSearches || showGuestDropdown ? 'z-50' : 'z-30'
                      }`}
@@ -1413,11 +1413,11 @@ export default function Home() {
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`col-span-2 md:flex-[1.3] md:min-w-0 relative rounded-lg md:rounded-full px-3 py-1.5 md:px-3.5 md:py-1.5 hover:bg-stone-50 transition group border border-stone-200/60 md:border-none ${
+              className={`col-span-2 md:flex-[1.3] md:min-w-0 relative rounded-lg px-3 py-1.5 md:px-3.5 md:py-1.5 hover:bg-stone-50 transition group border border-stone-200/60 md:border-none ${
                 showRecentSearches ? 'z-50 bg-stone-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-[9px] font-medium text-stone-500 uppercase tracking-wider mb-0.5">
+              <label htmlFor="search-where" className="block text-xs font-medium text-stone-500 mb-0.5">
                 Destination
               </label>
               <div className="flex items-center gap-1.5">
@@ -1442,7 +1442,7 @@ export default function Home() {
                     {/* 1. Live Suggestions when typing */}
                     {searchLocation.trim() && searchSuggestions.length > 0 ? (
                       <div>
-                        <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-2 px-2">Suggestions</h4>
+                        <h4 className="text-xs font-medium text-stone-500 mb-2 px-2">Suggestions</h4>
                         <ul className="space-y-1">
                           {searchSuggestions.map((suggestion, i) => (
                             <li key={`${suggestion.text}-${i}`}>
@@ -1509,11 +1509,11 @@ export default function Home() {
                     {!searchLocation.trim() && recentSearches.length > 0 && (
                       <div>
                         <div className="flex items-center justify-between px-2 mb-1">
-                          <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Recent searches</h4>
+                          <h4 className="text-sm font-medium text-stone-700">Recent searches</h4>
                           <button
                             type="button"
                             onClick={clearRecentSearches}
-                            className="text-[10px] font-semibold text-stone-400 hover:text-stone-700 transition"
+                            className="text-xs text-stone-500 hover:text-stone-900"
                           >
                             Clear
                           </button>
@@ -1566,7 +1566,7 @@ export default function Home() {
                     {/* 4. Popular Places in Malawi Chips inside Dropdown */}
                     {!searchLocation.trim() && (
                       <div className="pt-2 border-t border-stone-200/60">
-                        <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 px-2">Popular destinations</h4>
+                        <h4 className="text-xs font-medium text-stone-500 mb-1.5 px-2">Popular destinations</h4>
                         <div className="flex flex-wrap gap-1 px-1">
                           {popularDestinations.map((dest, dIdx) => (
                             <button
@@ -1609,11 +1609,11 @@ export default function Home() {
             {/* Check In */}
             <div
               onClick={openCheckInPicker}
-              className="col-span-1 md:flex-1 md:min-w-0 rounded-lg md:rounded-full px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none cursor-pointer group"
+              className="col-span-1 md:flex-1 md:min-w-0 rounded-lg px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none cursor-pointer group"
             >
               <label
                 htmlFor="search-check-in"
-                className="block text-[9px] font-medium text-stone-500 uppercase tracking-wider mb-0.5 cursor-pointer"
+                className="block text-xs font-medium text-stone-500 mb-0.5 cursor-pointer"
               >
                 Check in
               </label>
@@ -1641,11 +1641,11 @@ export default function Home() {
             {/* Check Out */}
             <div
               onClick={openCheckOutPicker}
-              className="col-span-1 md:flex-1 md:min-w-0 rounded-lg md:rounded-full px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none cursor-pointer group"
+              className="col-span-1 md:flex-1 md:min-w-0 rounded-lg px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none cursor-pointer group"
             >
               <label
                 htmlFor="search-check-out"
-                className="block text-[9px] font-medium text-stone-500 uppercase tracking-wider mb-0.5 cursor-pointer"
+                className="block text-xs font-medium text-stone-500 mb-0.5 cursor-pointer"
               >
                 Check out
               </label>
@@ -1673,7 +1673,7 @@ export default function Home() {
             {/* Who / Guests */}
             <div
               ref={guestSelectorRef}
-              className={`col-span-1 md:flex-1 md:min-w-0 relative rounded-lg md:rounded-full px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none ${
+              className={`col-span-1 md:flex-1 md:min-w-0 relative rounded-lg px-3 py-1.5 md:px-3 md:py-1.5 hover:bg-stone-50 transition border border-stone-200/60 md:border-none ${
                 showGuestDropdown ? 'z-50 bg-stone-50' : 'z-20'
               }`}
             >
@@ -1683,7 +1683,7 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left cursor-pointer"
               >
-                <span className="block text-[9px] font-medium text-stone-500 uppercase tracking-wider mb-0.5">
+                <span className="block text-xs font-medium text-stone-500 mb-0.5">
                   Guests
                 </span>
                 <span className="flex items-center gap-1.5">
@@ -1703,7 +1703,7 @@ export default function Home() {
                     <div className="mb-2 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2">
                       <div className="text-[11px] text-amber-900 leading-tight">
                         <span className="font-semibold block">Select dates first</span>
-                        <span className="text-[10px] text-amber-800">For accurate rates & room capacity</span>
+                        <span className="text-xs text-amber-800">For accurate rates & room capacity</span>
                       </div>
                       <button
                         type="button"
@@ -1726,7 +1726,7 @@ export default function Home() {
                     <div key={`${row.label}-${rIdx}`} className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-stone-200/50">
                       <div>
                         <span className="block text-xs font-semibold text-stone-900">{row.label}</span>
-                        <span className="text-[10px] text-stone-500">{row.hint}</span>
+                        <span className="text-xs text-stone-500">{row.hint}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -1760,12 +1760,12 @@ export default function Home() {
               <button
                 onClick={handleSearch}
                 disabled={searching}
-                className="w-full md:w-auto h-full min-h-[40px] flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 active:scale-98 text-white rounded-lg md:rounded-full px-4 py-2 font-medium text-xs tracking-normal transition disabled:opacity-60 cursor-pointer shadow-2xs"
+                className="w-full md:w-auto h-full min-h-[40px] flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 active:scale-98 text-white rounded-lg px-4 py-2 font-medium text-xs tracking-normal transition disabled:opacity-60 cursor-pointer"
               >
                 {searching
                   ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-stone-400 border-t-white" />
                   : <Search className="h-3.5 w-3.5 text-stone-300" />}
-                <span>Search Stays</span>
+                <span>Search stays</span>
               </button>
             </div>
           </div>
@@ -1777,7 +1777,7 @@ export default function Home() {
         <section className="bg-stone-50/60 py-2 sm:py-2.5 border-b border-stone-200/70">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2.5 sm:gap-3 overflow-hidden w-full">
-              <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-stone-400 uppercase shrink-0 select-none whitespace-nowrap">
+              <span className="text-xs sm:text-sm text-stone-500 shrink-0 select-none whitespace-nowrap">
                 Popular destinations
               </span>
               <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1803,7 +1803,7 @@ export default function Home() {
                         proximity: searchProximity,
                       });
                     }}
-                    className="h-7 sm:h-7.5 rounded-full border border-stone-200/80 bg-white hover:bg-stone-50 px-3 text-[11px] sm:text-xs font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-900 active:scale-95 cursor-pointer whitespace-nowrap shrink-0 shadow-2xs flex items-center"
+                    className="h-7 sm:h-7.5 rounded-full border border-stone-200/80 bg-white hover:bg-stone-50 px-3 text-[11px] sm:text-xs font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-900 active:scale-95 cursor-pointer whitespace-nowrap shrink-0  flex items-center"
                   >
                     {destination}
                   </button>
@@ -1820,7 +1820,7 @@ export default function Home() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                  <p className="text-[0.7rem] font-semibold tracking-[0.22em] text-stone-400 uppercase mb-2">
+                  <p className="text-sm text-stone-500 mb-1">
                     {hasPromotedFeatures ? 'Hand-picked by Travel Malawi' : 'Rated by people who stayed'}
                   </p>
                   <h2 className="text-3xl md:text-4xl font-serif text-stone-900 tracking-tight">
@@ -1829,7 +1829,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="text-sm font-semibold text-stone-900 hover:text-emerald-700 transition self-start md:self-auto border-b border-stone-300 hover:border-emerald-700 pb-0.5"
+                  className="tm-link self-start md:self-auto"
                 >
                   See everywhere
                 </button>
@@ -1845,14 +1845,14 @@ export default function Home() {
                         className="absolute inset-0 w-full h-full object-cover transition duration-700 ease-out group-hover:scale-105"
                       />
                       {index === 0 && !hasPromotedFeatures ? (
-                        <span className="absolute top-3.5 left-3.5 bg-white/95 text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em] shadow-md">
+                        <span className="absolute top-3.5 left-3.5 bg-white/95 text-stone-900 text-xs font-medium px-2.5 py-1 rounded-md shadow-sm">
                           Best rated
                         </span>
                       ) : null}
                     </div>
 
                     <div className="flex flex-col gap-1 px-1">
-                      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-stone-500 uppercase">
+                      <p className="text-xs text-stone-500">
                         {entry.hotel.location}
                       </p>
                       <h3 className="font-serif text-base sm:text-lg md:text-xl font-bold text-stone-900 leading-snug line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] group-hover:text-emerald-700 transition-colors">
@@ -1866,18 +1866,18 @@ export default function Home() {
                           return slashed.hasDiscount ? (
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                                <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs font-medium">
                                   {slashed.saleTypeLabel}
                                 </span>
-                                <span className="text-emerald-700 text-[10px] font-bold">
+                                <span className="text-emerald-700 text-xs font-medium">
                                   Save {slashed.discountPercentage}%
                                 </span>
                               </div>
                               <div className="flex items-baseline gap-1 flex-wrap">
-                                <span className="text-[10px] uppercase font-bold text-stone-400">FROM</span>
+                                <span className="text-xs text-stone-400">From</span>
                                 <PriceDisplay className="text-stone-400 font-medium line-through decoration-stone-300 text-xs" amount={entry.priceFrom} currency={currency} />
                                 <span className="text-stone-400 font-bold text-xs">&gt;</span>
-                                <span className="text-[10px] uppercase font-bold text-red-600">TO</span>
+                                <span className="text-xs text-red-600">to</span>
                                 <PriceDisplay className="text-red-600 font-bold text-sm sm:text-base tracking-tight" amount={slashed.slashedPrice} currency={currency} />
                                 <span className="text-stone-400 text-[11px] sm:text-xs"> / night</span>
                               </div>
@@ -1936,7 +1936,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setIsMobileFilterOpen(prev => !prev)}
-                className={`flex-1 h-9 px-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-colors shadow-2xs cursor-pointer ${
+                className={`flex-1 h-9 px-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-colors  cursor-pointer ${
                   isMobileFilterOpen || activeFiltersCount > 0
                     ? 'bg-stone-900 text-white border-stone-900'
                     : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
@@ -1960,7 +1960,7 @@ export default function Home() {
 
               {/* Quick Currency Selector on Mobile */}
               {offeredCurrencies.length > 1 && (
-                <div className="flex items-center h-9 bg-white p-0.5 rounded-lg border border-stone-200 shadow-2xs shrink-0">
+                <div className="flex items-center h-9 bg-white p-0.5 rounded-lg border border-stone-200  shrink-0">
                   {offeredCurrencies.map((code, cIdx) => (
                     <button
                       key={`mob-curr-${code}-${cIdx}`}
@@ -1970,7 +1970,7 @@ export default function Home() {
                       title={CURRENCIES[code].label}
                       className={`h-full px-2.5 flex items-center justify-center rounded-md text-[11px] font-bold transition cursor-pointer ${
                         currency === code
-                          ? 'bg-stone-900 text-white shadow-2xs'
+                          ? 'bg-stone-900 text-white '
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
@@ -1990,7 +1990,7 @@ export default function Home() {
                     <Filter className="w-3.5 h-3.5 text-stone-700" />
                     <span>Filter & Refine Stays</span>
                     {activeFiltersCount > 0 && (
-                      <span className="text-[10px] bg-stone-900 text-white px-1.5 py-0.5 rounded-full font-semibold">
+                      <span className="text-xs bg-stone-900 text-white px-1.5 py-0.5 rounded-full font-semibold">
                         {activeFiltersCount}
                       </span>
                     )}
@@ -2010,8 +2010,8 @@ export default function Home() {
                 {/* Section 1: Stay Type & Experience Category */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
-                      Stay Type
+                    <label className="tm-label">
+                      Stay type
                     </label>
                     <div className="relative">
                       <select
@@ -2030,7 +2030,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
+                    <label className="tm-label">
                       Experience
                     </label>
                     <div className="relative">
@@ -2041,7 +2041,7 @@ export default function Home() {
                       >
                         {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
                           <option key={`m-cat-${category}-${cIdx}`} value={category}>
-                            {category === 'All' ? 'All Experiences' : category}
+                            {category === 'All' ? 'All experiences' : category}
                           </option>
                         ))}
                       </select>
@@ -2053,8 +2053,8 @@ export default function Home() {
                 {/* Section 2: Budget (Price Range Slider Embedded) */}
                 <div className="bg-white border border-stone-200/90 rounded-lg p-2.5">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                      Budget Per Night
+                    <span className="text-sm font-medium text-stone-700">
+                      Budget per night
                     </span>
                     <span className="text-[11px] font-semibold text-stone-900">
                       {isPriceFiltered
@@ -2085,14 +2085,14 @@ export default function Home() {
                 {/* Section 3: Amenities Filter Chips */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    <span className="text-sm font-medium text-stone-700">
                       Amenities
                     </span>
                     {activeAmenities.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setActiveAmenities([])}
-                        className="text-[10px] text-stone-500 hover:text-stone-900"
+                        className="text-xs text-stone-500 hover:text-stone-900"
                       >
                         Clear
                       </button>
@@ -2128,8 +2128,8 @@ export default function Home() {
 
                 {/* Section 4: Location & GPS */}
                 <div>
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
-                    Location & Distances
+                  <span className="tm-label">
+                    Location and distances
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -2167,8 +2167,8 @@ export default function Home() {
 
                 {/* Section 5: Sort */}
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
-                    Sort Order
+                  <label className="tm-label">
+                    Sort order
                   </label>
                   <div className="relative">
                     <select
@@ -2194,7 +2194,7 @@ export default function Home() {
                       setIsMobileFilterOpen(false);
                       document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
-                    className="w-full h-9 bg-stone-900 text-white font-medium rounded-lg text-xs hover:bg-stone-800 transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full h-9 bg-stone-900 text-white font-medium rounded-lg text-xs hover:bg-stone-800 transition  flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>Show {filteredHotels.length} Stays</span>
                   </button>
@@ -2206,7 +2206,7 @@ export default function Home() {
             {(hasSearch || isPriceFiltered || activeStayType !== 'All' || activeCategory !== 'All' || activeAmenities.length > 0) && (!isMobileFilterOpen || true) && (
               <div className={`${isMobileFilterOpen ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full border-b sm:border-b border-stone-200/60 pb-1.5`}>
                 {activeStayType !== 'All' && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 ">
                     <span>{STAY_TYPE_LABELS[activeStayType] || activeStayType}</span>
                     <button
                       type="button"
@@ -2219,7 +2219,7 @@ export default function Home() {
                   </span>
                 )}
                 {activeCategory !== 'All' && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 ">
                     <span>Category: {activeCategory}</span>
                     <button
                       type="button"
@@ -2232,27 +2232,27 @@ export default function Home() {
                   </span>
                 )}
                 {appliedSearch.coords && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 ">
                     Within {appliedSearch.proximity} km
                   </span>
                 )}
                 {!appliedSearch.coords && appliedSearch.location && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 ">
                     {appliedSearch.location}
                   </span>
                 )}
                 {appliedSearch.checkIn && appliedSearch.checkOut && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 ">
                     {appliedSearch.checkIn} &rarr; {appliedSearch.checkOut}
                   </span>
                 )}
                 {!!appliedSearch.guests && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 ">
                     {appliedSearch.guests} guest{appliedSearch.guests === 1 ? '' : 's'}
                   </span>
                 )}
                 {isPriceFiltered && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 ">
                     <span>
                       {formatMoney(priceRange[0], currency)} – {priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}
                     </span>
@@ -2269,7 +2269,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-full hover:bg-white hover:border hover:border-stone-200 transition flex items-center gap-1 shrink-0 cursor-pointer ml-auto"
+                  className="tm-btn tm-btn-quiet tm-btn-sm shrink-0 ml-auto"
                 >
                   <RotateCcw className="w-3 h-3" /> Clear all
                 </button>
@@ -2315,7 +2315,7 @@ export default function Home() {
                   >
                     {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
                       <option key={`cat-${category}-${cIdx}`} value={category} className="text-stone-900 bg-white">
-                        {category === 'All' ? 'All Experiences' : category}
+                        {category === 'All' ? 'All experiences' : category}
                       </option>
                     ))}
                   </select>
@@ -2411,7 +2411,7 @@ export default function Home() {
               {/* Utility & Location Controls (Right Group) */}
               <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
                 {/* Geolocation & Hub Controls */}
-                <div className="flex items-center h-8 rounded-lg border border-stone-200 bg-white p-0.5 shadow-2xs">
+                <div className="flex items-center h-8 rounded-lg border border-stone-200 bg-white p-0.5 ">
                   <button
                     type="button"
                     onClick={handleToggleUserLocation}
@@ -2442,7 +2442,7 @@ export default function Home() {
                     title="Choose a Malawian travel hub or city for distance calculations"
                   >
                     <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
-                    <span className="max-w-[85px] truncate">{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'City Hub'}</span>
+                    <span className="max-w-[85px] truncate">{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'City'}</span>
                   </button>
                 </div>
 
@@ -2463,7 +2463,7 @@ export default function Home() {
 
                 {/* Currency Selector */}
                 {offeredCurrencies.length > 1 && (
-                  <div className="flex items-center h-8 bg-white p-0.5 rounded-lg border border-stone-200 shadow-2xs">
+                  <div className="flex items-center h-8 bg-white p-0.5 rounded-lg border border-stone-200 ">
                     {offeredCurrencies.map((code, cIdx) => (
                       <button
                         key={`curr-${code}-${cIdx}`}
@@ -2473,7 +2473,7 @@ export default function Home() {
                         title={CURRENCIES[code].label}
                         className={`h-full px-2.5 flex items-center justify-center rounded-md text-[11px] font-bold transition cursor-pointer ${
                           currency === code
-                            ? 'bg-stone-900 text-white shadow-2xs'
+                            ? 'bg-stone-900 text-white '
                             : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
@@ -2503,7 +2503,7 @@ export default function Home() {
           </div>
 
           {/* View Mode Segmented Switch (blends into the header bar without covering content on mobile) */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-full border border-stone-200/90 shadow-2xs">
+          <div className="flex items-center bg-stone-100 p-1 rounded-lg border border-stone-200">
             <button
               type="button"
               onClick={() => {
@@ -2512,7 +2512,7 @@ export default function Home() {
                   document.getElementById('grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 50);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none ${
                 viewMode === 'grid'
                   ? 'bg-white text-stone-900 shadow-xs font-bold'
                   : 'text-stone-500 hover:text-stone-900'
@@ -2530,7 +2530,7 @@ export default function Home() {
                   document.getElementById('compact-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 50);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none ${
                 viewMode === 'compact'
                   ? 'bg-white text-stone-900 shadow-xs font-bold'
                   : 'text-stone-500 hover:text-stone-900'
@@ -2548,7 +2548,7 @@ export default function Home() {
                   document.getElementById('map-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 50);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none ${
                 viewMode === 'map'
                   ? 'bg-white text-stone-900 shadow-xs font-bold'
                   : 'text-stone-500 hover:text-stone-900'
@@ -2618,7 +2618,7 @@ export default function Home() {
                       </p>
                       <button
                         onClick={clearFilters}
-                        className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition shadow-sm"
+                        className="tm-btn tm-btn-primary"
                       >
                         Start the search over
                       </button>
@@ -2672,7 +2672,7 @@ export default function Home() {
                       </p>
                       <button
                         onClick={clearFilters}
-                        className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition shadow-sm"
+                        className="tm-btn tm-btn-primary"
                       >
                         Start the search over
                       </button>
@@ -2700,7 +2700,7 @@ export default function Home() {
                     ref={mapStaysListRef}
                     className="order-2 lg:order-1 h-[520px] sm:h-[560px] lg:h-[600px] xl:h-[650px] overflow-y-auto overscroll-contain pr-0 lg:pr-1 space-y-3 scrollbar-slim touch-pan-y"
                   >
-                    <div className="sticky top-0 z-10 bg-white/95 py-2 px-1 border-b border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs">
+                    <div className="sticky top-0 z-10 bg-white/95 py-2 px-1 border-b border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium ">
                       <span>
                         Showing <strong>{lodgeMarkers.length}</strong> {lodgeMarkers.length === 1 ? 'stay' : 'stays'} on map
                       </span>
@@ -2721,9 +2721,9 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={hasSearch ? clearFilters : clearMapFilters}
-                          className="px-4 py-1.5 rounded-full bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition"
+                          className="tm-btn tm-btn-primary tm-btn-sm"
                         >
-                          Clear Map Filters
+                          Clear map filters
                         </button>
                       </div>
                     ) : (
@@ -2749,7 +2749,7 @@ export default function Home() {
                             onClick={() => setSelectedMapLodgeId(isSelected ? null : hotel.id ?? null)}
                             className={`group p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer bg-white ${
                               isSelected
-                                ? 'border-emerald-600 ring-2 ring-emerald-500/25 shadow-md bg-emerald-50/10'
+                                ? 'border-emerald-600 ring-2 ring-emerald-500/25 shadow-sm bg-emerald-50/10'
                                 : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
                             }`}
                           >
@@ -2762,7 +2762,7 @@ export default function Home() {
                                     <MapPin className="w-5 h-5" />
                                   </div>
                                 )}
-                                <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/85 text-[9px] font-bold text-white uppercase tracking-wider">
+                                <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/85 text-xs font-medium text-white">
                                   {categoryLabel}
                                 </span>
                               </div>
@@ -2800,7 +2800,7 @@ export default function Home() {
 
                                 <div className="flex items-end justify-between gap-2 mt-2 pt-2 border-t border-stone-100">
                                   <div>
-                                    <div className="text-[10px] text-stone-400 font-medium">From</div>
+                                    <div className="text-xs text-stone-400 font-medium">From</div>
                                     {entry.priceFrom !== null && entry.priceFrom !== undefined ? (
                                       <div className="flex items-baseline gap-1">
                                         <PriceDisplay
@@ -2808,7 +2808,7 @@ export default function Home() {
                                           currency={currency}
                                           className="font-bold text-sm text-stone-900"
                                         />
-                                        <span className="text-[10px] text-stone-400">/ night</span>
+                                        <span className="text-xs text-stone-400">/ night</span>
                                       </div>
                                     ) : (
                                       <div className="text-[11px] text-stone-400">Rates on request</div>
@@ -2838,22 +2838,22 @@ export default function Home() {
                                       <button
                                         type="button"
                                         onClick={() => openAccessPermissionsModal('location')}
-                                        className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
+                                        className="text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
                                         title="Click to change city or hub"
                                       >
-                                        {userLocationLabel || 'Live Location'} (Change)
+                                        {userLocationLabel || 'Your location'} (Change)
                                       </button>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                       <div className="bg-white/80 rounded-lg p-2 border border-emerald-100">
-                                        <span className="text-[10px] text-stone-500 font-medium block">Est. Drive Time</span>
+                                        <span className="text-xs text-stone-500 font-medium block">Drive time</span>
                                         <span className="font-extrabold text-stone-900 text-sm">
                                           {travelEstimate.drivingTimeFormatted}
                                         </span>
                                       </div>
                                       <div className="bg-white/80 rounded-lg p-2 border border-emerald-100">
-                                        <span className="text-[10px] text-stone-500 font-medium block">Est. Road Distance</span>
+                                        <span className="text-xs text-stone-500 font-medium block">Road distance</span>
                                         <span className="font-extrabold text-emerald-800 text-sm">
                                           ~{travelEstimate.roadDistanceKm} km
                                         </span>
@@ -2878,9 +2878,9 @@ export default function Home() {
                                       </a>
                                       <Link
                                         to={`/hotel/${hotel.id}`}
-                                        className="inline-flex items-center justify-center gap-1 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition"
+                                        className="inline-flex items-center justify-center gap-1 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-medium transition"
                                       >
-                                        <span>View Stay</span>
+                                        <span>View stay</span>
                                         <ArrowRight className="w-3.5 h-3.5" />
                                       </Link>
                                     </div>
@@ -2895,7 +2895,7 @@ export default function Home() {
                                       <button
                                         type="button"
                                         onClick={handleToggleUserLocation}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium rounded-lg transition cursor-pointer"
                                       >
                                         <Locate className="w-3.5 h-3.5" />
                                         <span>Use GPS</span>
@@ -2903,10 +2903,10 @@ export default function Home() {
                                       <button
                                         type="button"
                                         onClick={() => openAccessPermissionsModal('location')}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-medium rounded-lg transition cursor-pointer"
                                       >
                                         <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>Pick City</span>
+                                        <span>Pick a city</span>
                                       </button>
                                     </div>
                                   </div>
@@ -2962,7 +2962,7 @@ export default function Home() {
              <button
                type="button"
                onClick={() => { setLoadFailed(false); setLoading(true); setListingsReloadKey(k => k + 1); }}
-               className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition cursor-pointer"
+               className="tm-btn tm-btn-primary"
              >
                Try again
              </button>
@@ -2979,7 +2979,7 @@ export default function Home() {
              </p>
              <Link
                to="/list-your-property"
-               className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition"
+               className="tm-btn tm-btn-primary"
              >
                List your property
              </Link>

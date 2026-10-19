@@ -519,17 +519,13 @@ export default function BulkRoomEditor({
       {/* Minimal Underline-Based Navigation Tabs */}
       <div className="border-b border-stone-200 bg-white px-4 sm:px-5 overflow-x-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-5 sm:gap-8" role="tablist" aria-label="Editor modes">
+          <div className="tm-tabs border-b-0" role="tablist" aria-label="Editor modes">
             <button
               type="button"
               role="tab"
               aria-selected={activeTab === 'rates'}
               onClick={() => setActiveTab('rates')}
-              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
-                activeTab === 'rates'
-                  ? 'border-stone-900 text-stone-900 font-semibold'
-                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-              }`}
+              className={`tm-tab inline-flex items-center gap-2 ${activeTab === 'rates' ? 'tm-tab-active' : ''}`}
             >
               <DollarSign className="w-4 h-4" />
               <span>Rates</span>
@@ -539,11 +535,7 @@ export default function BulkRoomEditor({
               role="tab"
               aria-selected={activeTab === 'promotions'}
               onClick={() => setActiveTab('promotions')}
-              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
-                activeTab === 'promotions'
-                  ? 'border-stone-900 text-stone-900 font-semibold'
-                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-              }`}
+              className={`tm-tab inline-flex items-center gap-2 ${activeTab === 'promotions' ? 'tm-tab-active' : ''}`}
             >
               <Percent className="w-4 h-4" />
               <span>New discount</span>
@@ -553,11 +545,7 @@ export default function BulkRoomEditor({
               role="tab"
               aria-selected={activeTab === 'active_promotions'}
               onClick={() => setActiveTab('active_promotions')}
-              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
-                activeTab === 'active_promotions'
-                  ? 'border-stone-900 text-stone-900 font-semibold'
-                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-              }`}
+              className={`tm-tab inline-flex items-center gap-2 ${activeTab === 'active_promotions' ? 'tm-tab-active' : ''}`}
             >
               <Tag className="w-4 h-4" />
               <span>Running discounts</span>

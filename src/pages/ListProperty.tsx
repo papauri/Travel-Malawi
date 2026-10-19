@@ -1546,7 +1546,7 @@ export default function ListProperty() {
       />
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
         {/* Streamlined Top Control Bar */}
-        <div className="mb-4 sm:mb-6 flex items-center justify-between gap-3">
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => {
@@ -1570,13 +1570,15 @@ export default function ListProperty() {
               title="Fill the form from a brochure or rate sheet"
             >
               <FileText className="w-3.5 h-3.5 text-stone-600" />
-              <span>Import from document</span>
+              <span className="sm:hidden">Import</span>
+              <span className="hidden sm:inline">Import from document</span>
             </button>
             <button
               type="button"
               onClick={handleDiscardDraft}
               className="tm-btn tm-btn-quiet tm-btn-sm hover:text-red-700"
               title="Clear all fields and start a fresh draft"
+              aria-label="Discard draft"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Discard</span>
@@ -1735,7 +1737,7 @@ export default function ListProperty() {
                           const candidate = pathSlug && pathSlug.length > 3 && !/index|home|default|main/i.test(pathSlug) ? pathSlug : hostClean;
                           initialBrand = candidate.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
                         } catch {}
-                        set('name', initialBrand || 'Fetching property...');
+                        set('name', initialBrand || 'Looking up…');
                         toast('Website link found. Looking up the name, location, rates and amenities…');
                         const norm = trimmedVal.startsWith('www.') ? `https://${trimmedVal}` : trimmedVal;
                         handleLookupPropertyAI(trimmedVal, { forceWebScrape: true, url: norm });
@@ -2213,7 +2215,7 @@ export default function ListProperty() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <span className={labelClass}>Amenities</span>
                   {aiStatus.enabled && aiStatus.available && (
                     <button
@@ -2235,8 +2237,8 @@ export default function ListProperty() {
                 {/* Optional Suggested Amenities Tray */}
                 {suggestedAmenities.length > 0 && (
                   <div className="mb-3.5 p-3.5 bg-stone-50 rounded-xl space-y-2 animate-in fade-in">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5 min-w-0">
                         <Check className="w-3.5 h-3.5 text-stone-500" />
                         Suggested for {draft.category || 'stay'}:
                       </span>
@@ -2602,14 +2604,14 @@ export default function ListProperty() {
                     <p className="text-sm font-semibold text-stone-900">
                       Your rooms ({(draft.rooms || []).length})
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <ul className="divide-y divide-stone-200 border-y border-stone-200">
                       {(draft.rooms || []).map((room, idx) => (
-                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between min-w-0">
+                        <li key={`configured-room-${room.id || idx}-${idx}`} className="py-3 flex items-center justify-between min-w-0">
                           <div className="flex items-center gap-3 min-w-0">
                             {room.imageUrl ? (
                               <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                             ) : (
-                              <div className="w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center shrink-0 border border-stone-200">
+                              <div className="w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center shrink-0">
                                 <Building2 className="w-5 h-5 text-stone-400" />
                               </div>
                             )}
@@ -2649,9 +2651,9 @@ export default function ListProperty() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        </div>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
 
@@ -2702,8 +2704,8 @@ export default function ListProperty() {
 
                 {/* Interactive Room Types Customizer Tray */}
                 {suggestedRooms.length > 0 && (
-                  <div className="p-4 sm:p-5 bg-stone-50 rounded-xl space-y-4 animate-in fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                  <div className="tm-divider pt-6 space-y-4 animate-in fade-in">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <h4 className="text-sm font-semibold text-stone-900">
                           Suggested room types
@@ -2732,9 +2734,9 @@ export default function ListProperty() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <ul className="divide-y divide-stone-200 border-y border-stone-200">
                       {suggestedRooms.map((roomItem, rIdx) => (
-                        <div key={`suggested-room-${rIdx}`} className="bg-white border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 min-w-0">
+                        <li key={`suggested-room-${rIdx}`} className="py-4 flex flex-col justify-between space-y-3.5 min-w-0">
                           <div className="space-y-2.5">
                             {/* Room Name Input */}
                             <div>
@@ -2925,14 +2927,14 @@ export default function ListProperty() {
                           <button
                             type="button"
                             onClick={() => addSuggestedRoom(rIdx)}
-                            className="tm-btn tm-btn-secondary tm-btn-sm w-full"
+                            className="tm-btn tm-btn-secondary tm-btn-sm w-full sm:w-auto sm:self-start"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Add this room</span>
                           </button>
-                        </div>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>
@@ -2946,8 +2948,8 @@ export default function ListProperty() {
                 const hasMwk = roomCurrencies.includes('MWK');
 
                 return (
-                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-xl p-4 sm:p-6 relative space-y-6 min-w-0">
-                    <div className="flex items-center justify-between gap-2 border-b border-stone-100 pb-4">
+                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="tm-divider pt-8 relative space-y-6 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="tm-tag shrink-0">
                           Room {idx + 1}
@@ -3653,8 +3655,8 @@ export default function ListProperty() {
                 <div className="text-center">
                   <h3 className="tm-h2 mb-1">Choose a plan</h3>
                   <p className="tm-muted mb-6">You can change it later.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                    <div className="rounded-xl border border-stone-200 p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-y border-stone-200 text-left">
+                    <div className="py-5 md:pr-6 border-l-2 border-amber-700 pl-4">
                       <h4 className="font-semibold text-stone-900">Basic</h4>
                       <p className="text-sm text-stone-500 mt-1 mb-4">Everything you need to take bookings.</p>
                       <p className="text-2xl font-semibold text-stone-900 mb-6">Free</p>
@@ -3662,14 +3664,14 @@ export default function ListProperty() {
                         <Check className="h-3.5 w-3.5" /> Selected
                       </span>
                     </div>
-                    <div className="rounded-xl border border-stone-200 p-6">
+                    <div className="py-5 pl-4 md:pl-6">
                       <h4 className="font-semibold text-stone-900">Premium</h4>
                       <p className="text-sm text-stone-500 mt-1 mb-4">More visibility and extra tools.</p>
                       <p className="text-2xl font-semibold text-stone-900 mb-6">$49<span className="text-sm text-stone-500 font-normal">/mo</span></p>
                       {/* No in-app checkout exists yet; upgrades are arranged with the team. */}
                       <a
                         href={`mailto:${DEFAULT_PLATFORM_EMAIL}?subject=${encodeURIComponent('Premium listing upgrade')}`}
-                        className="tm-btn tm-btn-secondary w-full"
+                        className="tm-btn tm-btn-secondary"
                       >
                         Ask about Premium
                       </a>
@@ -3690,8 +3692,8 @@ export default function ListProperty() {
 
           {step === 6 && (
             <div className="space-y-8">
-              <div className="overflow-hidden rounded-xl border border-stone-200">
-                <div className="relative h-64 bg-stone-100">
+              <div>
+                <div className="relative h-48 sm:h-64 overflow-hidden rounded-lg bg-stone-100">
                   <SmartImage
                     src={getHotelImage({ name: draft.name, imageUrl: draft.imageUrl, galleryUrls: draft.galleryUrls })}
                     alt={draft.name || 'Your property'}
@@ -3701,7 +3703,7 @@ export default function ListProperty() {
                     {draft.category || 'No category yet'}
                   </span>
                 </div>
-                <div className="p-6">
+                <div className="pt-5">
                   <p className="tm-muted">{draft.location}</p>
                   <h2 className="mt-1 tm-h1 break-words">{draft.name}</h2>
                   <p className="mt-4 whitespace-pre-line text-stone-600">{draft.description}</p>
@@ -3793,7 +3795,7 @@ export default function ListProperty() {
                           </button>
                         </div>
 
-                        <div className="bg-stone-50 p-4 rounded-xl space-y-2">
+                        <div className="space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-serif font-semibold text-base text-stone-900">
                               Entire {draft.entirePlaceDetails?.propertyType || 'place'}
@@ -3849,9 +3851,9 @@ export default function ListProperty() {
                             No rooms yet. Add at least one on the Rooms step before you submit.
                           </p>
                         ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <ul className="divide-y divide-stone-200">
                             {(draft.rooms || []).map((room, rIdx) => (
-                              <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl text-xs space-y-1.5 min-w-0">
+                              <li key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="py-3 first:pt-0 text-xs space-y-1.5 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
                                   <span className="font-semibold text-stone-900 text-sm break-words min-w-0">{room.name || `Room ${rIdx + 1}`}</span>
                                   <span className="text-[11px] text-stone-500 shrink-0">
@@ -3872,9 +3874,9 @@ export default function ListProperty() {
                                   ) : null}
                                   <span className="text-stone-400 font-normal">· Sleeps {room.maxGuests || 2}</span>
                                 </div>
-                              </div>
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         )}
                       </>
                     )}
@@ -4042,10 +4044,10 @@ export default function ListProperty() {
 
       <ConfirmDialog
         isOpen={showDiscardConfirm}
-        title="Discard Listing Draft"
-        message="Discard this draft and start fresh? All unsubmitted changes will be cleared."
-        confirmText="Discard Draft"
-        cancelText="Keep Editing"
+        title="Discard this draft?"
+        message="Everything you have entered so far will be cleared."
+        confirmText="Discard draft"
+        cancelText="Keep editing"
         isDestructive={true}
         onConfirm={confirmDiscardDraft}
         onCancel={() => setShowDiscardConfirm(false)}
@@ -4087,7 +4089,7 @@ function OnboardingWelcomeWalkthrough({
       />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Top Control Bar */}
-        <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
           <button
             type="button"
             onClick={() => navigate('/')}

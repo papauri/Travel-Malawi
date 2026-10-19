@@ -135,7 +135,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                     fieldLabel="conference space description"
                   />
                 </div>
-                <textarea required rows={3} value={editingRoom.description} onChange={e => setEditingRoom({ ...editingRoom, description: e.target.value })} className="tm-input resize-none" placeholder="Describe the space..." />
+                <textarea required rows={3} value={editingRoom.description} onChange={e => setEditingRoom({ ...editingRoom, description: e.target.value })} className="tm-input resize-none" placeholder="Describe the space…" />
               </div>
             </div>
             
@@ -170,7 +170,7 @@ export default function ConferenceManager({ hotelId }: Props) {
             <div className="md:col-span-2 border-t border-stone-100 pt-6 mt-2">
               <label className="block">
                 <span className="tm-label">Amenities (comma separated)</span>
-                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trimStart()) })} className="tm-input" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
+                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trimStart()) })} className="tm-input" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones…" />
               </label>
             </div>
             

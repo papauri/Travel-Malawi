@@ -158,15 +158,15 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               value={infrastructure.powerSource || 'Grid'} 
               onChange={(v) => setInfrastructure({...infrastructure, powerSource: v})}
               options={[
-                { value: 'Grid', label: 'National Grid (ESCOM)' },
-                { value: 'Solar', label: 'Full Solar Setup' },
-                { value: 'Generator', label: 'Generator Backup' },
+                { value: 'Grid', label: 'National grid (ESCOM)' },
+                { value: 'Solar', label: 'Full solar' },
+                { value: 'Generator', label: 'Generator backup' },
                 { value: 'Mixed', label: 'Mixed (Grid + Backup)' },
-                { value: 'Battery Inverter', label: 'Battery Inverter' },
+                { value: 'Battery Inverter', label: 'Battery inverter' },
                 { value: 'Mini-grid (Community)', label: 'Mini-grid (Community)' },
-                { value: 'Wind Power', label: 'Wind Power' },
+                { value: 'Wind Power', label: 'Wind power' },
                 { value: 'Biogas', label: 'Biogas' },
-                { value: 'None', label: 'Off-grid / No Power' }
+                { value: 'None', label: 'Off-grid, no power' }
               ]} 
               placeholder="e.g. Micro-hydro plant"
             />
@@ -179,12 +179,12 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               value={infrastructure.waterSource || 'Water Board'} 
               onChange={(v) => setInfrastructure({...infrastructure, waterSource: v})}
               options={[
-                { value: 'Water Board', label: 'Water Board (City Water)' },
-                { value: 'Borehole', label: 'Private Borehole' },
-                { value: 'Lake', label: 'Direct Lake Pumping' },
-                { value: 'Rainwater Harvesting', label: 'Rainwater Harvesting' },
-                { value: 'River / Stream', label: 'River / Stream Pumping' },
-                { value: 'Water Delivery', label: 'Water Delivery / Truck' },
+                { value: 'Water Board', label: 'Water board (city water)' },
+                { value: 'Borehole', label: 'Private borehole' },
+                { value: 'Lake', label: 'Pumped from the lake' },
+                { value: 'Rainwater Harvesting', label: 'Rainwater harvesting' },
+                { value: 'River / Stream', label: 'Pumped from a river or stream' },
+                { value: 'Water Delivery', label: 'Water delivery (truck)' },
                 { value: 'Other', label: 'Other / Variable' }
               ]} 
               placeholder="e.g. Natural Spring"
@@ -198,11 +198,11 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               value={infrastructure.roadAccess || 'Tarred'} 
               onChange={(v) => setInfrastructure({...infrastructure, roadAccess: v})}
               options={[
-                { value: 'Tarred', label: 'Tarred Road (All Vehicles)' },
+                { value: 'Tarred', label: 'Tarred road (any vehicle)' },
                 { value: 'Dirt/Gravel', label: 'Dirt / Gravel (Accessible)' },
-                { value: 'High-clearance', label: 'High-clearance Vehicle Required' },
+                { value: 'High-clearance', label: 'High-clearance vehicle needed' },
                 { value: '4x4 Only', label: '4x4 Required' },
-                { value: 'Boat Only', label: 'Boat Access Only' },
+                { value: 'Boat Only', label: 'Boat access only' },
                 { value: 'Fly-in', label: 'Fly-in (Airstrip)' },
                 { value: 'Hike-in Only', label: 'Hike-in Only' }
               ]} 
@@ -219,10 +219,10 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               className="tm-input"
             >
               <option value="None">None</option>
-              <option value="Fiber">Fiber (Fast & Reliable)</option>
+              <option value="Fiber">Fibre</option>
               <option value="Starlink">Starlink (Satellite)</option>
               <option value="4G Router">4G Router</option>
-              <option value="Mobile Data Only">Mobile Data Only</option>
+              <option value="Mobile Data Only">Mobile data only</option>
             </select>
           </div>
           <div>
@@ -234,12 +234,12 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               onChange={(v) => setInfrastructure({...infrastructure, workspaceSetup: v})}
               options={[
                 { value: 'None', label: 'None' },
-                { value: 'Dedicated Desk', label: 'Dedicated Desk' },
-                { value: 'Dining Table', label: 'Dining Table Setup' },
+                { value: 'Dedicated Desk', label: 'Dedicated desk' },
+                { value: 'Dining Table', label: 'Dining table' },
                 { value: 'Co-working Space (Shared)', label: 'Co-working Space (Shared)' },
-                { value: 'Private Office Room', label: 'Private Office Room' },
-                { value: 'Standing Desk Available', label: 'Standing Desk Available' },
-                { value: 'Ergonomic Chair Setup', label: 'Ergonomic Chair Setup' }
+                { value: 'Private Office Room', label: 'Private office room' },
+                { value: 'Standing Desk Available', label: 'Standing desk' },
+                { value: 'Ergonomic Chair Setup', label: 'Ergonomic chair' }
               ]} 
               placeholder="e.g. Balcony Table"
             />
@@ -372,12 +372,12 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
                     </div>
                   </div>
                   <div>
-                    <label className="tm-label">Phone Number</label>
+                    <label className="tm-label">Phone number</label>
                     <input
                       type="tel"
                       value={c.phone}
                       onChange={(e) => updateCrew(c.id, { phone: e.target.value })}
-                      placeholder="+265..."
+                      placeholder="+265…"
                       className="tm-input"
                     />
                   </div>
@@ -405,7 +405,7 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
             <textarea
               value={dailyBoard.activities || ''}
               onChange={(e) => setDailyBoard({...dailyBoard, activities: e.target.value})}
-              placeholder="e.g. 10:00 AM - Snorkeling trip to the islands..."
+              placeholder="e.g. 10:00 AM - Snorkeling trip to the islands…"
               className="tm-input min-h-[100px]"
             />
           </div>

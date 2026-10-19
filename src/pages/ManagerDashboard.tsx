@@ -267,7 +267,7 @@ export default function ManagerDashboard() {
     setActivating(true);
     try {
       await becomeHost();
-      toast.success('Property Owner tools activated! Loading your dashboard...');
+      toast.success('Host tools are on. Loading your dashboard…');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to activate property owner status.');
     } finally {
@@ -474,10 +474,10 @@ export default function ManagerDashboard() {
               setStatusFilter('all');
               setCurrentPage(1);
             }}
-            className="tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer"
+            className="tm-stat text-left hover:border-stone-300 transition-colors cursor-pointer"
           >
-            <p className="tm-muted">Properties</p>
-            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{hotels.length}</p>
+            <p className="tm-stat-label">Properties</p>
+            <p className="tm-stat-value">{hotels.length}</p>
             <p className="mt-0.5 text-xs text-stone-500 truncate">
               {liveCount} live
               {pendingApprovalCount > 0
@@ -491,10 +491,10 @@ export default function ManagerDashboard() {
           <button
             type="button"
             onClick={() => handleOpenBulkEditor()}
-            className="tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer"
+            className="tm-stat text-left hover:border-stone-300 transition-colors cursor-pointer"
           >
-            <p className="tm-muted">Rooms</p>
-            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{totalRoomUnits}</p>
+            <p className="tm-stat-label">Rooms</p>
+            <p className="tm-stat-value">{totalRoomUnits}</p>
             <p className="mt-0.5 text-xs text-stone-500 truncate">
               {rooms.length} {rooms.length === 1 ? 'type' : 'types'}
               {syncedPropertiesCount > 0 ? ` · ${syncedPropertiesCount} calendar synced` : ''}
@@ -508,20 +508,20 @@ export default function ManagerDashboard() {
               setStatusFilter('needs_attention');
               setCurrentPage(1);
             }}
-            className={`tm-panel text-left min-w-0 hover:border-stone-300 transition-colors cursor-pointer ${
+            className={`tm-stat text-left hover:border-stone-300 transition-colors cursor-pointer ${
               totalPending > 0 ? 'ring-1 ring-amber-300' : ''
             }`}
           >
-            <p className="tm-muted">Bookings</p>
-            <p className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">{bookings.length}</p>
+            <p className="tm-stat-label">Bookings</p>
+            <p className="tm-stat-value">{bookings.length}</p>
             <p className={`mt-0.5 text-xs truncate ${totalPending > 0 ? 'text-amber-800 font-medium' : 'text-stone-500'}`}>
               {totalPending > 0 ? `${totalPending} awaiting reply` : `${confirmedBookingsCount} confirmed`}
             </p>
           </button>
 
-          <div className="tm-panel min-w-0">
-            <p className="tm-muted">Confirmed revenue</p>
-            <p className="mt-1 text-xl font-semibold text-stone-900 tabular-nums truncate">
+          <div className="tm-stat">
+            <p className="tm-stat-label">Confirmed revenue</p>
+            <p className="tm-stat-value truncate">
               MK {revenueMWK.toLocaleString()}
             </p>
             <p className="mt-0.5 text-xs text-stone-500 tabular-nums truncate">
@@ -533,7 +533,7 @@ export default function ManagerDashboard() {
 
       {/* View tabs */}
       <div
-        className="mb-5 flex flex-wrap gap-1.5 border-b border-stone-200 pb-3"
+        className="tm-tabs mb-5"
         role="tablist"
         aria-label="Dashboard views"
       >
@@ -558,11 +558,7 @@ export default function ManagerDashboard() {
               setStatusFilter(t.id);
               setCurrentPage(1);
             }}
-            className={`tm-btn tm-btn-sm ${
-              activeTab === t.id
-                ? 'bg-stone-100 text-stone-900 font-semibold'
-                : 'tm-btn-quiet text-stone-600'
-            }`}
+            className={`tm-tab inline-flex items-center gap-1.5 ${activeTab === t.id ? 'tm-tab-active' : ''}`}
           >
             <span>{t.label}</span>
             <span className={`tabular-nums ${activeTab === t.id ? 'text-stone-600' : 'text-stone-400'}`}>
@@ -900,7 +896,7 @@ export default function ManagerDashboard() {
                               className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition"
                             >
                               <BedDouble className="w-3.5 h-3.5 text-stone-400" />
-                              <span>Rooms &amp; Rates</span>
+                              <span>Rooms and rates</span>
                             </Link>
 
                             <button
@@ -999,9 +995,9 @@ export default function ManagerDashboard() {
 
       <ConfirmDialog
         isOpen={!!hotelToDelete}
-        title="Delete Property Listing"
+        title="Delete property listing"
         message={`Are you sure you want to permanently delete "${hotelToDelete?.name}"? All associated room inventory and listings settings will be permanently removed. This action cannot be undone.`}
-        confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete property"}
+        confirmText={isDeletingHotel ? "Deleting…" : "Yes, delete property"}
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={handleConfirmDeleteHotel}

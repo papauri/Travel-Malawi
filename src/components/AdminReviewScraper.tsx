@@ -962,50 +962,38 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
   return (
     <div className="space-y-6 max-w-6xl animate-in fade-in duration-200">
       {/* Header Banner - Clean and Simple */}
-      <div className="pb-3 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div>
           <h2 className="tm-h1">
-            Review Discovery &amp; Moderation
+            Find and moderate reviews
           </h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
             Search verified public channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings) and link real traveler experiences to Malawian properties.
           </p>
         </div>
 
-        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 flex-wrap gap-1">
+        <div className="tm-tabs w-full" role="tablist">
           <button
             type="button"
             onClick={() => setActiveSubTab('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-              activeSubTab === 'all'
-                ? 'bg-white text-stone-900 font-semibold'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
+            role="tab" aria-selected={activeSubTab === 'all'} className={`tm-tab flex items-center gap-1.5 cursor-pointer ${activeSubTab === 'all' ? 'tm-tab-active' : ''}`}
           >
             <ListFilter className="w-3.5 h-3.5" />
-            <span>All Platform Reviews ({allPlatformReviews.length})</span>
+            <span>All reviews ({allPlatformReviews.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSubTab('discover')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-              activeSubTab === 'discover'
-                ? 'bg-white text-stone-900 font-semibold'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
+            role="tab" aria-selected={activeSubTab === 'discover'} className={`tm-tab flex items-center gap-1.5 cursor-pointer ${activeSubTab === 'discover' ? 'tm-tab-active' : ''}`}
           >
             <Search className="w-3.5 h-3.5" />
-            <span>Discover Web Reviews</span>
+            <span>Find web reviews</span>
           </button>
           {selectedHotel && (
             <button
               type="button"
               onClick={() => setActiveSubTab('existing')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeSubTab === 'existing'
-                  ? 'bg-white text-stone-900 font-semibold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
+              role="tab" aria-selected={activeSubTab === 'existing'} className={`tm-tab flex items-center gap-1.5 cursor-pointer ${activeSubTab === 'existing' ? 'tm-tab-active' : ''}`}
             >
               <Eye className="w-3.5 h-3.5" />
               <span>{selectedHotel.name} ({existingStats.count})</span>
@@ -1017,62 +1005,32 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
       {/* ==================== SUB-TAB: ALL PLATFORM REVIEWS ==================== */}
       {activeSubTab === 'all' && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          {/* KPI Summary Cards */}
+          {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200">
-              <div className="flex items-center justify-between text-stone-400 mb-1">
-                <span className="text-[10px] font-bold text-stone-500">Total Reviews</span>
-                <MessageSquare className="w-4 h-4 text-stone-600" />
-              </div>
-              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
-                {platformStats.total}
-              </div>
-              <p className="text-[10px] text-stone-500 mt-0.5">Across all Malawi stays</p>
+            <div className="tm-stat">
+              <p className="tm-stat-label">Total reviews</p>
+              <p className="tm-stat-value">{platformStats.total}</p>
+              <p className="tm-muted truncate">Across all Malawi stays</p>
             </div>
-
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200">
-              <div className="flex items-center justify-between text-stone-400 mb-1">
-                <span className="text-[10px] font-bold text-emerald-700">Direct Guests</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              </div>
-              <div className="text-xl sm:text-2xl font-serif font-bold text-emerald-800">
-                {platformStats.directCount}
-              </div>
-              <p className="text-[10px] text-stone-500 mt-0.5">Verified completed stays</p>
+            <div className="tm-stat">
+              <p className="tm-stat-label">Direct guests</p>
+              <p className="tm-stat-value">{platformStats.directCount}</p>
+              <p className="tm-muted truncate">Verified completed stays</p>
             </div>
-
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200">
-              <div className="flex items-center justify-between text-stone-400 mb-1">
-                <span className="text-[10px] font-bold text-stone-600">Imported</span>
-                <Globe className="w-4 h-4 text-stone-500" />
-              </div>
-              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
-                {platformStats.importedCount}
-              </div>
-              <p className="text-[10px] text-stone-500 mt-0.5">TripAdvisor &amp; Google</p>
+            <div className="tm-stat">
+              <p className="tm-stat-label">Imported</p>
+              <p className="tm-stat-value">{platformStats.importedCount}</p>
+              <p className="tm-muted truncate">TripAdvisor and Google</p>
             </div>
-
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200">
-              <div className="flex items-center justify-between text-stone-400 mb-1">
-                <span className="text-[10px] font-bold text-amber-700">Avg Rating</span>
-                <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-baseline gap-1">
-                <span>{platformStats.averageRating > 0 ? platformStats.averageRating.toFixed(1) : '—'}</span>
-                <span className="text-xs text-amber-500 font-sans">★</span>
-              </div>
-              <p className="text-[10px] text-stone-500 mt-0.5">Global platform score</p>
+            <div className="tm-stat">
+              <p className="tm-stat-label">Average rating</p>
+              <p className="tm-stat-value">{platformStats.averageRating > 0 ? platformStats.averageRating.toFixed(1) : '—'}</p>
+              <p className="tm-muted truncate">Across the platform</p>
             </div>
-
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200 col-span-2 sm:col-span-1">
-              <div className="flex items-center justify-between text-stone-400 mb-1">
-                <span className="text-[10px] font-bold text-rose-700">Constructive</span>
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-              </div>
-              <div className="text-xl sm:text-2xl font-serif font-bold text-rose-800">
-                {platformStats.criticalCount}
-              </div>
-              <p className="text-[10px] text-stone-500 mt-0.5">1–3★ critiques &amp; feedback</p>
+            <div className="tm-stat col-span-2 sm:col-span-1">
+              <p className="tm-stat-label">Critical</p>
+              <p className="tm-stat-value">{platformStats.criticalCount}</p>
+              <p className="tm-muted truncate">1–3★ reviews</p>
             </div>
           </div>
 
@@ -1089,7 +1047,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                     setPlatformSearchQuery(e.target.value);
                     setPlatformCurrentPage(1);
                   }}
-                  placeholder="Search guest, lodge name, comments..."
+                  placeholder="Search guest, lodge name, comments…"
                   className="w-full bg-stone-50 border border-stone-200 rounded-lg pl-8 pr-7 py-1.5 text-xs text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition"
                 />
                 {platformSearchQuery && (
@@ -1116,7 +1074,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   }}
                   className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition truncate"
                 >
-                  <option value="all">All Properties ({hotels.length})</option>
+                  <option value="all">All properties ({hotels.length})</option>
                   {hotels.map(h => (
                     <option key={h.id} value={h.id}>
                       {h.name} {h.location ? `(${h.location})` : ''}
@@ -1135,8 +1093,8 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   }}
                   className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
                 >
-                  <option value="all">All Channels</option>
-                  <option value="direct">Direct Stays (Travel-Malawi)</option>
+                  <option value="all">All channels</option>
+                  <option value="direct">Direct stays (Travel Malawi)</option>
                   <option value="tripadvisor">TripAdvisor</option>
                   <option value="google">Google Reviews</option>
                   <option value="booking">Booking.com</option>
@@ -1154,7 +1112,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   }}
                   className="w-1/2 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
                 >
-                  <option value="all">All Stars</option>
+                  <option value="all">All ratings</option>
                   <option value="5">5 Stars</option>
                   <option value="4">4 Stars</option>
                   <option value="3">3 Stars</option>
@@ -1169,7 +1127,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   }}
                   className="w-1/2 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
                 >
-                  <option value="recent">Most Recent</option>
+                  <option value="recent">Most recent</option>
                   <option value="highest">Highest</option>
                   <option value="critical">Critical</option>
                   <option value="oldest">Oldest</option>
@@ -1276,7 +1234,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
                         {review.verified ? (
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded flex items-center gap-1">
-                            <ShieldCheck className="w-2.5 h-2.5" /> Verified Stay
+                            <ShieldCheck className="w-2.5 h-2.5" /> Verified stay
                           </span>
                         ) : (
                           <span className="text-[10px] font-semibold text-stone-600 bg-stone-100 border border-stone-200 px-1.5 py-0.2 rounded">
@@ -1310,7 +1268,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                         {(() => {
                           const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
                           if (isGuestBook) {
-                            return <span className="text-stone-500 text-[10px]">Lodge Reception Guest Book</span>;
+                            return <span className="text-stone-500 text-[10px]">Reception guest book</span>;
                           }
                           const cleanUrl = review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
                             ? review.sourceUrl
@@ -1392,7 +1350,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   type="text"
                   value={hotelSearchQuery}
                   onChange={(e) => setHotelSearchQuery(e.target.value)}
-                  placeholder="Filter properties by name or region (e.g. Likoma, Liwonde, Cape Maclear)..."
+                  placeholder="Filter by name or region, e.g. Likoma or Liwonde…"
                   className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-8 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition"
                 />
                 {hotelSearchQuery && (
@@ -1419,7 +1377,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 <option value="">-- Choose property ({filteredHotels.length}) --</option>
                 {filteredHotels.map(hotel => (
                   <option key={hotel.id} value={hotel.id}>
-                    {hotel.status === 'pending' ? '[Pending Approval] ' : hotel.status === 'rejected' ? '[Unpublished] ' : ''}
+                    {hotel.status === 'pending' ? '[Pending] ' : hotel.status === 'rejected' ? '[Unpublished] ' : ''}
                     {hotel.name} {hotel.location ? `(${hotel.location})` : ''}
                   </option>
                 ))}
@@ -1448,7 +1406,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   <h4 className="font-serif font-bold text-stone-900 text-sm truncate">{selectedHotel.name}</h4>
                   {selectedHotel.status === 'pending' ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
-                      Pending Approval
+                      Pending
                     </span>
                   ) : selectedHotel.status === 'rejected' ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
@@ -1506,7 +1464,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 className="inline-flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900"
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>{showAdvancedOptions ? 'Hide Advanced Options' : 'Configure Search Terms & Sources'}</span>
+                <span>{showAdvancedOptions ? 'Hide options' : 'Search options'}</span>
               </button>
             </div>
 
@@ -1515,9 +1473,9 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               <Bot className="w-4 h-4 text-amber-800 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <p className="font-semibold text-amber-950 flex items-center gap-1.5">
-                  <span>Review Intelligence Swarm Agent Ready</span>
+                  <span>Review search is ready</span>
                   <span className="text-[10px] font-normal bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded">
-                    Live Web Grounding
+                    Live web search
                   </span>
                 </p>
                 <p className="text-[11px] text-amber-900/80 leading-relaxed">
@@ -1535,11 +1493,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                     key={source.id}
                     type="button"
                     onClick={() => toggleSourceSelection(source.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
-                      isSelected 
-                        ? 'bg-stone-900 text-white border-stone-900' 
-                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100 hover:text-stone-900'
-                    }`}
+                    aria-pressed={isSelected} className={`tm-btn tm-btn-sm ${isSelected ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
                   >
                     {source.label}
                   </button>
@@ -1552,7 +1506,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
                 <div>
                   <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                    Specific Property Alias (Optional)
+                    Other property name (optional)
                   </label>
                   <input
                     type="text"
@@ -1566,7 +1520,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
                 <div>
                   <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                    Direct Listing URL or Domain (Optional)
+                    Listing URL or domain (optional)
                   </label>
                   <input
                     type="url"
@@ -1581,7 +1535,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="flex-1">
                     <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                      Scraping Tone &amp; Transparency
+                      Review mix
                     </label>
                     <select
                       value={sentimentMode}
@@ -1594,42 +1548,42 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                       }}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
-                      <option value="balanced">Balanced &amp; Transparent (Mix of 4-5★ &amp; 2-3★)</option>
-                      <option value="critical">Critical / Negative Only (1-3★ authentic issues)</option>
-                      <option value="positive">Positive Highlights Only (4-5★)</option>
-                      <option value="all">All Ratings (1-5★ Unfiltered)</option>
+                      <option value="balanced">Balanced (mix of 4–5★ and 2–3★)</option>
+                      <option value="critical">Critical only (1–3★)</option>
+                      <option value="positive">Positive only (4–5★)</option>
+                      <option value="all">All ratings (1–5★)</option>
                     </select>
                   </div>
 
                   <div className="flex-1">
                     <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                      Target Reviews
+                      Reviews to fetch
                     </label>
                     <select
                       value={reviewCount}
                       onChange={(e) => setReviewCount(Number(e.target.value))}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
-                      <option value={10}>10 Most Recent Reviews (Standard Batch — Recommended)</option>
-                      <option value={5}>5 Reviews (Quick Preview)</option>
-                      <option value={15}>15 Reviews (Full Archive Discovery)</option>
+                      <option value={10}>10 most recent (recommended)</option>
+                      <option value={5}>5 reviews (quick preview)</option>
+                      <option value={15}>15 reviews (full search)</option>
                     </select>
                   </div>
 
                   <div className="flex-1">
                     <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                      Min Rating Threshold
+                      Minimum rating
                     </label>
                     <select
                       value={minRating}
                       onChange={(e) => setMinRating(Number(e.target.value))}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
-                      <option value={1}>1+ Star (Full Transparency)</option>
+                      <option value={1}>1+ star (all)</option>
                       <option value={2}>2+ Stars</option>
                       <option value={3}>3+ Stars</option>
                       <option value={4}>4+ Stars</option>
-                      <option value={5}>5 Stars Only</option>
+                      <option value={5}>5 stars only</option>
                     </select>
                   </div>
                 </div>
@@ -1656,12 +1610,12 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 {isScraping ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Searching Channels...</span>
+                    <span>Searching channels…</span>
                   </>
                 ) : (
                   <>
                     <Search className="w-4 h-4" />
-                    <span>Discover Public Reviews</span>
+                    <span>Find public reviews</span>
                   </>
                 )}
               </button>
@@ -1691,7 +1645,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
             <ShieldCheck className="w-5 h-5 text-amber-700" />
           </div>
           <h4 className="font-serif font-bold text-stone-900 text-sm">
-            All Discovered Reviews Are Already Attached
+            All found reviews are already attached
           </h4>
           <p className="text-stone-600 text-xs max-w-md mx-auto leading-relaxed">
             {duplicateFilteredCount} public review{duplicateFilteredCount > 1 ? 's were' : ' was'} discovered across web channels, but {duplicateFilteredCount > 1 ? 'they have already been' : 'it has already been'} scraped and attached to <strong>{selectedHotel?.name}</strong>. No duplicate reviews were added.
@@ -1732,7 +1686,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               {projectedStats.count > 0 && (
                 <span className="text-[11px] text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  <span>Projected Rating: {projectedStats.average}★ ({projectedStats.count} total)</span>
+                  <span>Rating after attaching: {projectedStats.average}★ ({projectedStats.count} total)</span>
                 </span>
               )}
             </div>
@@ -1746,7 +1700,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   onChange={(e) => setRatingFilter(e.target.value)}
                   className="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-xs text-stone-800 outline-none"
                 >
-                  <option value="all">All Stars ({scrapedReviews.length})</option>
+                  <option value="all">All ratings ({scrapedReviews.length})</option>
                   <option value="5">5★ Only</option>
                   <option value="4">4★ Range</option>
                   <option value="critical">1–3★ Critical/Constructive</option>
@@ -1757,7 +1711,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 onClick={handleSelectAll}
                 className="text-xs font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 hover:bg-stone-200 transition"
               >
-                Select All
+                Select all
               </button>
               <button
                 type="button"
@@ -1871,7 +1825,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                         {review.date && <span className="font-medium text-stone-700">{review.date}</span>}
                         {review.rating <= 2.5 && (
                           <span className="text-[10px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
-                            Critical Feedback
+                            Critical
                           </span>
                         )}
                         {review.rating > 2.5 && review.rating <= 3.8 && (
@@ -1884,7 +1838,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                           if (isGuestBook) {
                             return (
                               <span className="text-[10px] font-semibold text-stone-600 bg-stone-100 border border-stone-200 px-1.5 py-0.2 rounded">
-                                Reception Ledger
+                                Guest book
                               </span>
                             );
                           }
@@ -1962,24 +1916,20 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
             <div className="flex items-center gap-3">
               {/* Append vs Replace Selector */}
-              <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+              <div className="tm-tabs" role="tablist">
                 <button
                   type="button"
                   onClick={() => setSaveMode('append')}
-                  className={`px-2.5 py-1 rounded-lg transition ${
-                    saveMode === 'append' ? 'bg-white text-stone-900 font-semibold' : 'text-stone-600 hover:text-stone-900'
-                  }`}
+                  role="tab" aria-selected={saveMode === 'append'} className={`tm-tab ${saveMode === 'append' ? 'tm-tab-active' : ''}`}
                 >
-                  Append to Existing
+                  Add to existing
                 </button>
                 <button
                   type="button"
                   onClick={() => setSaveMode('replace')}
-                  className={`px-2.5 py-1 rounded-lg transition ${
-                    saveMode === 'replace' ? 'bg-white text-stone-900 font-semibold' : 'text-stone-600 hover:text-stone-900'
-                  }`}
+                  role="tab" aria-selected={saveMode === 'replace'} className={`tm-tab ${saveMode === 'replace' ? 'tm-tab-active' : ''}`}
                 >
-                  Replace All
+                  Replace all
                 </button>
               </div>
 
@@ -1992,7 +1942,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 {isSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Attaching Reviews...</span>
+                    <span>Attaching reviews…</span>
                   </>
                 ) : (
                   <>
@@ -2033,7 +1983,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   ) : (
                     <Trash2 className="w-3.5 h-3.5" />
                   )}
-                  <span>Clear All Reviews</span>
+                  <span>Clear all reviews</span>
                 </button>
               )}
               <button
@@ -2042,7 +1992,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 className="tm-btn tm-btn-primary tm-btn-sm"
               >
                 <Search className="w-3.5 h-3.5" />
-                <span>Discover More Reviews</span>
+                <span>Find more reviews</span>
               </button>
             </div>
           </div>
@@ -2051,7 +2001,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
             <div className="p-8 text-center bg-stone-50 rounded-xl border border-dashed border-stone-200 space-y-2">
               <h4 className="font-semibold text-stone-800 text-sm">No reviews currently saved</h4>
               <p className="text-stone-500 text-xs max-w-sm mx-auto">
-                Use the Review Discovery Engine to scan public web channels and attach authentic traveler reviews to this listing.
+                Search public web channels and attach real traveller reviews to this listing.
               </p>
             </div>
           ) : (
@@ -2090,7 +2040,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                       {(() => {
                         const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
                         if (isGuestBook) {
-                          return <span className="text-stone-500 text-[10px]">Lodge Reception Ledger</span>;
+                          return <span className="text-stone-500 text-[10px]">Reception guest book</span>;
                         }
                         const cleanUrl = review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
                           ? review.sourceUrl
@@ -2148,7 +2098,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
         <div className="fixed inset-0 z-50 bg-stone-900/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl border border-stone-200 shadow-sm max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h3 className="font-serif font-bold text-stone-900 text-base">Edit Review Before Attaching</h3>
+              <h3 className="font-serif font-bold text-stone-900 text-base">Edit review before attaching</h3>
               <button 
                 type="button" 
                 onClick={() => setEditingReviewIndex(null)}
@@ -2160,7 +2110,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Guest Author</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Guest name</label>
                 <input
                   type="text"
                   value={editFormData.author}
@@ -2171,7 +2121,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Star Rating (1-5)</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Star rating (1–5)</label>
                   <select
                     value={editFormData.rating}
                     onChange={(e) => setEditFormData({ ...editFormData, rating: Number(e.target.value) })}
@@ -2190,7 +2140,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Source Platform</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Source</label>
                   <input
                     type="text"
                     value={editFormData.source}
@@ -2202,7 +2152,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Stay / Review Date</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Stay or review date</label>
                   <input
                     type="text"
                     value={editFormData.date || ''}
@@ -2213,7 +2163,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Direct Review Link (URL)</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Review link (URL)</label>
                   <input
                     type="url"
                     value={editFormData.sourceUrl || ''}
@@ -2235,7 +2185,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Review Body Text</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Review text</label>
                 <textarea
                   rows={4}
                   value={editFormData.comment || editFormData.text || ''}
@@ -2262,7 +2212,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                 onClick={handleSaveEditedReview}
                 className="tm-btn tm-btn-primary"
               >
-                Update Review
+                Save changes
               </button>
             </div>
           </div>
@@ -2271,7 +2221,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
 
       <ConfirmDialog
         isOpen={!!reviewToDelete}
-        title="Delete Review"
+        title="Delete review"
         message={`Are you sure you want to permanently delete the review by "${reviewToDelete?.author}" for "${reviewToDelete?.hotelName}"? This action cannot be undone.`}
         confirmText="Yes, delete review"
         cancelText="Cancel"

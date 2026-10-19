@@ -533,7 +533,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                           <p className="text-xs font-semibold text-stone-900">
                             Found {liveAnalysis.stats.sectionsCount} section{liveAnalysis.stats.sectionsCount !== 1 ? 's' : ''} (
                             {liveAnalysis.sections.map((s) => s.name).slice(0, 3).join(', ')}
-                            {liveAnalysis.sections.length > 3 ? '...' : ''}), {liveAnalysis.stats.itemsCount} dishes
+                            {liveAnalysis.sections.length > 3 ? '…' : ''}), {liveAnalysis.stats.itemsCount} dishes
                           </p>
                           <p className="text-[11px] text-stone-500">
                             {liveAnalysis.stats.pricesFoundCount} prices found

@@ -71,6 +71,36 @@ const TABS: Tab[] = ['details', 'media', 'promotions', 'rooms', 'conferences', '
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
+/**
+ * The seven top-level sections. Each holds one or more views; the view id is
+ * still the ?tab= value, so every existing link (tab=inquiries, tab=promotions…)
+ * lands on its parent section with the right sub-tab selected.
+ */
+const TAB_GROUPS: Tab[][] = [
+  ['details'],
+  ['media'],
+  ['rooms', 'promotions'],
+  ['bookings', 'inquiries'],
+  ['restaurant', 'conferences'],
+  ['broadcasts', 'templates'],
+  ['stayos'],
+];
+
+const tabGroupOf = (tab: Tab): Tab[] => TAB_GROUPS.find(group => group.includes(tab)) ?? TAB_GROUPS[0];
+
+/** Section names used in the new labels, accepted in links too. */
+const TAB_ALIASES: Record<string, Tab> = {
+  photos: 'media',
+  pricing: 'rooms',
+  dining: 'restaurant',
+  events: 'conferences',
+  messages: 'broadcasts',
+  automation: 'templates',
+};
+
+const tabFromParam = (value: string | null): Tab =>
+  isTab(value) ? value : (value && TAB_ALIASES[value]) || 'details';
+
 /** Compares only what the details form can actually change. */
 function hotelFormSnapshot(data: Partial<Hotel>): string {
   const amenities = Array.isArray(data.amenities)
@@ -273,14 +303,10 @@ function RoomMediaEditor({
           type="button"
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition self-start sm:self-auto cursor-pointer ${
-            isDirty
-              ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-              : 'bg-stone-100 text-stone-400 cursor-not-allowed'
-          }`}
+          className="tm-btn tm-btn-primary tm-btn-sm self-start sm:self-auto"
         >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          <span>Save Room Media</span>
+          <span>Save photos</span>
         </button>
       </div>
 
@@ -288,7 +314,7 @@ function RoomMediaEditor({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
         <div className="lg:col-span-5 flex flex-col justify-start space-y-2">
           <ImageUpload
-            label="Room Cover Photo"
+            label="Room cover photo"
             hint="Primary thumbnail in room list & booking picker. Drag photo from gallery here."
             tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
             value={imageUrl}
@@ -328,22 +354,22 @@ function RoomMediaEditor({
                     const remaining = galleryUrls.slice(1);
                     setImageUrl(chosen);
                     setGalleryUrls(remaining);
-                    toast.success("Set 1st gallery photo as Room Cover");
+                    toast.success("First gallery photo set as room cover");
                   }}
-                  className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition shrink-0 cursor-pointer"
+                  className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                 >
-                  Set as Cover
+                  Set as cover
                 </button>
               ) : hasHotelCover ? (
                 <button
                   type="button"
                   onClick={() => {
                     setImageUrl(hotelCover);
-                    toast.success("Set property photo as Room Cover");
+                    toast.success("Property photo set as room cover");
                   }}
-                  className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition shrink-0 cursor-pointer"
+                  className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
                 >
-                  Set as Cover
+                  Set as cover
                 </button>
               ) : null}
             </div>
@@ -351,7 +377,7 @@ function RoomMediaEditor({
         </div>
         <div className="lg:col-span-7 bg-stone-50/40 rounded-xl p-3 sm:p-3.5 border border-stone-200/70 flex flex-col justify-start space-y-2">
           <GalleryUpload
-            label="Room Gallery"
+            label="Room gallery"
             hint="Bathroom, balcony view, and amenities. Drag cards to reorder or drop onto Cover."
             tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
             value={galleryUrls}
@@ -369,7 +395,7 @@ function RoomMediaEditor({
                 remaining.unshift(oldCover);
               }
               setGalleryUrls(remaining);
-              toast.success("Promoted to Room Cover photo");
+              toast.success("Set as room cover photo");
             }}
           />
         </div>
@@ -403,7 +429,7 @@ export default function ManageHotel() {
 
   // Effective permission for editing elevated fields (disabled when simulating manager view)
   const canEditElevatedFields = isElevatedUser && !viewAsManager;
-  const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
+  const activeTab: Tab = tabFromParam(searchParams.get('tab'));
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
   const [stayOsDirty, setStayOsDirty] = useState(false);
   const [promotionsDirty, setPromotionsDirty] = useState(false);
@@ -1212,6 +1238,19 @@ export default function ManageHotel() {
     setPendingTab(null);
   };
 
+  // On a phone the tab row scrolls sideways; keep the selected section in view
+  // (e.g. after following a link to ?tab=stayos) without moving the page itself.
+  useEffect(() => {
+    const row = desktopNavRef.current;
+    const active = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!row || !active) return;
+    const rowBox = row.getBoundingClientRect();
+    const tabBox = active.getBoundingClientRect();
+    if (tabBox.left < rowBox.left || tabBox.right > rowBox.right) {
+      row.scrollLeft += tabBox.left - rowBox.left - 16;
+    }
+  }, [activeTab, loading]);
+
   // Closing or reloading the tab with unsaved work gets the browser's own
   // warning; nothing here can be recovered once the page is gone.
   useEffect(() => {
@@ -1735,7 +1774,7 @@ export default function ManageHotel() {
     }
   };
 
-  if (loading || authLoading) return <div className="p-8 text-center text-stone-500">Loading...</div>;
+  if (loading || authLoading) return <div className="p-8 text-center text-stone-500">Loading…</div>;
   if (!user) {
     const emailFromUrl = searchParams.get('email') || undefined;
     return (
@@ -1744,7 +1783,7 @@ export default function ManageHotel() {
           <Lock className="w-6 h-6" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mb-2">
-          Sign in to Manage Your Property
+          Sign in to manage your property
         </h1>
         <p className="text-stone-500 text-sm max-w-md mb-6 leading-relaxed">
           Sign in with your registered owner or manager email{emailFromUrl ? ` (${emailFromUrl})` : ''} to view and edit your property, rooms, and rates—even while your listing is pending verification.
@@ -1753,16 +1792,16 @@ export default function ManageHotel() {
           <button
             type="button"
             onClick={() => openAuth('signin', undefined, emailFromUrl)}
-            className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition cursor-pointer"
+            className="tm-btn tm-btn-primary"
           >
-            Sign In to Property Hub
+            Sign in
           </button>
           {id && (
             <Link
               to={`/hotel/${id}`}
-              className="bg-white border border-stone-200 text-stone-700 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-stone-50 transition"
+              className="tm-btn tm-btn-secondary"
             >
-              Preview Public Listing
+              Preview public listing
             </Link>
           )}
         </div>
@@ -1821,7 +1860,7 @@ export default function ManageHotel() {
                 if (next) {
                   toast('Switched to Manager View mode for troubleshooting.');
                 } else {
-                  toast.success('Exited Manager View mode. Elevated admin/marketing controls restored.');
+                  toast.success('Back to admin view.');
                 }
               }}
               className={`tm-btn tm-btn-sm ${viewAsManager ? 'border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100' : 'tm-btn-secondary'}`}
@@ -1838,7 +1877,7 @@ export default function ManageHotel() {
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
             className="tm-btn tm-btn-secondary tm-btn-sm select-none"
-            title="Toggle whether guests see you as Online or Away"
+            title="Switch between online and away for guests"
           >
             <span className={`h-2 w-2 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-400'}`} />
             <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
@@ -1883,7 +1922,7 @@ export default function ManageHotel() {
                   copy.delete('previewAs');
                   return copy;
                 }, { replace: true });
-                toast.success('Exited Manager View mode. Elevated controls restored.');
+                toast.success('Back to admin view.');
               }}
               className="tm-btn tm-btn-secondary tm-btn-sm shrink-0 self-start sm:self-center"
             >
@@ -1937,7 +1976,7 @@ export default function ManageHotel() {
                   className="tm-btn tm-btn-primary"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{updatingStatus ? 'Updating...' : 'Approve and publish'}</span>
+                  <span>{updatingStatus ? 'Updating…' : 'Approve and publish'}</span>
                 </button>
               )}
 
@@ -2020,136 +2059,144 @@ export default function ManageHotel() {
 
           {showPerformanceStats && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 sm:p-4">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
-                  <Percent className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">Occupancy &middot; 30d</span>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
-                <p className="text-xs text-stone-400 mt-0.5">{stats.occupiedNights} of {stats.availableNights} nights</p>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Occupancy, 30 days</p>
+                <p className="tm-stat-value">{stats.occupancy.toFixed(0)}%</p>
+                <p className="tm-muted mt-0.5">{stats.occupiedNights} of {stats.availableNights} nights</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 sm:p-4">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
-                  <Wallet className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">Upcoming rev</span>
-                </div>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Upcoming revenue</p>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.upcomingRevenue.length === 0
-                    ? <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="tm-stat-value">&mdash;</p>
                     : stats.upcomingRevenue.map(([code, total], idx) => (
-                        <p key={`up-rev-${code}-${idx}`} className="text-xl sm:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`up-rev-${code}-${idx}`} className="tm-stat-value"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-xs text-stone-400 mt-0.5">Confirmed stays ahead</p>
+                <p className="tm-muted mt-0.5">Confirmed stays ahead</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 sm:p-4">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">All-time rev</span>
-                </div>
+              <div className="tm-stat">
+                <p className="tm-stat-label">All-time revenue</p>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.allTimeRevenue.length === 0
-                    ? <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="tm-stat-value">&mdash;</p>
                     : stats.allTimeRevenue.map(([code, total], idx) => (
-                        <p key={`all-rev-${code}-${idx}`} className="text-xl sm:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`all-rev-${code}-${idx}`} className="tm-stat-value"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-xs text-stone-400 mt-0.5">{stats.confirmedCount} booking{stats.confirmedCount === 1 ? '' : 's'}</p>
+                <p className="tm-muted mt-0.5">{stats.confirmedCount} booking{stats.confirmedCount === 1 ? '' : 's'}</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 sm:p-4">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">Awaiting reply</span>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
-                <p className="text-xs text-stone-400 mt-0.5">Avg stay {stats.averageStay.toFixed(1)} nights</p>
+              <div className="tm-stat">
+                <p className="tm-stat-label">Awaiting reply</p>
+                <p className="tm-stat-value">{stats.pending}</p>
+                <p className="tm-muted mt-0.5">Average stay {stats.averageStay.toFixed(1)} nights</p>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Dashboard Section Navigation — Uniform wrapping grid with zero horizontal scroll or label truncation */}
-      <div className="relative z-20 mb-5 sm:mb-6">
+      {/* Section navigation: seven sections, some with a second row of sub-tabs.
+          Both rows scroll sideways on narrow screens instead of overflowing. */}
+      <div className="relative z-20 mb-5 sm:mb-6 min-w-0 space-y-2">
         {(() => {
-          const tabsList = [
-            { id: 'details' as Tab, label: 'Details', icon: Building },
-            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
-            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-            { id: 'media' as Tab, label: 'Media', icon: Eye },
-            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-            { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-            { id: 'stayos' as Tab, label: 'Ulendo Stay', icon: ShieldCheck },
-            { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'templates' as Tab, label: 'Automation', icon: Mail },
-          ];
+          const isEntirePlace = editHotelData.stayType === 'entire_place';
+          const groupLabel: Record<Tab, string> = {
+            details: 'Details',
+            media: 'Photos',
+            rooms: isEntirePlace ? 'Whole space' : 'Rooms & pricing',
+            promotions: isEntirePlace ? 'Whole space' : 'Rooms & pricing',
+            bookings: 'Bookings',
+            inquiries: 'Bookings',
+            restaurant: 'Dining & events',
+            conferences: 'Dining & events',
+            broadcasts: 'Guest messages',
+            templates: 'Guest messages',
+            stayos: 'Ulendo Stay',
+          };
+          const subLabel: Partial<Record<Tab, string>> = {
+            rooms: isEntirePlace ? 'Whole space' : 'Rooms',
+            promotions: 'Promotions',
+            bookings: 'Bookings',
+            inquiries: 'Inquiries',
+            restaurant: 'Restaurant',
+            conferences: 'Conferences',
+            broadcasts: 'Broadcasts',
+            templates: 'Automation',
+          };
           const totalPendingBookings = bookings.filter(b => b.status === 'pending').length;
-          const totalUnreadInquiries = inquiries.filter(i => 
-            i.lastSenderId !== user?.uid && 
-            i.updatedAt && 
+          const totalUnreadInquiries = inquiries.filter(i =>
+            i.lastSenderId !== user?.uid &&
+            i.updatedAt &&
             (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
           ).length;
+          const countFor = (tab: Tab) =>
+            tab === 'bookings' ? totalPendingBookings : tab === 'inquiries' ? totalUnreadInquiries : 0;
+          const activeGroup = tabGroupOf(activeTab);
+
+          const badges = (tabs: Tab[]) => {
+            const dirty = tabs.some(t => dirtyOn(t));
+            const count = tabs.reduce((sum, t) => sum + countFor(t), 0);
+            return (
+              <>
+                {dirty && <span title="Unsaved changes" className="h-2 w-2 rounded-full shrink-0 bg-amber-500" />}
+                {count > 0 && (
+                  <span className="text-xs tabular-nums px-1.5 rounded-md shrink-0 font-semibold bg-amber-100 text-amber-900">
+                    {count}
+                  </span>
+                )}
+              </>
+            );
+          };
 
           return (
-            <div
-              ref={desktopNavRef}
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 pb-3 border-b border-stone-200"
-              role="tablist"
-              aria-label="Property management sections"
-            >
-              {tabsList.map(tab => {
-                const Icon = tab.icon;
-                const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
-                const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
-                const isActive = activeTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    data-tab-id={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => {
-                      requestTab(tab.id);
-                      setIsMobileNavOpen(false);
-                    }}
-                    className={`flex items-center justify-between gap-1.5 h-10 px-3 rounded-lg text-sm font-medium transition cursor-pointer select-none min-w-0 ${
-                      isActive
-                        ? 'bg-stone-900 text-white'
-                        : 'text-stone-700 hover:text-stone-950 hover:bg-stone-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                      <span className="truncate">{tab.label}</span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {dirtyOn(tab.id) && (
-                        <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
-                      )}
-                      {pendingCount > 0 && (
-                        <span className={`text-xs tabular-nums px-1.5 rounded-md shrink-0 font-semibold ${
-                          isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-                        }`}>
-                          {pendingCount}
-                        </span>
-                      )}
-                      {unreadInquiryCount > 0 && (
-                        <span className={`inline-flex items-center gap-0.5 text-xs tabular-nums px-1.5 rounded-md shrink-0 font-semibold ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
-                        }`}>
-                          <Bell className="w-2.5 h-2.5 text-current" />
-                          {unreadInquiryCount}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div
+                ref={desktopNavRef}
+                className="tm-tabs"
+                role="tablist"
+                aria-label="Property management sections"
+              >
+                {TAB_GROUPS.map(group => {
+                  const isActive = group === activeGroup;
+                  return (
+                    <button
+                      key={group[0]}
+                      data-tab-id={group[0]}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => requestTab(group[0])}
+                      className={`tm-tab ${isActive ? 'tm-tab-active' : ''} inline-flex items-center gap-1.5`}
+                    >
+                      {groupLabel[group[0]]}
+                      {badges(group)}
+                    </button>
+                  );
+                })}
+              </div>
+              {activeGroup.length > 1 && (
+                <div className="tm-tabs" role="tablist" aria-label={`${groupLabel[activeGroup[0]]} views`}>
+                  {activeGroup.map(tab => {
+                    const isActive = tab === activeTab;
+                    return (
+                      <button
+                        key={tab}
+                        data-tab-id={tab}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => requestTab(tab)}
+                        className={`tm-tab ${isActive ? 'tm-tab-active' : ''} inline-flex items-center gap-1.5`}
+                      >
+                        {subLabel[tab]}
+                        {badges([tab])}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           );
         })()}
       </div>
@@ -2178,16 +2225,16 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <div className="flex items-center justify-between mb-1 sm:mb-1.5">
                   <div className="flex items-center gap-2">
-                    <label className="tm-label">Property Name</label>
+                    <label className="tm-label">Property name</label>
                     {!canEditElevatedFields ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
                         <Lock className="w-3 h-3 text-stone-500" />
-                        <span>Admin &amp; Marketing Only</span>
+                        <span>Admin and marketing only</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
                         <UserCheck className="w-3 h-3 text-emerald-700" />
-                        <span>Admin &amp; Marketing Editable</span>
+                        <span>Admin and marketing can edit</span>
                       </span>
                     )}
                   </div>
@@ -2219,11 +2266,11 @@ export default function ManageHotel() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <label className="tm-label">Stay &amp; Accommodation Type</label>
+                      <label className="tm-label">Type of stay</label>
                       {!canEditElevatedFields && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
                           <Lock className="w-3 h-3 text-stone-500" />
-                          <span>Admin &amp; Marketing Only</span>
+                          <span>Admin and marketing only</span>
                         </span>
                       )}
                     </div>
@@ -2253,7 +2300,7 @@ export default function ManageHotel() {
                   >
                     <div className="flex items-center gap-2">
                       <BedDouble className="w-4 h-4 shrink-0" />
-                      <span>Room-by-Room Stay (Multi-unit)</span>
+                      <span>Rooms booked one by one</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {!canEditElevatedFields && <Lock className="w-3.5 h-3.5 opacity-60" />}
@@ -2291,7 +2338,7 @@ export default function ManageHotel() {
                   >
                     <div className="flex items-center gap-2">
                       <Home className="w-4 h-4 shrink-0" />
-                      <span>Whole House / Entire Place (Whole space)</span>
+                      <span>Whole space (house or entire place)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {!canEditElevatedFields && <Lock className="w-3.5 h-3.5 opacity-60" />}
@@ -2339,7 +2386,7 @@ export default function ManageHotel() {
                       />
                     </div>
                     <div>
-                      <label className="tm-label">Total Beds</label>
+                      <label className="tm-label">Total beds</label>
                       <input
                         type="number"
                         min={1}
@@ -2357,7 +2404,7 @@ export default function ManageHotel() {
                       />
                     </div>
                     <div>
-                      <label className="tm-label">Max Guests</label>
+                      <label className="tm-label">Max guests</label>
                       <input
                         type="number"
                         min={1}
@@ -2388,7 +2435,7 @@ export default function ManageHotel() {
                       title="Analyze description to link common amenities & befitting category"
                     >
                       <SlidersHorizontal className="h-3.5 w-3.5 text-stone-600 stroke-[1.5]" />
-                      <span>Link to Amenities & Category</span>
+                      <span>Link to amenities and category</span>
                     </button>
                     <AIAssistantButton
                       value={editHotelData.description || ''}
@@ -2412,10 +2459,10 @@ export default function ManageHotel() {
                     <button
                       type="button"
                       onClick={handleTriggerLinkAnalysis}
-                      className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition cursor-pointer"
+                      className="tm-btn tm-btn-quiet tm-btn-sm"
                     >
-                      <SlidersHorizontal className="h-3 w-3 text-stone-600 stroke-[1.5]" />
-                      <span>Auto-detect amenities & category from text</span>
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      <span>Find amenities and category in this text</span>
                     </button>
                   )}
                 </div>
@@ -2424,7 +2471,7 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Location" description="Where you are and how guests find you." collapsible>
+  <SectionCard title="Location" description="Where you are and how guests find you." collapsible defaultOpen={false} forceOpen={Boolean(detailProblems.location)}>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
               <div>
                 <label className="tm-label">Location</label>
@@ -2452,7 +2499,7 @@ export default function ManageHotel() {
                 />
               </div>
               <div>
-                <label className="tm-label">Location Notes / Directions</label>
+                <label className="tm-label">Directions</label>
                 <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="tm-input" placeholder="Any extra directions or notes to help guests find the property (optional)." />
                 <p className="text-xs text-stone-400 mt-1">
                   Helpful directions, landmarks, road conditions, or 4WD advice. Spaces, line breaks, and dashes are preserved for guests.
@@ -2461,16 +2508,16 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Category">
+  <SectionCard title="Category" collapsible defaultOpen={false} forceOpen={Boolean(detailProblems.category)}>
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <label className="tm-label">Category Tags</label>
+            <label className="tm-label">Categories</label>
             {!canEditElevatedFields && (
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
                 <Lock className="w-3 h-3 text-stone-500" />
-                <span>Admin &amp; Marketing Only</span>
+                <span>Admin and marketing only</span>
               </span>
             )}
           </div>
@@ -2478,10 +2525,10 @@ export default function ManageHotel() {
             <button
               type="button"
               onClick={handleTriggerLinkAnalysis}
-              className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-stone-500" />
-              <span>Auto-detect from description</span>
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Find in description</span>
             </button>
           )}
         </div>
@@ -2528,26 +2575,26 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Amenities" description="What every guest can use." collapsible>
+  <SectionCard title="Amenities" description="What every guest can use." collapsible defaultOpen={false}>
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="tm-label">Common Amenities</label>
+          <label className="tm-label">Common amenities</label>
           <div className="flex items-center gap-3">
             {editHotelData.description?.trim() && (
               <button
                 type="button"
                 onClick={handleTriggerLinkAnalysis}
-                className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+                className="tm-btn tm-btn-quiet tm-btn-sm"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5 text-stone-500" />
-                <span>Auto-detect from description</span>
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>Find in description</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
-              className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
+              className="tm-btn tm-btn-quiet tm-btn-sm"
             >
               <span>{amenitiesExpanded ? 'Show fewer' : `Show all (${COMMON_AMENITIES.length})`}</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${amenitiesExpanded ? 'rotate-180' : ''}`} />
@@ -2621,7 +2668,7 @@ export default function ManageHotel() {
               }
             }}
             className="tm-input flex-1 min-w-0" 
-            placeholder="Add custom amenity..." 
+            placeholder="Add custom amenity…" 
           />
           <button
             type="button"
@@ -2642,13 +2689,19 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Contacts and policies" description="Manager, owner, guest contacts, check-in times and children." collapsible>
+  <SectionCard
+    title="Contacts and policies"
+    description="Manager, owner, guest contacts, check-in times and children."
+    collapsible
+    defaultOpen={false}
+    forceOpen={(['managerName', 'managerEmail', 'managerPhone', 'contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'] as const).some(key => Boolean((detailProblems as Record<string, string | undefined>)[key]))}
+  >
     <div className="space-y-4 sm:space-y-6">
               {/* Designated Property Manager */}
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
                   <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700 shrink-0" />
-                  <span>Designated Property Manager in Charge</span>
+                  <span>Property manager</span>
                 </div>
                 <p className="text-xs text-stone-500 leading-relaxed">
                   The person responsible for daily operations, guest check-ins, and hospitality on-site. Known to guests and our Concierge.
@@ -2656,7 +2709,7 @@ export default function ManageHotel() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
-                    <label className="tm-label">Manager Name</label>
+                    <label className="tm-label">Manager name</label>
                     <input
                       type="text"
                       value={editHotelData.managerName ?? ''}
@@ -2666,7 +2719,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Manager Direct Email</label>
+                    <label className="tm-label">Manager email</label>
                     <input
                       type="email"
                       value={editHotelData.managerEmail ?? ''}
@@ -2676,7 +2729,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Manager Direct Phone</label>
+                    <label className="tm-label">Manager phone</label>
                     <input
                       type="tel"
                       value={editHotelData.managerPhone ?? ''}
@@ -2693,12 +2746,12 @@ export default function ManageHotel() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
                     <Building className="w-4 h-4 sm:w-5 sm:h-5 text-stone-600 shrink-0" />
-                    <span>Property Owner / Legal Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></span>
+                    <span>Owner or legal entity <span className="text-xs text-stone-400 font-normal">(optional)</span></span>
                   </div>
                   {!canEditElevatedFields && (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded-md self-start sm:self-auto">
                       <Lock className="w-3 h-3 text-stone-500" />
-                      <span>Admin &amp; Marketing Only</span>
+                      <span>Admin and marketing only</span>
                     </span>
                   )}
                 </div>
@@ -2709,7 +2762,7 @@ export default function ManageHotel() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
-                    <label className="tm-label">Owner / Entity Name</label>
+                    <label className="tm-label">Owner or entity name</label>
                     <input
                       type="text"
                       disabled={!canEditOwnerDetails}
@@ -2722,7 +2775,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Owner Email</label>
+                    <label className="tm-label">Owner email</label>
                     <input
                       type="email"
                       disabled={!canEditOwnerDetails}
@@ -2735,7 +2788,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Owner Phone</label>
+                    <label className="tm-label">Owner phone</label>
                     <input
                       type="tel"
                       disabled={!canEditOwnerDetails}
@@ -2753,7 +2806,7 @@ export default function ManageHotel() {
               {/* Guest Booking Contact */}
               <div className={`grid grid-cols-1 ${whatsappEnabled ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2`}>
                   <div>
-                    <label className="tm-label">Public Booking Email</label>
+                    <label className="tm-label">Booking email (shown to guests)</label>
                     <input
                       type="email"
                       value={editHotelData.contactEmail ?? ''}
@@ -2764,7 +2817,7 @@ export default function ManageHotel() {
                     <FieldError message={contactProblems.contactEmail} />
                   </div>
                   <div>
-                    <label className="tm-label">Public Phone</label>
+                    <label className="tm-label">Phone (shown to guests)</label>
                     <input
                       type="tel"
                       value={editHotelData.contactPhone ?? ''}
@@ -2816,7 +2869,7 @@ export default function ManageHotel() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-stone-100">
               <div>
-                <label className="tm-label">Stay Cancellation Policy</label>
+                <label className="tm-label">Cancellation policy</label>
                 <input
                   type="text"
                   value={editHotelData.cancellationPolicy ?? 'Free 7d prior'}
@@ -2826,7 +2879,7 @@ export default function ManageHotel() {
                 />
               </div>
               <div>
-                <label className="tm-label">Stay Payment Policy</label>
+                <label className="tm-label">Payment policy</label>
                 <input
                   type="text"
                   value={editHotelData.paymentPolicy ?? 'Pay at property'}
@@ -2838,10 +2891,10 @@ export default function ManageHotel() {
               </div>
 
               <div className="mt-5 sm:mt-7 pt-5 sm:pt-7 border-t border-stone-200">
-                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 mb-3 sm:mb-5">Conference & Events Policies</h3>
+                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 mb-3 sm:mb-5">Conference and event policies</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
                   <div>
-                    <label className="tm-label">Conference Cancellation</label>
+                    <label className="tm-label">Conference cancellation</label>
                     <input
                       type="text"
                       value={editHotelData.conferenceCancellationPolicy ?? ''}
@@ -2851,7 +2904,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div>
-                    <label className="tm-label">Conference Payment</label>
+                    <label className="tm-label">Conference payment</label>
                     <input
                       type="text"
                       value={editHotelData.conferencePaymentPolicy ?? ''}
@@ -2861,7 +2914,7 @@ export default function ManageHotel() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="tm-label">Conference Guidelines</label>
+                    <label className="tm-label">Conference guidelines</label>
                     <input
                       type="text"
                       value={editHotelData.conferenceGuidelines ?? ''}
@@ -2878,7 +2931,7 @@ export default function ManageHotel() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5">
                   <div>
                     <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                      <span>Child Stay Policy &amp; Age Rules</span>
+                      <span>Children and age rules</span>
                     </h3>
                     <p className="text-stone-500 text-xs mt-0.5">
                       Configure custom age rules and pricing for children, or disable to count all guests equally under standard capacity.
@@ -2935,7 +2988,7 @@ export default function ManageHotel() {
                             className="w-4 h-4 text-emerald-600"
                           />
                           <div className="text-xs">
-                            <div className="font-bold">Children Welcome</div>
+                            <div className="font-bold">Children welcome</div>
                             <div className="text-xs text-stone-500 font-normal mt-0.5">Families with infants and children are accepted.</div>
                           </div>
                         </label>
@@ -2955,7 +3008,7 @@ export default function ManageHotel() {
                             className="w-4 h-4 text-red-600"
                           />
                           <div className="text-xs">
-                            <div className="font-bold">Adults-Only Stay (18+)</div>
+                            <div className="font-bold">Adults only (18+)</div>
                             <div className="text-xs text-stone-500 font-normal mt-0.5">No children permitted at this property.</div>
                           </div>
                         </label>
@@ -3118,7 +3171,7 @@ export default function ManageHotel() {
                   <div>
                     {hotel?.adminChatEnabled === false && !isElevatedUser && (
                       <div className="mb-3 bg-amber-50 border border-amber-200 text-amber-800 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">
-                        <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
+                        An admin has turned off chat for this listing. Contact support to turn it back on.
                       </div>
                     )}
                     {canEditElevatedFields && (
@@ -3130,7 +3183,7 @@ export default function ManageHotel() {
                             onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
                             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
-                          <span className="font-bold text-red-900">Admin/Marketing: Enable Chat Service Globally</span>
+                          <span className="font-bold text-red-900">Admin: turn on guest chat</span>
                         </label>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
@@ -3139,7 +3192,7 @@ export default function ManageHotel() {
                             onChange={(e) => setEditHotelData({...editHotelData, adminCallsEnabled: e.target.checked})}
                             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
-                          <span className="font-bold text-red-900">Admin/Marketing: Enable Audio &amp; Video Calling Globally</span>
+                          <span className="font-bold text-red-900">Admin: turn on voice and video calls</span>
                         </label>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
@@ -3148,7 +3201,7 @@ export default function ManageHotel() {
                             onChange={(e) => setEditHotelData({...editHotelData, adminWifiVoucherEnabled: e.target.checked})}
                             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
-                          <span className="font-bold text-red-900">Admin: Enable WiFi Voucher Feature Globally</span>
+                          <span className="font-bold text-red-900">Admin: turn on Wi-Fi vouchers</span>
                         </label>
                       </>
                     )}
@@ -3160,7 +3213,7 @@ export default function ManageHotel() {
                         className="w-4 h-4 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
                         disabled={editHotelData.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
+                      <span className={`font-medium ${editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Allow chat before booking</span>
                     </label>
                     
                     {/* Manager Audio & Video Calling Toggle */}
@@ -3208,7 +3261,7 @@ export default function ManageHotel() {
 
   {/* Deposit & Payment Instructions */}
   <SectionCard
-    title="Deposit & Payment Instructions"
+    title="Deposit and payment details"
     description="Mobile money and bank details used in deposit requests."
     collapsible
     defaultOpen={false}
@@ -3216,7 +3269,7 @@ export default function ManageHotel() {
     <div className="space-y-4 sm:space-y-5">
       {/* Mobile/Tablet method filter tabs */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5 sm:pb-3">
-        <span className="text-xs sm:text-xs font-semibold text-stone-500">Deposit Accounts</span>
+        <span className="text-xs sm:text-xs font-semibold text-stone-500">Deposit accounts</span>
         <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
           <button
             type="button"
@@ -3309,11 +3362,11 @@ export default function ManageHotel() {
       {(depositViewTab === 'all' || depositViewTab === 'bank_transfer') && (
         <div className={`pt-3 ${depositViewTab === 'all' ? 'border-t border-stone-100' : ''} animate-in fade-in duration-150`}>
           <h4 className="text-xs font-semibold text-stone-700 mb-2.5 flex items-center gap-1.5">
-            <span>Direct Bank Wire Transfer</span>
+            <span>Bank transfer</span>
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">Bank Name</label>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Bank name</label>
               <input
                 type="text"
                 value={editHotelData.depositInfo?.bankName || ''}
@@ -3326,7 +3379,7 @@ export default function ManageHotel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">Account Name</label>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Account name</label>
               <input
                 type="text"
                 value={editHotelData.depositInfo?.bankAccountName || ''}
@@ -3334,12 +3387,12 @@ export default function ManageHotel() {
                   ...editHotelData,
                   depositInfo: { ...editHotelData.depositInfo, bankAccountName: e.target.value }
                 })}
-                placeholder="Account Name"
+                placeholder="Account name"
                 className="tm-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">Account Number</label>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Account number</label>
               <input
                 type="text"
                 value={editHotelData.depositInfo?.bankAccountNumber || ''}
@@ -3347,7 +3400,7 @@ export default function ManageHotel() {
                   ...editHotelData,
                   depositInfo: { ...editHotelData.depositInfo, bankAccountNumber: e.target.value }
                 })}
-                placeholder="Account Number"
+                placeholder="Account number"
                 className="tm-input"
               />
             </div>
@@ -3365,7 +3418,7 @@ export default function ManageHotel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">SWIFT / Sort Code (Optional)</label>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">SWIFT or sort code (optional)</label>
               <input
                 type="text"
                 value={editHotelData.depositInfo?.bankSwiftCode || ''}
@@ -3378,7 +3431,7 @@ export default function ManageHotel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">Required Deposit (%)</label>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Deposit required (%)</label>
               <input
                 type="number"
                 min="10"
@@ -3398,7 +3451,7 @@ export default function ManageHotel() {
 
       {/* Special Instructions */}
       <div className="pt-3 border-t border-stone-100">
-        <label className="block text-xs font-semibold text-stone-600 mb-1">Additional Deposit Notes or Instructions for Guests</label>
+        <label className="block text-xs font-semibold text-stone-600 mb-1">Deposit notes for guests</label>
         <textarea
           rows={2}
           value={editHotelData.depositInfo?.instructions || ''}
@@ -3418,7 +3471,7 @@ export default function ManageHotel() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg bg-stone-50 p-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold text-stone-900">24/7 Reception or All-Day Access</p>
+            <p className="text-xs font-semibold text-stone-900">24/7 reception or all-day access</p>
             {isWeekAllDay(editHotelData.hours) && (
               <span className="text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
@@ -3437,11 +3490,11 @@ export default function ManageHotel() {
                   ...prev,
                   hours: defaultWeek('07:00', '22:00')
                 }));
-                toast.success('Reset property hours to standard daytime (07:00 – 22:00)');
+                toast.success('Hours set to 07:00 – 22:00');
               }}
               className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
             >
-              Reset to Standard (7am – 10pm)
+              Use 7am – 10pm
             </button>
           ) : (
             <button
@@ -3451,11 +3504,11 @@ export default function ManageHotel() {
                   ...prev,
                   hours: allDayWeek()
                 }));
-                toast.success('Set property hours to 24/7 (All Day)');
+                toast.success('Hours set to open 24/7');
               }}
               className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
             >
-              Set All Day (24/7)
+              Open 24/7
             </button>
           )}
         </div>
@@ -3588,7 +3641,7 @@ export default function ManageHotel() {
             imageUrl: url,
             galleryUrls: remaining,
           });
-          toast.success("Promoted to Cover Photo (Hero Slot 1)");
+          toast.success("Set as cover photo");
         };
 
         const handleReorderPropertyPhotos = (newOrder: string[]) => {
@@ -3655,15 +3708,13 @@ export default function ManageHotel() {
 
               {/* Sub-Navigation Tabs */}
               <div className="flex items-center justify-between gap-3 pt-4 flex-wrap">
-                <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200/80">
+                <div className="tm-tabs flex-1" role="tablist" aria-label="Photo views">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={mediaView === 'property'}
                     onClick={() => setMediaView('property')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                      mediaView === 'property'
-                        ? 'bg-white text-stone-900'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
+                    className={`tm-tab inline-flex items-center gap-1.5 ${mediaView === 'property' ? 'tm-tab-active' : ''}`}
                   >
                     <Building className="h-3.5 w-3.5" />
                     <span>Property</span>
@@ -3673,12 +3724,10 @@ export default function ManageHotel() {
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={mediaView === 'rooms'}
                     onClick={() => setMediaView('rooms')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                      mediaView === 'rooms'
-                        ? 'bg-white text-stone-900'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
+                    className={`tm-tab inline-flex items-center gap-1.5 ${mediaView === 'rooms' ? 'tm-tab-active' : ''}`}
                   >
                     <BedDouble className="h-3.5 w-3.5" />
                     <span>Rooms</span>
@@ -3688,12 +3737,10 @@ export default function ManageHotel() {
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={mediaView === 'preview'}
                     onClick={() => setMediaView('preview')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                      mediaView === 'preview'
-                        ? 'bg-white text-stone-900'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
+                    className={`tm-tab inline-flex items-center gap-1.5 ${mediaView === 'preview' ? 'tm-tab-active' : ''}`}
                   >
                     <Eye className="h-3.5 w-3.5" />
                     <span>Guest view</span>
@@ -3725,7 +3772,7 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
-                            toast.success("Switched to 3-Photo Bento (1 large cover + 2 stacked)");
+                            toast.success("Header layout: 3 photos");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'duo-3'
@@ -3735,13 +3782,13 @@ export default function ManageHotel() {
                           title="Hero with 3 photos: 1 large left cover + 2 stacked right photos"
                         >
                           <LayoutGrid className="w-3.5 h-3.5" />
-                          <span>3 Photos (Duo)</span>
+                          <span>3 photos</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
-                            toast.success("Switched to 4-Photo Bento (1 large cover + 3 bento tiles)");
+                            toast.success("Header layout: 4 photos");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'bento-4'
@@ -3751,13 +3798,13 @@ export default function ManageHotel() {
                           title="Hero with 4 photos: 1 large left cover + 3 right bento tiles"
                         >
                           <LayoutGrid className="w-3.5 h-3.5" />
-                          <span>4 Photos (Bento)</span>
+                          <span>4 photos</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
-                            toast.success("Switched to 5-Photo Bento (1 large cover + 4 right 2x2 grid)");
+                            toast.success("Header layout: 5 photos");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'bento-5'
@@ -3767,7 +3814,7 @@ export default function ManageHotel() {
                           title="Hero with 5 photos: 1 large left cover + 4 right tiles in 2x2 grid"
                         >
                           <LayoutGrid className="w-3.5 h-3.5" />
-                          <span>5 Photos (2x2 Grid)</span>
+                          <span>5 photos</span>
                         </button>
                       </div>
                     </div>
@@ -3794,7 +3841,7 @@ export default function ManageHotel() {
                           <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
                             <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold shadow-sm flex items-center gap-1 tracking-wide">
                               <Star className="w-3.5 h-3.5 fill-current" />
-                              <span>Cover Photo · Hero Slot 1</span>
+                              <span>Cover photo</span>
                             </span>
                           </div>
 
@@ -3811,7 +3858,7 @@ export default function ManageHotel() {
                                 type="button"
                                 onClick={() => handleMovePropertyPhoto(0, 1)}
                                 className="p-2 bg-stone-900/90 text-white rounded-lg transition active:scale-95 shadow-xs"
-                                title="Move to Slot 2"
+                                title="Move to slot 2"
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
@@ -3843,7 +3890,7 @@ export default function ManageHotel() {
                         {allPropertyPhotos.length > 1 && (
                           <div className="space-y-2 pt-1">
                             <div className="flex items-center justify-between text-xs text-stone-600 font-medium px-0.5">
-                              <span>Supporting Header Photos (Slots 2–{1 + maxHeroSupportingSlots})</span>
+                              <span>Header photos (slots 2–{1 + maxHeroSupportingSlots})</span>
                               <span className="text-xs text-stone-400">Tap ★ to set as Cover</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -3866,8 +3913,8 @@ export default function ManageHotel() {
                                       <button
                                         type="button"
                                         onClick={() => handleSetPropertyCover(url)}
-                                        className="flex-1 py-1.5 px-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1 shadow-xs active:scale-95 transition cursor-pointer"
-                                        title="Make this photo the Cover"
+                                        className="flex-1 py-1.5 px-1.5 bg-white/90 hover:bg-white text-stone-900 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition cursor-pointer"
+                                        title="Make this the cover photo"
                                       >
                                         <Star className="w-3 h-3 fill-current" />
                                         <span>Cover</span>
@@ -3902,14 +3949,14 @@ export default function ManageHotel() {
                           <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 pointer-events-none">
                             <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold shadow-sm flex items-center gap-1 tracking-wide">
                               <Star className="w-3.5 h-3.5 fill-current" />
-                              <span>Cover Photo · Hero Slot 1</span>
+                              <span>Cover photo</span>
                             </span>
                           </div>
 
                           {/* Bottom Info */}
                           <div className="absolute bottom-2.5 left-2.5 z-10 text-white pointer-events-none">
                             <p className="text-xs font-bold leading-tight drop-shadow-xs">{editHotelData.name || 'Your Property'}</p>
-                            <p className="text-xs text-white/70">Main Thumbnail in Search &amp; Hero Listing Banner</p>
+                            <p className="text-xs text-white/70">Shown in search and at the top of your listing</p>
                           </div>
 
                           {/* Hover Action Controls */}
@@ -3919,7 +3966,7 @@ export default function ManageHotel() {
                                 type="button"
                                 onClick={() => handleMovePropertyPhoto(0, 1)}
                                 className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition cursor-pointer shadow-xs"
-                                title="Move to Slot 2"
+                                title="Move to slot 2"
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
@@ -3990,7 +4037,7 @@ export default function ManageHotel() {
                                     type="button"
                                     onClick={() => handleSetPropertyCover(url)}
                                     className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition cursor-pointer shadow-xs"
-                                    title="Promote to Cover Photo (Slot 1)"
+                                    title="Make cover photo"
                                   >
                                     <Star className="w-3.5 h-3.5 fill-current" />
                                   </button>
@@ -4041,7 +4088,7 @@ export default function ManageHotel() {
                   </div>
 
                   <GalleryUpload 
-                    label="Property Photos"
+                    label="Property photos"
                     hint="Grounds, dining, gardens, reception, beach and surroundings."
                     tooltip="Photo 1 is the cover in search and on your page. Photos 2–5 fill the header; all appear in the gallery."
                     value={allPropertyPhotos}
@@ -4090,9 +4137,9 @@ export default function ManageHotel() {
                     </p>
                     <button 
                       onClick={() => requestTab('rooms')} 
-                      className="mt-4 inline-flex items-center justify-center h-9 px-3.5 bg-stone-900 text-white text-xs font-semibold rounded-xl hover:bg-stone-800 transition"
+                      className="mt-4 tm-btn tm-btn-primary tm-btn-sm"
                     >
-                      Go to Rooms Tab
+                      Go to rooms
                     </button>
                   </div>
                 ) : (
@@ -4101,23 +4148,21 @@ export default function ManageHotel() {
                     <div className="bg-white border border-stone-200 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold text-stone-500">
-                          Select Room Unit
+                          Choose a room
                         </span>
                         <span className="text-xs text-stone-400">
                           {displayedRooms.length} of {rooms.length} displayed
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <div className="tm-tabs" role="tablist" aria-label="Rooms">
                         <button
                           type="button"
+                          role="tab"
+                          aria-selected={selectedRoomMediaId === 'all'}
                           onClick={() => setSelectedRoomMediaId('all')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                            selectedRoomMediaId === 'all'
-                              ? 'bg-stone-900 text-white'
-                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
+                          className={`tm-tab ${selectedRoomMediaId === 'all' ? 'tm-tab-active' : ''}`}
                         >
-                          All Rooms ({rooms.length})
+                          All rooms ({rooms.length})
                         </button>
                         {rooms.map((room, rIdx) => {
                           const rId = room.id || String(rIdx);
@@ -4130,19 +4175,15 @@ export default function ManageHotel() {
                             <button
                               key={`room-chip-${rId}`}
                               type="button"
+                              role="tab"
+                              aria-selected={isSelected}
                               onClick={() => setSelectedRoomMediaId(rId)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition cursor-pointer ${
-                                isSelected
-                                  ? 'bg-stone-900 text-white'
-                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                              }`}
+                              className={`tm-tab inline-flex items-center gap-1.5 ${isSelected ? 'tm-tab-active' : ''}`}
                             >
                               <span>{room.name}</span>
-                              <span className={`px-1.5 py-0.2 rounded-full text-xs ${
-                                isSelected
-                                  ? 'bg-white/20 text-white'
-                                  : total > 0
-                                  ? 'bg-emerald-100 text-emerald-800'
+                              <span className={`px-1.5 rounded-md text-xs tabular-nums ${
+                                total > 0
+                                  ? 'bg-stone-100 text-stone-600'
                                   : 'bg-amber-100 text-amber-800'
                               }`}>
                                 {total}
@@ -4175,7 +4216,7 @@ export default function ManageHotel() {
               <div className="space-y-6">
                 <div className="bg-white rounded-xl border border-stone-200 p-5 sm:p-6 md:p-8 space-y-8">
                   <div>
-                    <h3 className="text-lg font-serif font-bold text-stone-900">Live Guest Presentation</h3>
+                    <h3 className="text-lg font-serif font-bold text-stone-900">What guests see</h3>
                     <p className="text-xs text-stone-500 mt-1">
                       This is how travelers see your photography across search cards and the property page.
                     </p>
@@ -4186,9 +4227,9 @@ export default function ManageHotel() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
                         <LayoutGrid className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Search Card Presentation</span>
+                        <span>Search card</span>
                       </span>
-                      <span className="text-xs text-stone-400">Uses Cover Photo (Hero Slot 1)</span>
+                      <span className="text-xs text-stone-400">Uses the cover photo</span>
                     </div>
                     
                     <div className="max-w-xs bg-white rounded-xl border border-stone-200 overflow-hidden">
@@ -4216,7 +4257,7 @@ export default function ManageHotel() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
                           <Layers className="w-3.5 h-3.5 text-stone-500" />
-                          <span>Header Hero Presentation</span>
+                          <span>Listing header</span>
                         </span>
                         <span className="text-xs text-stone-400">({allPropertyPhotos.length} photos)</span>
                       </div>
@@ -4227,7 +4268,7 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
-                            toast.success("Switched to 3-Photo Bento (Duo)");
+                            toast.success("Header layout: 3 photos");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
                             activeHeroLayout === 'duo-3' ? "bg-white text-stone-900" : "text-stone-600 hover:text-stone-900"
@@ -4235,13 +4276,13 @@ export default function ManageHotel() {
                           title="Show 3 photos in Hero (1 large cover + 2 stacked)"
                         >
                           <LayoutGrid className="w-3 h-3" />
-                          <span>3 Photos</span>
+                          <span>3 photos</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
-                            toast.success("Switched to 4-Photo Bento");
+                            toast.success("Header layout: 4 photos");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
                             activeHeroLayout === 'bento-4' ? "bg-white text-stone-900" : "text-stone-600 hover:text-stone-900"
@@ -4249,13 +4290,13 @@ export default function ManageHotel() {
                           title="Show 4 photos in Hero (1 large cover + 3 bento tiles)"
                         >
                           <LayoutGrid className="w-3 h-3" />
-                          <span>4 Photos</span>
+                          <span>4 photos</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
-                            toast.success("Switched to 5-Photo Bento (2x2 Grid)");
+                            toast.success("Header layout: 5 photos");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
                             activeHeroLayout === 'bento-5' ? "bg-white text-stone-900" : "text-stone-600 hover:text-stone-900"
@@ -4263,7 +4304,7 @@ export default function ManageHotel() {
                           title="Show 5 photos in Hero (1 large cover + 4 right 2x2 grid)"
                         >
                           <LayoutGrid className="w-3 h-3" />
-                          <span>5 Photos</span>
+                          <span>5 photos</span>
                         </button>
                       </div>
                     </div>
@@ -4353,7 +4394,7 @@ export default function ManageHotel() {
                   {/* 3. Room Units Previews */}
                   {rooms.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-stone-700 mb-3">Room Accommodation Previews</p>
+                      <p className="text-xs font-semibold text-stone-700 mb-3">Rooms</p>
                       <div className="space-y-4">
                         {rooms.map((room, rIdx) => {
                           const hasCover = Boolean(room.imageUrl);
@@ -4576,10 +4617,10 @@ export default function ManageHotel() {
               </div>
               
               <form onSubmit={handleSaveRoom} className="space-y-6">
-                <SectionCard title="Room Details">
+                <SectionCard title="Room details">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label className="tm-label mb-2">Room Name</label>
+                    <label className="tm-label mb-2">Room name</label>
                     <input type="text" required value={editRoomData.name || ''} onChange={e => setEditRoomData({...editRoomData, name: e.target.value})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.name ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
                     <FieldError message={roomErrors.name} />
                   </div>
@@ -4605,7 +4646,7 @@ export default function ManageHotel() {
                 </div>
                 </SectionCard>
 
-                <SectionCard title="Room Photography (Mandatory)">
+                <SectionCard title="Room photos (required)">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-stone-500">
@@ -4620,7 +4661,7 @@ export default function ManageHotel() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                       <div>
                         <ImageUpload
-                          label="Room Cover Photo"
+                          label="Room cover photo"
                           hint="Primary photo displayed on room listings. You can also drag a photo from the gallery onto this card."
                           tooltip="Primary thumbnail for this room type in guest search and room accommodation lists."
                           value={editRoomData.imageUrl || ''}
@@ -4636,7 +4677,7 @@ export default function ManageHotel() {
 
                       <div>
                         <GalleryUpload
-                          label="Room Gallery"
+                          label="Room gallery"
                           hint="Additional views (bathroom, balcony, desk, view). Click star or drag photo onto cover to switch."
                           tooltip="Image carousel for guests viewing more details about this room type."
                           value={editRoomData.galleryUrls || []}
@@ -4670,11 +4711,11 @@ export default function ManageHotel() {
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Room Amenities">
+                <SectionCard title="Room amenities">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* ROOM AMENITIES */}
                   <div className="md:col-span-2">
-                    <label className="tm-label mb-2">Room Amenities</label>
+                    <label className="tm-label mb-2">Room amenities</label>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {COMMON_AMENITIES.map((amenity, amIdx) => {
                         const current = editRoomData.amenities || [];
@@ -4741,7 +4782,7 @@ export default function ManageHotel() {
                           }
                         }}
                         className="tm-input flex-1 min-w-0" 
-                        placeholder="Add custom amenity..." 
+                        placeholder="Add custom amenity…" 
                       />
                       <button
                         type="button"
@@ -4753,7 +4794,7 @@ export default function ManageHotel() {
                           }
                           setAmenityInput('');
                         }}
-                        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800"
+                        className="tm-btn tm-btn-secondary shrink-0"
                       >
                         <Plus className="h-4 w-4" /> Add
                       </button>
@@ -4762,7 +4803,7 @@ export default function ManageHotel() {
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Pricing & Currencies">
+                <SectionCard title="Pricing and currencies">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="tm-label mb-2">Currencies you sell this room in</label>
@@ -4842,7 +4883,7 @@ export default function ManageHotel() {
                     </React.Fragment>
                   ))}
                   <div>
-                    <label className="tm-label mb-2">Max Guests</label>
+                    <label className="tm-label mb-2">Max guests</label>
                     <input type="number" required min={1} value={editRoomData.maxGuests || 2} onChange={e => {
                       const val = Number(e.target.value);
                       setEditRoomData({
@@ -4855,16 +4896,16 @@ export default function ManageHotel() {
                     <FieldError message={roomErrors.baseGuests} />
                   </div>
                   <div>
-                    <label className="tm-label mb-2">Total Rooms Available</label>
+                    <label className="tm-label mb-2">Rooms of this type</label>
                     <input type="number" required min={0} value={editRoomData.quantity ?? 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.quantity ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
                     <FieldError message={roomErrors.quantity} />
                   </div>
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Packages & Inclusions">
+                <SectionCard title="Packages and inclusions">
                 <div>
-                  <h4 className="text-sm font-semibold text-stone-800 mb-4">Room Packages & Inclusions</h4>
+                  <h4 className="text-sm font-semibold text-stone-800 mb-4">Room packages and inclusions</h4>
                   <FieldError message={roomErrors.packages} />
                   <div className="flex flex-wrap gap-2 mb-4">
                     {[
@@ -4918,9 +4959,9 @@ export default function ManageHotel() {
                             const updated = editRoomData.packages!.map(p => p.id === pkg.id ? {...p, type: e.target.value as any} : p);
                             setEditRoomData({...editRoomData, packages: updated});
                           }} className="bg-white border border-stone-200 p-1.5 rounded-lg text-xs outline-none focus:border-stone-900">
-                            <option value="per_person">Per Person</option>
-                            <option value="per_room">Per Room</option>
-                            <option value="per_stay">Per Stay</option>
+                            <option value="per_person">Per person</option>
+                            <option value="per_room">Per room</option>
+                            <option value="per_stay">Per stay</option>
                           </select>
                           <button type="button" onClick={() => {
                             setEditRoomData({...editRoomData, packages: editRoomData.packages?.filter(p => p.id !== pkg.id)});
@@ -4932,9 +4973,9 @@ export default function ManageHotel() {
                 </div>
                 </SectionCard>
 
-                <SectionCard title="Availability & Block Dates">
+                <SectionCard title="Availability and blocked dates">
                 <div id="room-calendar-section">
-                  <h4 className="text-sm font-semibold text-stone-800 mb-2">Block Dates</h4>
+                  <h4 className="text-sm font-semibold text-stone-800 mb-2">Blocked dates</h4>
                   <p className="text-xs text-stone-500 mb-4">
                     Take individual nights off sale — maintenance, an owner stay, a private hire.
                     Blocked nights cannot be booked by guests.
@@ -5053,18 +5094,18 @@ export default function ManageHotel() {
                                       }}
                                       className="w-5 h-5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                                     />
-                                    <span className="font-medium text-stone-700">Room Unit {i + 1}</span>
+                                    <span className="font-medium text-stone-700">Room unit {i + 1}</span>
                                   </label>
                                 );
                               })}
                             </div>
                             
                             <div className="mt-4 flex justify-end">
-                              <button onClick={() => {
+                              <button type="button" onClick={() => {
                                 setManagingBlockDate(null);
                                 setManagerCheckIn('');
                                 setManagerCheckOut('');
-                              }} className="px-4 py-2 bg-stone-900 text-white text-sm font-bold rounded-lg hover:bg-stone-800">
+                              }} className="tm-btn tm-btn-secondary tm-btn-sm">
                                 Done
                               </button>
                             </div>
@@ -5074,7 +5115,7 @@ export default function ManageHotel() {
                       {((Array.isArray(editRoomData.blockedDates) && editRoomData.blockedDates.length > 0) || (Object.keys(editRoomData.blockedUnits ?? {}).length > 0)) && (
                         <div className="mt-4">
                           <p className="text-xs font-semibold text-stone-500 mb-2">
-                            Manual Blockages
+                            Blocked by you
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {(editRoomData.blockedDates ?? []).map((date, dIdx) => (
@@ -5082,7 +5123,7 @@ export default function ManageHotel() {
                                 key={`blocked-full-${date}-${dIdx}`}
                                 type="button"
                                 onClick={() => toggleBlockedDate(date)}
-                                className="flex items-center gap-1.5 bg-stone-800 text-white text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-600 transition"
+                                className="tm-btn tm-btn-secondary tm-btn-sm"
                                 title="Edit this date"
                               >
                                 {formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })} (All)
@@ -5094,7 +5135,7 @@ export default function ManageHotel() {
                                 key={`blocked-unit-${date}-${uIdx}`}
                                 type="button"
                                 onClick={() => toggleBlockedDate(date)}
-                                className="flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition"
+                                className="tm-btn tm-btn-secondary tm-btn-sm"
                                 title="Edit this date"
                               >
                                 {formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })} ({count} room{count === 1 ? '' : 's'})
@@ -5258,7 +5299,7 @@ export default function ManageHotel() {
                                     className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                                   >
                                     <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                                    <span>Calendar &amp; Blocks</span>
+                                    <span>Calendar and blocked dates</span>
                                   </button>
                                   <button
                                     type="button"
@@ -5270,7 +5311,7 @@ export default function ManageHotel() {
                                     className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                                   >
                                     <CalendarSync className="w-3.5 h-3.5 text-amber-600" />
-                                    <span>Channel Sync (RoomRaccoon / iCal)</span>
+                                    <span>Calendar sync (RoomRaccoon, iCal)</span>
                                   </button>
                                   <div className="my-1 border-t border-stone-100" />
                                   <button
@@ -5283,7 +5324,7 @@ export default function ManageHotel() {
                                     className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
                                   >
                                     <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                    <span>Delete Room</span>
+                                    <span>Delete room</span>
                                   </button>
                                 </div>
                               </>
@@ -5313,12 +5354,11 @@ export default function ManageHotel() {
       {activeTab === 'restaurant' && (
         <div className="space-y-8">
           {!restaurant ? (
-            <div className="bg-white rounded-xl border border-stone-200 p-10 sm:p-12 text-center">
-              <UtensilsCrossed className="h-10 w-10 mx-auto mb-4 text-stone-300" />
-              <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mb-2">No restaurant yet</h3>
-              <p className="text-stone-500 text-xs sm:text-sm max-w-md mx-auto mb-6">
-                Add one to publish a menu on your listing. Guests get a Menu tab with the
-                design you choose, priced in the same currencies as your rooms.
+            <div className="tm-panel text-center py-10">
+              <UtensilsCrossed className="h-8 w-8 mx-auto mb-3 text-stone-300" />
+              <h3 className="tm-h2 mb-1">No restaurant yet</h3>
+              <p className="tm-muted max-w-md mx-auto mb-5">
+                Add one to show a menu on your listing.
               </p>
               <button
                 type="button"
@@ -5354,7 +5394,7 @@ export default function ManageHotel() {
                     type="button"
                     onClick={handleSaveRestaurant}
                     disabled={savingRestaurant || !restaurantDirty}
-                    className="inline-flex items-center justify-center gap-1.5 h-9 px-4 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="tm-btn tm-btn-primary"
                   >
                     {savingRestaurant ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     {savingRestaurant ? 'Saving…' : 'Save menu'}
@@ -5399,9 +5439,10 @@ export default function ManageHotel() {
                     setBookingFilter(tab.key);
                     setCurrentBookingPage(1);
                   }}
+                  aria-pressed={bookingFilter === tab.key}
                   className={`tm-btn tm-btn-sm ${
                     bookingFilter === tab.key
-                      ? 'bg-stone-900 text-white'
+                      ? 'tm-btn-secondary'
                       : 'tm-btn-quiet'
                   }`}
                 >
@@ -5543,7 +5584,7 @@ export default function ManageHotel() {
                                 className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                               >
                                 <Edit2 className="w-3.5 h-3.5 text-stone-400" />
-                                <span>Edit Booking Details</span>
+                                <span>Edit booking details</span>
                               </button>
 
                               <button
@@ -5555,7 +5596,7 @@ export default function ManageHotel() {
                                 className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                               >
                                 <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Send Reminders &amp; Templates</span>
+                                <span>Send a reminder</span>
                               </button>
 
                               {hotel?.adminChatEnabled !== false && (
@@ -5568,7 +5609,7 @@ export default function ManageHotel() {
                                   className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
-                                  <span>Open In-App Chat</span>
+                                  <span>Open chat</span>
                                 </button>
                               )}
 
@@ -5581,7 +5622,7 @@ export default function ManageHotel() {
                                   className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-emerald-700 transition cursor-pointer"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Open WhatsApp Chat</span>
+                                  <span>Open WhatsApp</span>
                                 </a>
                               )}
 
@@ -5612,7 +5653,7 @@ export default function ManageHotel() {
                                   className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-amber-700 transition cursor-pointer"
                                 >
                                   <X className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>Cancel Booking</span>
+                                  <span>Cancel booking</span>
                                 </button>
                               )}
 
@@ -5627,7 +5668,7 @@ export default function ManageHotel() {
                                 className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                <span>Delete Record</span>
+                                <span>Delete booking</span>
                               </button>
                             </div>
                           </>
@@ -5638,7 +5679,7 @@ export default function ManageHotel() {
 
                   {/* Booking Details Body */}
                   <div className="pt-3">
-                    <p className="text-stone-900 font-semibold text-sm mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Standard Accommodation'}</p>
+                    <p className="text-stone-900 font-semibold text-sm mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Room'}</p>
                     <div className="text-xs sm:text-sm text-stone-500 flex items-center gap-2 flex-wrap mb-2.5">
                       <Calendar className="h-3.5 w-3.5 text-stone-400" />
                       <span>{formatDateStr(booking.checkIn)} — {formatDateStr(booking.checkOut)}</span>
@@ -5661,21 +5702,21 @@ export default function ManageHotel() {
                             value={tempWhatsappNumber}
                             onChange={e => setTempWhatsappNumber(e.target.value)}
                             placeholder="+265 999 123 456"
-                            className="text-xs bg-white border border-stone-300 px-2 py-0.5 rounded text-stone-900 focus:outline-none focus:border-stone-500 w-36 tabular-nums"
+                            className="tm-input w-40 tabular-nums"
                             autoFocus
                           />
                           <button
                             type="button"
                             onClick={() => handleSaveBookingWhatsapp(booking.id!)}
                             disabled={savingBookingWhatsapp}
-                            className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
+                            className="tm-btn tm-btn-primary tm-btn-sm"
                           >
-                            {savingBookingWhatsapp ? '...' : 'Save'}
+                            {savingBookingWhatsapp ? 'Saving…' : 'Save'}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingWhatsappBookingId(null)}
-                            className="text-xs text-stone-500 hover:text-stone-800 px-1 cursor-pointer"
+                            className="tm-btn tm-btn-quiet tm-btn-sm"
                           >
                             Cancel
                           </button>
@@ -5700,7 +5741,7 @@ export default function ManageHotel() {
                                   setEditingWhatsappBookingId(booking.id!);
                                   setTempWhatsappNumber(booking.guestWhatsapp || '');
                                 }}
-                                className="text-xs text-stone-400 hover:text-stone-700 underline cursor-pointer"
+                                className="tm-btn tm-btn-quiet tm-btn-sm"
                                 title="Edit guest WhatsApp number"
                               >
                                 Edit
@@ -5713,11 +5754,11 @@ export default function ManageHotel() {
                                 setEditingWhatsappBookingId(booking.id!);
                                 setTempWhatsappNumber(booking.guestPhone || '+265');
                               }}
-                              className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
+                              className="tm-btn tm-btn-quiet tm-btn-sm"
                               title="Add WhatsApp number for this guest"
                             >
-                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              + Add WhatsApp
+                              <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                              Add WhatsApp
                             </button>
                           )}
                         </div>
@@ -5736,7 +5777,8 @@ export default function ManageHotel() {
                           fetchReminders(booking.id!);
                         }
                       }}
-                      className="text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1"
+                      type="button"
+                      className="tm-btn tm-btn-quiet tm-btn-sm"
                     >
                       <Clock className="w-3.5 h-3.5" />
                       {showRemindersFor === booking.id ? 'Hide reminders' : 'Reminders'}
@@ -5763,16 +5805,16 @@ export default function ManageHotel() {
                               <div className="flex justify-between items-start">
                                 <div>
                                   <span className={`font-medium ${rem.sent ? 'text-green-700' : 'text-amber-700'}`}>
-                                    {rem.type === 'check_in_3d' ? '3-Day Prep' :
-                                     rem.type === 'check_in_24h' ? '24h Arrival' :
+                                    {rem.type === 'check_in_3d' ? '3 days before arrival' :
+                                     rem.type === 'check_in_24h' ? 'Day before arrival' :
                                      rem.type === 'check_out' ? 'Check-out' : 'Custom'}
                                   </span>
                                   <span className="text-stone-400 ml-2">
                                     → {rem.recipientType === 'guest' ? 'Guest' : 'Manager'}
                                   </span>
                                 </div>
-                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${rem.sent ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                                  {rem.sent ? '✓ Sent' : 'Pending'}
+                                <span className={`tm-tag ${rem.sent ? 'tm-tag-good' : 'tm-tag-warn'}`}>
+                                  {rem.sent ? 'Sent' : 'Pending'}
                                 </span>
                               </div>
                               <p className="text-stone-600 mt-1">{rem.message}</p>
@@ -5784,26 +5826,27 @@ export default function ManageHotel() {
                         )}
                         {/* Manual Reminder Form */}
                         {booking.status === 'confirmed' && (
-                          <div className="mt-2 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                            <p className="text-xs font-medium text-stone-600 mb-1.5">Add a reminder</p>
+                          <div className="mt-2 pt-2 border-t border-stone-100 space-y-1.5">
+                            <p className="tm-label">Add a reminder</p>
                             <input
                               type="text"
                               value={manualReminderMsg}
                               onChange={e => setManualReminderMsg(e.target.value)}
-                              placeholder="Reminder message..."
-                              className="w-full text-xs p-2 rounded border border-stone-200 mb-1.5"
+                              placeholder="Reminder message…"
+                              className="tm-input"
                             />
-                            <div className="flex gap-2">
+                            <div className="tm-actions">
                               <input
                                 type="datetime-local"
                                 value={manualReminderDate}
                                 onChange={e => setManualReminderDate(e.target.value)}
-                                className="flex-1 text-xs p-2 rounded border border-stone-200"
+                                className="tm-input flex-1 min-w-0 w-auto"
                               />
                               <button
+                                type="button"
                                 onClick={() => handleAddManualReminder(booking)}
                                 disabled={!manualReminderMsg.trim() || !manualReminderDate}
-                                className="text-xs px-3 py-2 bg-stone-800 text-white rounded hover:bg-stone-700 disabled:opacity-40"
+                                className="tm-btn tm-btn-secondary tm-btn-sm"
                               >
                                 Schedule
                               </button>
@@ -5918,7 +5961,7 @@ export default function ManageHotel() {
                               {isGuestTyping ? (
                                 <span className="text-xs font-semibold text-emerald-600 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                  Typing...
+                                  Typing…
                                 </span>
                               ) : isGuestInChat ? (
                                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -5958,16 +6001,16 @@ export default function ManageHotel() {
                             <button
                               type="button"
                               onClick={() => openInquiryChat(hotel, inquiry.guestId, inquiry.guestName)}
-                              className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm cursor-pointer"
+                              className="tm-btn tm-btn-secondary tm-btn-sm"
                             >
-                              <MessageSquare className="w-4 h-4" /> Open Chat
+                              <MessageSquare className="w-4 h-4" /> Open chat
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => setInquiryToDelete(inquiry.id)}
                             className="p-2.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition border border-stone-200 hover:border-red-200"
-                            title="Delete Chat History"
+                            title="Delete chat history"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -6022,16 +6065,18 @@ export default function ManageHotel() {
                 : undefined
             }
             footer={
-              <div className="flex gap-3">
+              <div className="tm-actions justify-end">
                 <button
+                  type="button"
                   onClick={() => setConfirmModalBooking(null)}
-                  className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition"
+                  className="tm-btn tm-btn-secondary"
                 >
                   Not yet
                 </button>
                 <button
+                  type="button"
                   onClick={() => updateBookingStatus(confirmModalBooking, 'confirmed')}
-                  className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-emerald-700 transition"
+                  className="tm-btn tm-btn-primary"
                 >
                   Approve booking
                 </button>
@@ -6074,15 +6119,15 @@ export default function ManageHotel() {
                     href={`https://wa.me/${(booking?.guestWhatsapp || booking?.guestPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${booking?.guestName}, we are processing your booking at ${hotel?.name} for ${booking ? formatDateStr(booking.checkIn) : ''}. Could we quickly confirm your estimated arrival time?`)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#20bd5a] transition shadow-sm"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Guest
+                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp guest
                   </a>
                   <a
                     href={`mailto:${booking?.guestEmail || ''}?subject=${encodeURIComponent(`Your booking request at ${hotel?.name}`)}&body=${encodeURIComponent(`Hello ${booking?.guestName},\n\nWe are processing your booking request for ${room?.name} from ${booking ? formatDateStr(booking.checkIn) : ''} to ${booking ? formatDateStr(booking.checkOut) : ''}.\n\nCould we quickly confirm your estimated arrival time before we finalize the booking?\n\nBest regards,\n${hotel?.name}`)}`}
-                    className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-stone-800 transition shadow-sm"
+                    className="tm-btn tm-btn-secondary tm-btn-sm"
                   >
-                    <Mail className="w-3.5 h-3.5" /> Email Guest
+                    <Mail className="w-3.5 h-3.5" /> Email guest
                   </a>
                 </div>
               </div>
@@ -6108,7 +6153,7 @@ export default function ManageHotel() {
 
       <ConfirmDialog
         isOpen={!!bookingToDelete}
-        title="Delete Booking"
+        title="Delete booking"
         message="Are you sure you want to permanently delete this booking? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
@@ -6120,7 +6165,7 @@ export default function ManageHotel() {
       />
       <ConfirmDialog
         isOpen={!!inquiryToDelete}
-        title="Delete Inquiry & Chat History"
+        title="Delete inquiry and chat"
         message="Are you sure you want to permanently delete this inquiry and all conversation messages? This action cannot be undone."
         confirmText="Delete History"
         cancelText="Cancel"
@@ -6132,7 +6177,7 @@ export default function ManageHotel() {
       />
       <ConfirmDialog
         isOpen={!!roomToDelete}
-        title="Delete Room Type"
+        title="Delete room type"
         message={`Are you sure you want to permanently delete "${roomToDelete?.name}"? All associated availability settings will be removed.`}
         confirmText="Delete Room"
         cancelText="Cancel"
@@ -6143,9 +6188,9 @@ export default function ManageHotel() {
 
       <ConfirmDialog
         isOpen={showDeleteHotelModal}
-        title="Delete Property Listing"
+        title="Delete property listing"
         message={`Are you sure you want to permanently delete "${hotel?.name}"? All associated room types, inventory, pricing, and configurations will be permanently removed. This action cannot be undone.`}
-        confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete property"}
+        confirmText={isDeletingHotel ? "Deleting…" : "Yes, delete property"}
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={handleDeleteHotelListing}
@@ -6160,7 +6205,7 @@ export default function ManageHotel() {
           onClose={() => setReminderModalBooking(null)}
           booking={reminderModalBooking}
           hotel={hotel}
-          roomName={rooms.find(r => r.id === reminderModalBooking.roomTypeId)?.name || 'Reserved Room'}
+          roomName={rooms.find(r => r.id === reminderModalBooking.roomTypeId)?.name || 'Room'}
           onReminderSent={() => {
             if (reminderModalBooking.id) {
               fetchReminders(reminderModalBooking.id);

@@ -151,7 +151,7 @@ export default function AdminDocsHub() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success(`Downloading ${format === 'html' ? 'Standalone HTML (.html)' : format === 'text' ? 'Readable Text (.txt)' : 'Markdown (.md)'}`);
+    toast.success(`Downloading ${format === 'html' ? 'HTML (.html)' : format === 'text' ? 'Text (.txt)' : 'Markdown (.md)'}`);
   };
 
   const handlePrint = () => {
@@ -178,10 +178,10 @@ export default function AdminDocsHub() {
   const textLink = 'text-stone-900 underline underline-offset-2 decoration-stone-300 hover:decoration-stone-900';
 
   const surveyTypeLabel = (type?: string) =>
-    type === 'host_onboarding' ? 'Host Fast-Track' :
-    type === 'listing_request' ? 'Listing Request' :
-    type === 'partner_inquiry' ? 'Partner Inquiry' :
-    type === 'operations_feedback' ? 'Ops Feedback' : 'Concept Survey';
+    type === 'host_onboarding' ? 'Host fast-track' :
+    type === 'listing_request' ? 'Listing request' :
+    type === 'partner_inquiry' ? 'Partner inquiry' :
+    type === 'operations_feedback' ? 'Ops feedback' : 'Concept survey';
 
   const formatEdited = (doc: AdminDocMeta) => {
     const date = doc.lastEditedAt ? new Date(doc.lastEditedAt) : null;
@@ -191,37 +191,33 @@ export default function AdminDocsHub() {
   };
 
   const livePages = [
-    { href: '/concept-validation', label: 'Partner Discovery Survey' },
-    { href: '/stay-owner-leaflet', label: 'Stay Owner Leaflet' },
-    { href: '/host-guide', label: 'Host Starter Pack' },
-    { href: '/listing-guide', label: 'Listing Guide' },
-    { href: '/marketing', label: 'Commercial Deck' },
-    { href: '/operations-guide', label: 'Operations Playbook' },
+    { href: '/concept-validation', label: 'Partner discovery survey' },
+    { href: '/stay-owner-leaflet', label: 'Stay owner leaflet' },
+    { href: '/host-guide', label: 'Host starter pack' },
+    { href: '/listing-guide', label: 'Listing guide' },
+    { href: '/marketing', label: 'Commercial deck' },
+    { href: '/operations-guide', label: 'Operations playbook' },
     { href: '/uat', label: 'Platform & UAT Guide' }
   ];
 
   return (
     <div className="text-stone-700 font-sans">
       {/* Header */}
-      <header className="border-b border-stone-200 pb-4 mb-6">
-        <h2 className="tm-h1">Outreach &amp; Strategy Library</h2>
+      <header className="mb-6">
+        <h2 className="tm-h1">Partner documents</h2>
         <p className="mt-1 text-xs sm:text-sm text-stone-500">
           Partner surveys, host leaflets, and operational guides. Download as text, HTML, or print to PDF.
         </p>
-        <div className="mt-4 flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl w-fit">
+        <div className="tm-tabs mt-4" role="tablist">
           <button 
             onClick={() => setActiveSection('library')} 
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeSection === 'library' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
+            role="tab" aria-selected={activeSection === 'library'} className={`tm-tab cursor-pointer ${activeSection === 'library' ? 'tm-tab-active' : ''}`}
           >
             Documents
           </button>
           <button 
             onClick={() => setActiveSection('surveys')} 
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeSection === 'surveys' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
+            role="tab" aria-selected={activeSection === 'surveys'} className={`tm-tab cursor-pointer ${activeSection === 'surveys' ? 'tm-tab-active' : ''}`}
           >
             Survey responses ({surveys.length})
           </button>
@@ -286,7 +282,7 @@ export default function AdminDocsHub() {
                         <div>
                           <dt className="text-stone-500">Pilot interest</dt>
                           <dd className="text-stone-900">
-                            {survey.pilotInterest === 'yes' ? 'Ready for Pilot (0% Tier)' : survey.pilotInterest === 'briefing' ? 'Requested Briefing Call' : 'Keep Informed'}
+                            {survey.pilotInterest === 'yes' ? 'Ready for pilot (0% tier)' : survey.pilotInterest === 'briefing' ? 'Wants a briefing call' : 'Keep informed'}
                           </dd>
                         </div>
                         <div>
@@ -342,7 +338,7 @@ export default function AdminDocsHub() {
               />
             </div>
 
-            <div className="mt-4 overflow-x-auto bg-white border border-stone-200 rounded-xl">
+            <div className="mt-4 tm-table-wrap bg-white border border-stone-200 rounded-xl">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-stone-200">
@@ -461,7 +457,7 @@ export default function AdminDocsHub() {
                   <button
                     onClick={() => setEditorDocId(selectedDocId)}
                     className={secondaryBtn}
-                    title="Edit document content (Marketing & Super Admin)"
+                    title="Edit document (marketing and global admin)"
                   >
                     <Edit3 size={16} className="text-stone-500" />
                     <span>Edit</span>

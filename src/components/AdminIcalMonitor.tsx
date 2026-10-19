@@ -251,7 +251,7 @@ export default function AdminIcalMonitor({
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="tm-h1">
-              iCal &amp; Channel Sync
+              iCal and channel sync
             </h2>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -270,50 +270,41 @@ export default function AdminIcalMonitor({
           className="tm-btn tm-btn-primary self-start sm:self-auto"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
-          <span>{isSyncingAll ? 'Syncing All Feeds…' : 'Sync All Feeds'}</span>
+          <span>{isSyncingAll ? 'Syncing all feeds…' : 'Sync all feeds'}</span>
         </button>
       </div>
 
-      {/* KPI Quick Cards */}
+      {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl p-4 border border-stone-200">
-          <div className="text-xs font-medium text-stone-500">Connected Feeds</div>
-          <div className="text-2xl font-bold font-serif text-stone-900 mt-1 tabular-nums">{totalFeeds}</div>
-          <div className="text-[11px] text-stone-400 mt-0.5">Active iCal links</div>
+        <div className="tm-stat">
+          <p className="tm-stat-label">Connected feeds</p>
+          <p className="tm-stat-value">{totalFeeds}</p>
+          <p className="tm-muted truncate">Active iCal links</p>
         </div>
-
-        <div className="bg-white rounded-xl p-4 border border-stone-200">
-          <div className="text-xs font-medium text-stone-500">Synced Properties</div>
-          <div className="text-2xl font-bold font-serif text-stone-900 mt-1 tabular-nums">{uniquePropertiesWithSync}</div>
-          <div className="text-[11px] text-stone-400 mt-0.5">Out of {hotels.length} properties</div>
+        <div className="tm-stat">
+          <p className="tm-stat-label">Synced properties</p>
+          <p className="tm-stat-value">{uniquePropertiesWithSync}</p>
+          <p className="tm-muted truncate">Out of {hotels.length} properties</p>
         </div>
-
-        <div className="bg-white rounded-xl p-4 border border-stone-200">
-          <div className="text-xs font-medium text-stone-500">Healthy Feeds</div>
-          <div className="text-2xl font-bold font-serif text-emerald-700 mt-1 tabular-nums">{healthyFeeds}</div>
-          <div className="text-[11px] text-stone-400 mt-0.5">Syncing normally</div>
+        <div className="tm-stat">
+          <p className="tm-stat-label">Healthy feeds</p>
+          <p className="tm-stat-value">{healthyFeeds}</p>
+          <p className="tm-muted truncate">Syncing normally</p>
         </div>
-
-        <div className={`rounded-xl p-4 border ${errorFeeds > 0 ? 'bg-red-50/60 border-red-200' : 'bg-white border-stone-200'}`}>
-          <div className={`text-xs font-medium ${errorFeeds > 0 ? 'text-red-700' : 'text-stone-500'}`}>
-            Sync Errors
-          </div>
-          <div className={`text-2xl font-bold font-serif mt-1 tabular-nums ${errorFeeds > 0 ? 'text-red-800' : 'text-stone-900'}`}>
-            {errorFeeds}
-          </div>
-          <div className={`text-[11px] mt-0.5 ${errorFeeds > 0 ? 'text-red-600' : 'text-stone-400'}`}>
-            {errorFeeds > 0 ? 'Needs attention' : 'No sync errors'}
-          </div>
+        <div className={`tm-stat ${errorFeeds > 0 ? 'border-red-200' : ''}`}>
+          <p className="tm-stat-label">Sync errors</p>
+          <p className={`tm-stat-value ${errorFeeds > 0 ? 'text-red-800!' : ''}`}>{errorFeeds}</p>
+          <p className="tm-muted truncate">{errorFeeds > 0 ? 'Needs attention' : 'No sync errors'}</p>
         </div>
       </div>
 
       {/* External Feed Tester */}
       <div className="bg-white border border-stone-200 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-stone-900 mb-1">
-          Test External iCal Feed URL
+          Test an iCal feed URL
         </h3>
         <p className="text-xs text-stone-500 mb-3">
-          Paste an external `.ics` URL to verify calendar reachability and preview blocked dates before attaching it to a room.
+          Paste an .ics URL to check it works and preview blocked dates before adding it to a room.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -336,7 +327,7 @@ export default function AdminIcalMonitor({
                 <span>Testing…</span>
               </>
             ) : (
-              <span>Test Feed</span>
+              <span>Test feed</span>
             )}
           </button>
         </div>
@@ -371,10 +362,10 @@ export default function AdminIcalMonitor({
         <div className="p-4 sm:p-5 border-b border-stone-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div>
             <h3 className="font-serif font-bold text-base text-stone-900">
-              Active Channel Connections ({filteredFeeds.length})
+              Connected channels ({filteredFeeds.length})
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              Live status of external calendars synchronizing into Travel Malawi
+              Status of external calendars syncing into Travel Malawi.
             </p>
           </div>
 
@@ -395,7 +386,7 @@ export default function AdminIcalMonitor({
               onChange={(e) => setFilterPlatform(e.target.value)}
               className="py-1.5 px-2.5 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 focus:outline-none focus:border-stone-900"
             >
-              <option value="all">All Channels</option>
+              <option value="all">All channels</option>
               <option value="roomraccoon">RoomRaccoon</option>
               <option value="airbnb">Airbnb</option>
               <option value="booking">Booking.com</option>
@@ -409,7 +400,7 @@ export default function AdminIcalMonitor({
               onChange={(e) => setFilterStatus(e.target.value)}
               className="py-1.5 px-2.5 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 focus:outline-none focus:border-stone-900"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">All statuses</option>
               <option value="success">Healthy (Success)</option>
               <option value="error">Errors</option>
               <option value="idle">Idle / Pending</option>
@@ -422,22 +413,22 @@ export default function AdminIcalMonitor({
             <CalendarSync className="w-8 h-8 text-stone-400 mx-auto mb-2" />
             <p className="font-medium text-sm">No connected channel feeds match the criteria.</p>
             <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
-              Property managers can connect their RoomRaccoon, Airbnb, or PMS iCal links inside their Host Dashboard under Rooms &amp; Rates.
+              Hosts add their iCal links under Rooms and rates in their dashboard.
             </p>
           </div>
         ) : (
           <>
             {/* Desktop & Laptop Table (md+) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block tm-table-wrap">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold">
                     <th className="py-3 px-4">Property &amp; Unit</th>
                     <th className="py-3 px-3 whitespace-nowrap">Platform</th>
-                    <th className="py-3 px-3">Feed Name</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Last Synced</th>
+                    <th className="py-3 px-3">Feed</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Last synced</th>
                     <th className="py-3 px-3 whitespace-nowrap">Status</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Blocked Nights</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Blocked nights</th>
                     <th className="py-3 px-4 text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -463,7 +454,7 @@ export default function AdminIcalMonitor({
                             {row.type === 'room' && row.room ? (
                               <span>Chalet: {row.room.name}</span>
                             ) : (
-                              <span>Entire Property</span>
+                              <span>Whole property</span>
                             )}
                           </div>
                         </td>
@@ -537,7 +528,7 @@ export default function AdminIcalMonitor({
                               type="button"
                               onClick={() => handleCopy(exportLink)}
                               className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-700 transition cursor-pointer shrink-0"
-                              title="Copy Travel Malawi .ics export link"
+                              title="Copy the Travel Malawi .ics export link"
                             >
                               {copiedUrl === exportLink ? (
                                 <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -579,7 +570,7 @@ export default function AdminIcalMonitor({
                       <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-semibold text-stone-900 truncate">{row.hotel.name}</h4>
                         <p className="text-xs text-stone-500 truncate mt-0.5">
-                          {row.type === 'room' && row.room ? `Chalet: ${row.room.name}` : 'Entire Property'}
+                          {row.type === 'room' && row.room ? `Chalet: ${row.room.name}` : 'Whole property'}
                         </p>
                       </div>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-stone-100 text-stone-800 border border-stone-200 whitespace-nowrap shrink-0">
@@ -594,7 +585,7 @@ export default function AdminIcalMonitor({
                         <div className="text-[11px] text-stone-500 mt-0.5">{row.feed.blockedCount ?? 0} nights blocked</div>
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] font-semibold text-stone-400 block">Sync Status</span>
+                        <span className="text-[10px] font-semibold text-stone-400 block">Sync status</span>
                         <div className="mt-0.5">
                           {row.feed.syncStatus === 'success' && (
                             <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold text-[11px]">
@@ -669,7 +660,7 @@ export default function AdminIcalMonitor({
       <Modal
         open={Boolean(selectedTarget)}
         onClose={() => setSelectedTarget(null)}
-        title={`Calendar Synchronization — ${selectedTarget?.room ? selectedTarget.room.name : selectedTarget?.hotel.name}`}
+        title={`Calendar sync — ${selectedTarget?.room ? selectedTarget.room.name : selectedTarget?.hotel.name}`}
         description="Configure 2-way sync feeds with RoomRaccoon, Airbnb, Booking.com, NightsBridge, and Google Calendar."
         size="3xl"
       >

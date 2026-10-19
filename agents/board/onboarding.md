@@ -60,3 +60,11 @@ status: in-progress
 - [H-orch-D2] DONE onboarding-29..42
 - tsc: 0 errors in owned files
 status: done
+status: in-progress
+- [onboarding-43] P2 FIXED  src/pages/ListProperty.tsx step 4 rooms — card-in-card removed: "Your rooms" overview and suggested-room tray (stone box + bordered cards) → divided lists; per-room editor cards → tm-divider sections inside the one wizard panel (D2)
+- [onboarding-44] P2 FIXED  src/pages/ListProperty.tsx steps 6–7 — plan cards → two columns split by divider, Basic marked by amber left border + "Selected" tag; review preview frame unboxed (photo rounded-lg, h-48 on phones), entire-place/room summary boxes → plain block + divided list (D2)
+- [onboarding-45] P2 FIXED  src/components/PropertyDocumentImporter.tsx rooms step — bordered room boxes in the modal → divided list (D2)
+- [onboarding-46] P2 FIXED  src/pages/ListProperty.tsx — 360px overflow: wizard top bar and welcome top bar wrap (flex-wrap), "Import from document" shortens to "Import" on phones, icon-only Discard gets aria-label; amenities header + suggestion header wrap (D2)
+- [onboarding-47] P3 FIXED  wording — "..." → … (Looking up…, phone placeholders, Locating…, menu sections), "Select category..." → "Choose a category", "Use Device GPS" → "Use my location", importer "Next: rooms" → "Continue", discard dialog sentence case ("Discard this draft?", "Discard draft", "Keep editing"), importer description placeholder shortened (D2)
+- [onboarding-48] CHECK   tsc: 0 errors in owned files (AdminDashboard errors belong to settings' in-progress edit); d2.mjs: 0 hits in owned files; validation, draft persistence, handlers, payloads unchanged
+status: done

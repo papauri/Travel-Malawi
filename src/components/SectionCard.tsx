@@ -8,6 +8,8 @@ interface SectionCardProps {
   children: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  /** Opens a collapsed section, e.g. when a field inside it has a problem. */
+  forceOpen?: boolean;
 }
 
 export default function SectionCard({
@@ -17,8 +19,13 @@ export default function SectionCard({
   children,
   collapsible = false,
   defaultOpen = true,
+  forceOpen = false,
 }: SectionCardProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const [isOpen, setIsOpen] = React.useState(defaultOpen || forceOpen);
+
+  React.useEffect(() => {
+    if (forceOpen) setIsOpen(true);
+  }, [forceOpen]);
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden min-w-0">

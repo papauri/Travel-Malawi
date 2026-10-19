@@ -44,3 +44,8 @@ status: in-progress
 status: done
 - [ux-33] P2 FIXED InteractiveMap/OfflineMapManager/TripPlannerD3 — neon/emerald map markers, pulsing green dots, emerald icons/buttons → amber/stone (D2 stricter checker; orchestrator)
 status: done
+status: in-progress
+- [ux-34] P2 FIXED src/pages/Home.tsx — ~21 micro uppercase/tracking labels -> sentence-case tm-label/text-xs; removed Featured eyebrow styling; Best-rated pill rounded-full+shadow-md -> rounded-md shadow-sm; search bar pill/heavy shadow -> rounded-xl shadow-sm; black pill buttons -> tm-btn tm-btn-primary; Clear buttons -> tm-btn-quiet; Title Case labels -> sentence case (D2)
+- [ux-35] P2 FIXED src/pages/SavedProperties.tsx — "Saved Stays"/"Saved" h1 mismatch -> tm-h1 "Saved stays"; hand-rolled tab pill -> tm-tabs/tm-tab; black rounded-full buttons -> tm-btn-primary; rounded-3xl -> rounded-xl; trimmed planner empty state (D2)
+- [ux-36] P3 FIXED src/hooks/useNetworkStatus.ts, src/lib/mapCache.ts — comment hype word "seamless" removed
+status: done

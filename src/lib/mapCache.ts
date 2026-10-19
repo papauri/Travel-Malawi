@@ -16,7 +16,7 @@ export interface CacheMetadata {
 
 /**
  * Custom Leaflet TileLayer that uses browser CacheStorage to store and serve map tiles.
- * Supports offline viewing and seamless stale-while-revalidate for intermittent internet.
+ * Supports offline viewing and stale-while-revalidate for intermittent internet.
  */
 export class CachedTileLayer extends L.TileLayer {
   createTile(coords: L.Coords, done: L.DoneCallback): HTMLElement {
