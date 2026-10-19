@@ -127,8 +127,14 @@ function trustedOrigin(req: express.Request): string | undefined {
 
 async function startServer() {
   const app = express();
-  const isProduction = process.env.NODE_ENV === 'production';
-  const PORT = isProduction && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const hasDist = fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
+  const isCjsBundle = typeof __filename === 'string' && (__filename.endsWith('.cjs') || __filename.includes('dist'));
+  const isProduction =
+    process.env.NODE_ENV === 'production' ||
+    isCjsBundle ||
+    (Boolean(process.env.PORT) && process.env.NODE_ENV !== 'development') ||
+    (process.env.NODE_ENV !== 'development' && hasDist && !process.argv.includes('--port'));
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Behind Cloud Run's front end: take the client address from the proxy hop.
   app.set('trust proxy', 1);
@@ -2115,7 +2121,7 @@ async function startServer() {
 
   // Vite middleware for development
   let vite: ViteDevServer | null = null;
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProduction) {
     vite = await createViteServer({
       server: {
         middlewareMode: true,
