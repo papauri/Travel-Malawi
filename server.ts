@@ -127,14 +127,12 @@ function trustedOrigin(req: express.Request): string | undefined {
 
 async function startServer() {
   const app = express();
-  const hasDist = fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
-  const isCjsBundle = typeof __filename === 'string' && (__filename.endsWith('.cjs') || __filename.includes('dist'));
-  const isProduction =
-    process.env.NODE_ENV === 'production' ||
-    isCjsBundle ||
-    (Boolean(process.env.PORT) && process.env.NODE_ENV !== 'development') ||
-    (process.env.NODE_ENV !== 'development' && hasDist && !process.argv.includes('--port'));
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  // Production is the built bundle (`npm start` runs dist/server.cjs) or an
+  // explicit NODE_ENV=production. `npm run dev` (tsx, ESM, no __filename)
+  // always gets Vite, even when an old dist/ build is lying around.
+  const isCjsBundle = typeof __filename === 'string' && __filename.endsWith('.cjs');
+  const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle;
+  const PORT = isProduction && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Behind Cloud Run's front end: take the client address from the proxy hop.
   app.set('trust proxy', 1);
