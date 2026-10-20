@@ -1588,7 +1588,7 @@ export default function AdminDashboard() {
                 };
 
                 const renderMoreMenu = (hotel: Hotel, menuKey: string, openUpwards: boolean) => (
-                  <div className="relative inline-block text-left shrink-0">
+                  <div className={`relative inline-block text-left shrink-0 ${openHotelMenuId === menuKey ? 'z-50' : ''}`}>
                     <button
                       type="button"
                       onClick={() => setOpenHotelMenuId(openHotelMenuId === menuKey ? null : menuKey)}
@@ -1602,11 +1602,11 @@ export default function AdminDashboard() {
                     {openHotelMenuId === menuKey && (
                       <>
                         <div
-                          className="fixed inset-0 z-30"
+                          className="fixed inset-0 z-40"
                           onClick={() => setOpenHotelMenuId(null)}
                         />
                         <div
-                          className={`absolute right-0 w-56 bg-white rounded-xl shadow-sm border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                          className={`absolute right-0 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150 ${
                             openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                           }`}
                         >
@@ -1844,7 +1844,7 @@ export default function AdminDashboard() {
                 return (
                   <>
                     {/* Wide screens: table. Below xl the sidebar leaves too little width, so rows stack as cards. */}
-                    <div className="hidden xl:block tm-table-wrap">
+                    <div className="hidden xl:block tm-table-wrap xl:overflow-visible min-h-[320px]">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
@@ -1874,14 +1874,14 @@ export default function AdminDashboard() {
                               hotel.ownerName ||
                               hotel.ownerEmail ||
                               null;
-                            const openUpwards = index >= Math.max(0, pageHotels.length - 2) && pageHotels.length > 2;
+                            const openUpwards = index > 0 && index >= pageHotels.length - 2;
 
                             return (
                               <tr
                                 key={`admin-hotel-row-${hotel.id || index}-${index}`}
                                 className={`transition hover:bg-stone-50/70 ${
                                   hotel.status === 'pending' ? 'bg-amber-50/20' : ''
-                                }`}
+                                } ${openHotelMenuId === `table-${hotel.id}` ? 'relative z-30' : ''}`}
                               >
                                 {/* Col 1: Property */}
                                 <td className="py-3 pl-4 pr-3 align-middle min-w-0">
@@ -2006,7 +2006,7 @@ export default function AdminDashboard() {
                                 </td>
 
                                 {/* Col 5: Actions */}
-                                <td className="py-3 pl-3 pr-4 align-middle text-right whitespace-nowrap">
+                                <td className={`py-3 pl-3 pr-4 align-middle text-right whitespace-nowrap ${openHotelMenuId === `table-${hotel.id}` ? 'relative z-30' : ''}`}>
                                   <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
                                     {hotel.status === 'pending' && (
                                       <button
@@ -2063,7 +2063,7 @@ export default function AdminDashboard() {
                           hotel.ownerName ||
                           hotel.ownerEmail ||
                           null;
-                        const openUpwards = index >= Math.max(0, pageHotels.length - 2) && pageHotels.length > 2;
+                        const openUpwards = index > 0 && index >= pageHotels.length - 2;
 
                         return (
                           <div
@@ -2476,9 +2476,9 @@ export default function AdminDashboard() {
                           {pageUsers.map((u, index) => {
                             const rolesList = userRoles(u);
                             const userMenuKey = `table-${u.uid || index}`;
-                            const openUpwards = index >= Math.max(0, pageUsers.length - 2) && pageUsers.length > 2;
+                            const openUpwards = index > 0 && index >= pageUsers.length - 2;
                             return (
-                              <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
+                              <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''} ${openUserMenuId === userMenuKey ? 'relative z-30' : ''}`}>
                                 <td className="px-4 py-3.5 min-w-0">
                                   <p className="font-medium text-stone-900 flex items-center gap-2 text-sm min-w-0">
                                     <span className="truncate max-w-[240px]">{u.displayName || 'No name'}</span>
@@ -2497,7 +2497,7 @@ export default function AdminDashboard() {
                                 <td className="px-4 py-3.5">
                                   {renderRoleBadges(rolesList)}
                                 </td>
-                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                <td className={`px-4 py-3.5 text-right whitespace-nowrap ${openUserMenuId === userMenuKey ? 'relative z-30' : ''}`}>
                                   {renderUserActions(u, rolesList, userMenuKey, openUpwards)}
                                 </td>
                               </tr>
@@ -2519,7 +2519,7 @@ export default function AdminDashboard() {
                       {pageUsers.map((u, index) => {
                         const rolesList = userRoles(u);
                         const userMenuKey = `card-${u.uid || index}`;
-                        const openUpwards = index >= Math.max(0, pageUsers.length - 2) && pageUsers.length > 2;
+                        const openUpwards = index > 0 && index >= pageUsers.length - 2;
                         return (
                           <div
                             key={`admin-user-card-${u.uid || index}-${index}`}
