@@ -170,6 +170,16 @@ export default function Navbar() {
                     </Link>
                   )}
                   <Link
+                    to="/how-it-works"
+                    className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
+                      location.pathname.startsWith('/how-it-works') || location.pathname.startsWith('/how-hosting-works') || location.pathname.startsWith('/how-to-list')
+                        ? 'bg-stone-100 text-stone-950 font-semibold'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                    }`}
+                  >
+                    How It Works
+                  </Link>
+                  <Link
                     to="/saved"
                     className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
                       location.pathname === '/saved'
@@ -374,8 +384,13 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
-                {/* Secondary navigation options for visitors */}
-                <div className="hidden sm:flex items-center">
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <Link
+                    to="/how-it-works"
+                    className="text-xs font-medium text-stone-600 hover:text-stone-900 px-2.5 py-1 rounded-md hover:bg-stone-50 transition"
+                  >
+                    How It Works
+                  </Link>
                   <Link
                     to="/list-your-property"
                     title="List your property (cottages, lodges, guest houses, camps)"

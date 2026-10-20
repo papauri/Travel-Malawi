@@ -306,6 +306,8 @@ const router = createBrowserRouter([
       { path: "how-it-works", element: <HowHostingWorks /> },
       { path: "hosting", element: <HowHostingWorks /> },
       { path: "how-hosting-works", element: <HowHostingWorks /> },
+      { path: "how-to-list", element: <HowHostingWorks /> },
+      { path: "how-to-list-with-us", element: <HowHostingWorks /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]

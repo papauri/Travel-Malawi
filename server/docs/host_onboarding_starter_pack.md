@@ -77,9 +77,9 @@ Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI 
 
 ---
 
-## 4. 2-Way Calendar Synchronization & Connection Diagnostics
+## 4. 2-Way Calendar Synchronization (Optional)
 
-Do you already use **RoomRaccoon, NightsBridge, Airbnb, Booking.com**, or Google Calendar? **You do not need to change how you work or manage multiple separate calendars.**
+Do you already use **RoomRaccoon, NightsBridge, Airbnb, Booking.com**, or Google Calendar? If so, you can sync calendars automatically (or simply manage availability manually).
 
 Travel Malawi features native **2-way iCal (.ics) calendar synchronization with live connection diagnostics**:
 
@@ -113,7 +113,7 @@ Never feel stuck with setup. Travel Malawi provides high-touch concierge onboard
 3. **Share your calendar link (optional):** If you use RoomRaccoon, NightsBridge, or Airbnb, share your room iCal link. We link and test it for you so your calendar is synchronized from moment one!
 4. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
 
-**Result:** Our concierge team verifies your details, builds your verified listing page, tests your calendar sync, and routes guest inquiries directly to your WhatsApp phone — with 0% commission and 100% payout retention.
+**Result:** Our team verifies your details, sets up your listing page, tests your calendar sync, and connects you directly with travellers — with 0% commission and 100% payout retention.
 
-* **Ready to list?** [Submit your property online now](/list-your-property) or message our team on WhatsApp at `+265 999 000 000`.
+* **Ready to list?** [Submit your property online now](/how-hosting-works) or email our team at `info@ulendomalawi.com`.
 

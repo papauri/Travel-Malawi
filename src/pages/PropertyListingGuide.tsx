@@ -116,8 +116,8 @@ export default function PropertyListingGuide() {
       detail: 'Open Rooms & Rates. Enter MWK in clean thousands and USD in whole dollars. Ulendo can draft room descriptions if you ask.',
     },
     {
-      title: 'Sync your calendar to stop double bookings',
-      detail: 'On any room choose Sync iCal and paste the export feed from Airbnb, Booking.com, NightsBridge or RoomRaccoon. Use Test Connection to check it.',
+      title: 'Sync your calendar (optional)',
+      detail: 'Optional: If you use Airbnb, Booking.com, NightsBridge or RoomRaccoon, paste the iCal export feed to stop double bookings. If not, manage dates manually. Use Test Connection to check it.',
     },
     {
       title: 'Answer guests in the chat',

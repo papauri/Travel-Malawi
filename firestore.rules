@@ -566,13 +566,16 @@ service cloud.firestore {
     match /host_onboarding_submissions/{submissionId} {
       allow read, update, delete: if isAdmin() || isMarketing();
       allow create: if request.resource.data.keys().hasOnly(
-                         ['propName', 'propLoc', 'stayType', 'contactName', 'contactPhone', 'nightlyMwk',
+                         ['propName', 'propLoc', 'stayType', 'contactName', 'contactPhone', 'contactEmail', 'nightlyMwk',
                           'nightlyUsd', 'roomCount', 'notes', 'createdAt', 'source', 'status'])
                     && request.resource.data.propName is string
                     && request.resource.data.propName.size() > 0
                     && request.resource.data.propName.size() <= 200
-                    && request.resource.data.contactPhone is string
-                    && request.resource.data.contactPhone.size() <= 40
+                    && request.resource.data.contactEmail is string
+                    && request.resource.data.contactEmail.size() > 0
+                    && request.resource.data.contactEmail.size() <= 254
+                    && request.resource.data.get('contactPhone', '') is string
+                    && request.resource.data.get('contactPhone', '').size() <= 40
                     && request.resource.data.get('notes', '') is string
                     && request.resource.data.get('notes', '').size() <= 5000
                     && request.resource.data.status == 'pending_review';

@@ -47,6 +47,7 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Explore Stays</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+            <li><Link to="/how-it-works?tab=guest" className="text-emerald-400 hover:text-white font-medium transition inline-block py-0.5">How Booking Works</Link></li>
             <li><Link to="/?category=Lake%20%26%20Beach" className="hover:text-white transition inline-block py-0.5">Lake Malawi</Link></li>
             <li><Link to="/?category=Safari%20%26%20Wildlife" className="hover:text-white transition inline-block py-0.5">Safari Camps</Link></li>
             <li><Link to="/?stayType=entire_place" className="hover:text-white transition inline-block py-0.5">Whole Houses &amp; Villas</Link></li>
@@ -58,7 +59,7 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">For Property Owners</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            <li><Link to="/how-hosting-works" className="hover:text-white transition inline-block py-0.5">How Hosting Works</Link></li>
+            <li><Link to="/how-it-works?tab=host" className="hover:text-white transition inline-block py-0.5">How to List with Us</Link></li>
             <li><Link to="/list-your-property" className="hover:text-white transition inline-block py-0.5">List Your Property</Link></li>
             <li><Link to="/host-guide" className="hover:text-white transition inline-block py-0.5">Host Starter Pack</Link></li>
             <li><Link to="/dashboard" className="hover:text-white transition inline-block py-0.5">Host Dashboard</Link></li>

@@ -2070,6 +2070,144 @@ async function startServer() {
     }
   });
 
+  // Dedicated host stay enquiry endpoint — sends notification email to info@ulendomalawi.com
+  app.post(['/api/host-enquiry', '/api/host-onboarding-enquiry'], surveyLimiter, async (req, res) => {
+    try {
+      const {
+        propName,
+        propLoc,
+        stayType,
+        contactName,
+        contactEmail,
+        contactPhone,
+        nightlyMwk,
+        nightlyUsd,
+        roomCount,
+        notes,
+        source
+      } = req.body || {};
+
+      const cleanPropName = cleanText(propName, 200, true);
+      const cleanEmail = lower(cleanText(contactEmail, 254, true));
+      const cleanName = cleanText(contactName, 120, true) || 'Prospective Host';
+      const cleanLocation = cleanText(propLoc, 200, true) || 'Malawi';
+      const cleanPhone = cleanText(contactPhone, 40, true);
+      const cleanNotes = cleanText(notes, 5000);
+      const cleanMwk = cleanText(nightlyMwk, 60, true);
+      const cleanUsd = cleanText(nightlyUsd, 60, true);
+      const cleanRooms = cleanText(roomCount, 20, true) || '1';
+      const stayModel = stayType === 'whole_house' ? 'Whole House / Cottage' : 'Individual Rooms';
+
+      if (!cleanPropName || !cleanEmail || !cleanEmail.includes('@')) {
+        return res.status(400).json({ error: 'Property name and a valid contact email are required.' });
+      }
+
+      const submissionId = `ENQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      // Dispatch notification email to info@ulendomalawi.com
+      const emailContent = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 6px;">
+            Travel Malawi · Host Stay Enquiry
+          </div>
+          <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 800; color: #1c1917;">New Property Enquiry: ${escapeHtml(cleanPropName)}</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #44403c; margin-bottom: 20px;">
+            A property owner has submitted an enquiry to list their stay on Travel Malawi. Here are the details:
+          </p>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c; width: 140px;">Property Name:</td>
+              <td style="padding: 8px 0; color: #1c1917; font-weight: 700;">${escapeHtml(cleanPropName)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Location:</td>
+              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanLocation)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Name:</td>
+              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanName)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Email:</td>
+              <td style="padding: 8px 0; color: #1c1917;"><a href="mailto:${escapeHtml(cleanEmail)}" style="color: #b45309;">${escapeHtml(cleanEmail)}</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Phone:</td>
+              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanPhone || 'Not specified')}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Booking Model:</td>
+              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(stayModel)} (${escapeHtml(cleanRooms)} ${stayType === 'whole_house' ? 'bedrooms' : 'rooms'})</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f5f5f4;">
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Rates:</td>
+              <td style="padding: 8px 0; color: #1c1917;">${cleanMwk ? `MK ${escapeHtml(cleanMwk)}` : 'N/A'} · ${cleanUsd ? `$${escapeHtml(cleanUsd)}` : 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #78716c; vertical-align: top;">Notes &amp; Features:</td>
+              <td style="padding: 8px 0; color: #1c1917; white-space: pre-wrap;">${escapeHtml(cleanNotes || 'None provided')}</td>
+            </tr>
+          </table>
+
+          <div style="background: #fafaf9; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #78716c; margin-top: 16px;">
+            Enquiry Reference: <strong>${escapeHtml(submissionId)}</strong> · Source: ${escapeHtml(cleanText(source, 60, true) || 'Host Starter Pack')}
+          </div>
+          <div style="margin-top: 20px; text-align: center;">
+            <a href="mailto:${escapeHtml(cleanEmail)}?subject=Re:%20Travel%20Malawi%20Listing%20Enquiry%20-%20${encodeURIComponent(cleanPropName)}" style="display: inline-block; background: #1c1917; color: #ffffff; padding: 10px 20px; border-radius: 9999px; text-decoration: none; font-size: 13px; font-weight: 600;">Reply to Host</a>
+          </div>
+        </div>
+      `;
+
+      let emailSent = false;
+      try {
+        const mailResult = await sendSystemEmail({
+          to: 'info@ulendomalawi.com',
+          replyTo: cleanEmail,
+          subject: `New Property Enquiry: ${cleanPropName} (Ref: ${submissionId})`,
+          text: `New Property Enquiry: ${cleanPropName}\nHost: ${cleanName} <${cleanEmail}>\nLocation: ${cleanLocation}\nPhone: ${cleanPhone || 'N/A'}\nModel: ${stayModel} (${cleanRooms} rooms)\nRates: MK ${cleanMwk || 'N/A'} / $${cleanUsd || 'N/A'}\nNotes: ${cleanNotes || 'None'}\nRef: ${submissionId}`,
+          html: emailContent,
+        });
+        emailSent = mailResult.success;
+      } catch (mailErr) {
+        console.warn('[Host Enquiry] Email dispatch warning:', mailErr);
+      }
+
+      // Record also in surveys.json for admin oversight
+      const surveys = readSurveys();
+      surveys.unshift({
+        id: submissionId,
+        type: 'host_enquiry',
+        sourceDoc: cleanText(source, 120, true) || 'Host Starter Pack',
+        propName: cleanPropName,
+        propLoc: cleanLocation,
+        contactName: cleanName,
+        contactEmail: cleanEmail,
+        contactPhone: cleanPhone,
+        stayType,
+        roomCount: cleanRooms,
+        nightlyMwk: cleanMwk,
+        nightlyUsd: cleanUsd,
+        notes: cleanNotes,
+        status: 'pending_review',
+        emailSent,
+        submittedAt: new Date().toISOString(),
+        userAgent: cleanText(req.headers['user-agent'], 300, true),
+        ip: clientIp(req),
+      });
+      saveSurveys(surveys);
+
+      res.status(201).json({
+        success: true,
+        id: submissionId,
+        emailSent,
+        message: 'Zikomo! We have received your property enquiry. Our team will review your stay details and get in touch by email.',
+      });
+    } catch (err) {
+      sendError(res, err, 'Failed to process property enquiry');
+    }
+  });
+
   // Admin endpoint to view all survey responses
   app.get('/api/admin/surveys', requireRole('admin', 'marketing'), (req, res) => {
     try {
