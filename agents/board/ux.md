@@ -49,3 +49,12 @@ status: in-progress
 - [ux-35] P2 FIXED src/pages/SavedProperties.tsx — "Saved Stays"/"Saved" h1 mismatch -> tm-h1 "Saved stays"; hand-rolled tab pill -> tm-tabs/tm-tab; black rounded-full buttons -> tm-btn-primary; rounded-3xl -> rounded-xl; trimmed planner empty state (D2)
 - [ux-36] P3 FIXED src/hooks/useNetworkStatus.ts, src/lib/mapCache.ts — comment hype word "seamless" removed
 status: done
+status: in-progress
+- [ux-37] P1 FIXED src/pages/Home.tsx — directory mode: check-in/out cells, "select dates first" and Rooms row hidden; dates stripped from applied search; no booking_slots read (ensureBookings gated); hero/badges/empty-state/loading copy in directory wording (booking mode unchanged) (D3)
+- [ux-38] P1 FIXED src/lib/dynamicSeo.ts, src/components/SEOHead.tsx — meta, keywords and JSON-LD always directory wording; paymentAccepted/currenciesAccepted removed; no Offer/ReserveAction emitted (D3)
+- [ux-39] P1 FIXED src/App.tsx — BookingOnlyRoute wraps /my-bookings and aliases: spinner while mode loads, directory mode shows "Bookings and in-app messages are switched off..." + home link (noindex), MyBookings not mounted (D3)
+- [ux-40] P1 FIXED src/components/OfflineIndicator.tsx — offline booking queue count, banners, guide items and OfflineBookingsQueue only in booking mode (D3)
+- [ux-41] P1 FIXED src/components/TripPlannerD3.tsx — commission/deposit/payment copy, tooltip and share text switch to directory wording (D3); src/lib/geo.ts:886 "bookings" -> "guests"
+- [ux-42] server/seo.ts — checked: sitemap/robots only, no meta/booking wording; geo.ts d3 hits are "Reserve" place names (false positives); Saved/Compare/Walkthrough/maps have no booking copy
+- [H-orch-D3] DONE
+status: done

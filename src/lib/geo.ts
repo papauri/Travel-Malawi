@@ -883,7 +883,7 @@ export async function searchMalawiPlaces(queryStr: string, limit = 6): Promise<M
             source: 'smart_suggestion',
             badge: idea.badge,
             description: idea.description,
-            summary: `Proposed listing name optimized for ${idea.category} bookings.`,
+            summary: `Proposed listing name optimized for ${idea.category} guests.`,
           });
         }
       }

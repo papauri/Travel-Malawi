@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BookingLike, buildOccupancyMap, normalizeBlockedDates, allBlockedDatesForRoom } from '../lib/availability';
 import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   hotelId: string;
@@ -63,6 +64,8 @@ export default function AvailabilityCalendar({
 }: Props) {
   const today = todayStr();
   const isManagerMode = !!onToggleBlocked;
+  // Booking calendars do not exist in directory mode: no slot reads, nothing rendered.
+  const { bookingsEnabled } = usePlatformMode();
 
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -135,7 +138,7 @@ export default function AvailabilityCalendar({
 
   useEffect(() => {
     async function fetchBookings() {
-      if (!hotelId) {
+      if (!hotelId || !bookingsEnabled) {
         setLoading(false);
         return;
       }
@@ -162,7 +165,7 @@ export default function AvailabilityCalendar({
       }
     }
     fetchBookings();
-  }, [hotelId, selectedRoomId]);
+  }, [hotelId, selectedRoomId, bookingsEnabled]);
 
   // Recomputed separately from the fetch so editing blocked dates in manager
   // mode updates the grid without another round trip.
@@ -306,6 +309,8 @@ export default function AvailabilityCalendar({
     { avail: 'full', label: 'Fully Booked' },
     { avail: 'blocked', label: 'Blocked / Channel Sync (RoomRaccoon, Airbnb)' },
   ];
+
+  if (!bookingsEnabled) return null;
 
   return (
     <div className="tm-panel !p-0 overflow-hidden min-w-0">

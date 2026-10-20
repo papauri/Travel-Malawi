@@ -22,6 +22,7 @@ import { isAdmin } from '../lib/roles';
 import { fastDeleteOrClearChat, clearedAtFor } from '../lib/chatDeletion';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import PriceMismatchNotice from './PriceMismatchNotice';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   booking: Booking & { hotel?: Hotel; room?: RoomType };
@@ -30,7 +31,7 @@ interface Props {
   onMinimize?: () => void;
 }
 
-export default function BookingChat({ booking, currentUser, onClose, onMinimize }: Props) {
+function BookingChatBody({ booking, currentUser, onClose, onMinimize }: Props) {
   const [liveBooking, setLiveBooking] = useState<Booking & { hotel?: Hotel; room?: RoomType }>(booking);
   const [hotel, setHotel] = useState<Hotel | null>(booking.hotel || null);
   const [room, setRoom] = useState<RoomType | null>(booking.room || null);
@@ -1367,4 +1368,15 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       />
     </div>
   );
+}
+
+/**
+ * Booking chat (messages, calls, voucher) exists only while bookings and in-app chat are on.
+ * Gated in a wrapper so none of the body's hooks (Firestore listeners, writes)
+ * run while the platform is a directory (D3).
+ */
+export default function BookingChat(props: Props) {
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled) return null;
+  return <BookingChatBody {...props} />;
 }

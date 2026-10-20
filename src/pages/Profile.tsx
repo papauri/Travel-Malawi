@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
@@ -28,6 +29,7 @@ import { isAdmin, isHotelManager, isMarketing } from '../lib/roles';
 export default function Profile() {
   const { user, resetPassword, becomeHost } = useAuth();
   const { openAuth } = useAuthDialog();
+  const { bookingsEnabled } = usePlatformMode();
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -346,7 +348,7 @@ export default function Profile() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
-                placeholder="+265 ... (Used for bookings)"
+                placeholder={bookingsEnabled ? '+265 ... (Used for bookings)' : '+265 ...'}
               />
             </div>
 
@@ -425,6 +427,7 @@ export default function Profile() {
                 <Bell className="w-3.5 h-3.5 text-stone-500" /> Notifications
               </h3>
               <div className="space-y-3 text-xs sm:text-sm">
+                {bookingsEnabled && (
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -437,6 +440,7 @@ export default function Profile() {
                     <span className="block text-[11px] text-stone-500">Receive confirmations and host messages</span>
                   </div>
                 </label>
+                )}
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -446,7 +450,7 @@ export default function Profile() {
                   />
                   <div>
                     <span className="block font-medium text-stone-900 text-xs sm:text-sm">WhatsApp Notifications</span>
-                    <span className="block text-[11px] text-stone-500">Get urgent alerts and quick replies</span>
+                    <span className="block text-[11px] text-stone-500">{bookingsEnabled ? 'Get urgent alerts and quick replies' : 'Get important updates from Travel Malawi'}</span>
                   </div>
                 </label>
                 <label className="flex items-start gap-2.5 cursor-pointer">

@@ -7,6 +7,7 @@ import { useIsHost } from '../hooks/useIsHost';
 import { playChime, startRinging, stopRinging } from '../lib/notificationSound';
 import { lastMessageTime } from '../lib/chatDeletion';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MessageSquare, CalendarCheck, CheckCircle2, XCircle, X, Phone, PhoneOff, Video } from 'lucide-react';
@@ -43,6 +44,9 @@ export const requestBrowserNotifications = async (): Promise<NotificationPermiss
 export default function GlobalNotificationManager() {
   const { user } = useAuth();
   const isHost = useIsHost();
+  // Directory mode (D3): chat, call and booking alerts are all off, so this
+  // manager opens no listeners. Broadcasts live in NotificationBell.
+  const { bookingsEnabled } = usePlatformMode();
   const { activeChat, isMinimized, openInquiryChat, openBookingChat } = useChatModal();
   const navigate = useNavigate();
 
@@ -91,7 +95,7 @@ export default function GlobalNotificationManager() {
   };
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !bookingsEnabled) {
       knownChatTimestamps.current = {};
       knownBookingStatuses.current = {};
       knownBookingMessageTimestamps.current = {};
@@ -691,9 +695,11 @@ export default function GlobalNotificationManager() {
       Object.values(callUnsubs.current).forEach(unsub => unsub());
       callUnsubs.current = {};
       latestCallContext.current = {};
+      Object.values(activeCallToasts.current).forEach(id => toast.dismiss(id));
+      activeCallToasts.current = {};
       stopRinging();
     };
-  }, [user, isHost]);
+  }, [user, isHost, bookingsEnabled]);
 
   return null;
 }

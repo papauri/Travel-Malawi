@@ -24,7 +24,7 @@ const DEFAULT_DIRECTIVES: Omit<LearnedDirective, 'id' | 'createdAt'>[] = [
     type: 'directive',
   },
   {
-    text: 'Prioritize USD for international travel inquiries and MWK for domestic resident reservations when requested.',
+    text: 'Prioritize USD for international travel inquiries and MWK for domestic resident enquiries when requested.',
     type: 'directive',
   },
   {

@@ -4,16 +4,20 @@ import { FileText, ArrowLeft, ShieldCheck, AlertCircle, Lock, HelpCircle } from 
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import MarkdownContent from '../components/MarkdownContent';
 import SEOHead from '../components/SEOHead';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export default function Terms() {
   const { settings } = useSystemSettings();
+  const { bookingsEnabled } = usePlatformMode();
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
       <SEOHead
         title="Terms of Service — Travel Malawi"
-        description="Terms of Service, host responsibilities, guest guidelines, and payment policies for the Travel Malawi hospitality platform."
-        keywords="Travel Malawi terms, lodge booking terms, host agreement Malawi"
+        description={bookingsEnabled
+          ? 'Terms of Service, host responsibilities, guest guidelines, and payment policies for the Travel Malawi hospitality platform.'
+          : 'Terms of Service for the Travel Malawi directory: how listings work, host responsibilities and traveller guidelines.'}
+        keywords={bookingsEnabled ? 'Travel Malawi terms, lodge booking terms, host agreement Malawi' : 'Travel Malawi terms, directory terms, host agreement Malawi'}
         url="https://ulendomalawi.com/terms"
       />
 
@@ -38,12 +42,14 @@ export default function Terms() {
             <span className="font-semibold text-stone-900 bg-stone-100 px-3 py-1.5 rounded-xl border border-stone-200">
               Terms of Service
             </span>
-            <Link
-              to="/refunds"
-              className="bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200 font-semibold px-3 py-1.5 rounded-xl transition shadow-2xs"
-            >
-              Refunds &amp; Cancellations
-            </Link>
+            {bookingsEnabled && (
+              <Link
+                to="/refunds"
+                className="bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200 font-semibold px-3 py-1.5 rounded-xl transition shadow-2xs"
+              >
+                Refunds &amp; Cancellations
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -103,7 +109,7 @@ export default function Terms() {
                     <span>Platform Role: Information &amp; Direct Connection</span>
                   </h2>
                   <p>
-                    Travel Malawi operates strictly as an independent informational directory, discovery engine, and direct messaging channel connecting travelers directly with independent Malawian lodges, whole cottages, private villas, B&amp;Bs, and safari camps. We are not a travel agency, tour operator, or booking broker, and we do not provide tourism services or operate tourism enterprises.
+                    Travel Malawi operates strictly as an independent informational directory and discovery engine{bookingsEnabled ? ', and direct messaging channel' : ''} connecting travelers directly with independent Malawian lodges, whole cottages, private villas, B&amp;Bs, and safari camps. We are not a travel agency, tour operator, or booking broker, and we do not provide tourism services or operate tourism enterprises.
                   </p>
                   <p>
                     <strong>We do not own, operate, manage, furnish, inspect, or staff any of the properties listed on this site.</strong> All lodging accommodations, physical premises, hygiene, hospitality services, meals, and safety measures are under the exclusive control of the independent property owners or their designated managers.

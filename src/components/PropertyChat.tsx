@@ -50,6 +50,7 @@ import { useWebRTC } from '../lib/useWebRTC';
 import { CallModal } from './CallModal';
 import { getHotelDepositInfo, formatDepositSnippet } from '../lib/depositInfo';
 import { isAdmin } from '../lib/roles';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   hotel: Hotel;
@@ -60,7 +61,7 @@ interface Props {
   guestName?: string; // If provided (by manager), use this for display name
 }
 
-export default function PropertyChat({ 
+function PropertyChatBody({ 
   hotel, 
   currentUser, 
   onClose, 
@@ -1271,4 +1272,15 @@ export default function PropertyChat({
       />
     </div>
   );
+}
+
+/**
+ * Property enquiry chat (hotel_chats) exists only while bookings and in-app chat are on.
+ * Gated in a wrapper so none of the body's hooks (Firestore listeners, writes)
+ * run while the platform is a directory (D3).
+ */
+export default function PropertyChat(props: Props) {
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled) return null;
+  return <PropertyChatBody {...props} />;
 }

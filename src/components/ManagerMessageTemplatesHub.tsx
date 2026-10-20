@@ -27,6 +27,7 @@ import { db } from "../lib/firebase";
 import { Hotel, MessageTemplate, WhatsAppTemplate } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { useAIAssistant } from "../hooks/useAIAssistant";
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   hotel: Hotel;
@@ -66,7 +67,7 @@ const DEFAULT_TEMPLATES: Omit<MessageTemplate, "id" | "createdAt">[] = [
   },
 ];
 
-export default function ManagerMessageTemplatesHub({
+function ManagerMessageTemplatesHubBody({
   hotel,
   onHotelUpdate,
 }: Props) {
@@ -605,4 +606,19 @@ export default function ManagerMessageTemplatesHub({
       </div>
     </div>
   );
+}
+
+/**
+ * Guest message templates are only used by booking messages.
+ * Gated in a wrapper so none of the body's hooks (Firestore listeners, writes)
+ * run while the platform is a directory (D3).
+ */
+export default function ManagerMessageTemplatesHub(props: Props) {
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled) return (
+    <p className="text-sm text-stone-600">
+      Guest messages are switched off while Travel Malawi runs as a directory. Guests contact you directly with the details on your listing.
+    </p>
+  );
+  return <ManagerMessageTemplatesHubBody {...props} />;
 }

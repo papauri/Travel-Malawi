@@ -11,6 +11,7 @@ import { getHotelImage } from '../lib/images';
 import MaskedPlaceName from './MaskedPlaceName';
 import { formatLocationName } from '../lib/geo';
 import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../lib/promotions';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   hotel: Hotel;
@@ -35,14 +36,17 @@ export default function CompactHotelCard({
   secondaryPriceFrom,
   secondaryCurrency,
   searchParams,
-  isAvailable
+  isAvailable: isAvailableForDates
 }: Props) {
   const { user } = useAuth();
+  // Directory mode: no date availability, so no sold-out dimming and no dates carried into the listing.
+  const { bookingsEnabled } = usePlatformMode();
+  const isAvailable = bookingsEnabled ? isAvailableForDates : undefined;
   const { savedHotelIds, toggleSave } = useWishlist();
   
   const isSaved = hotel.id ? savedHotelIds.includes(hotel.id) : false;
 
-  const url = `/hotel/${hotel.id}${searchParams.checkIn && searchParams.checkOut ? `?checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}&guests=${searchParams.guests || 2}` : ''}`;
+  const url = `/hotel/${hotel.id}${bookingsEnabled && searchParams.checkIn && searchParams.checkOut ? `?checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}&guests=${searchParams.guests || 2}` : ''}`;
   
   const formattedLocation = formatLocationName(hotel.location, hotel.name);
   const activeCurrency = (searchParams.currency as CurrencyCode) || 'MWK';

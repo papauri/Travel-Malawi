@@ -24,6 +24,7 @@ import MaskedPlaceName from '../components/MaskedPlaceName';
 import { openAccessPermissionsModal, MANUAL_LOCATION_STORAGE_KEY, UserLocationEventDetail } from '../components/AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { isHotelManager } from '../lib/roles';
 import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../lib/promotions';
 import SEOHead from '../components/SEOHead';
@@ -221,6 +222,8 @@ function readDiscovery(): DiscoverySnapshot | null {
 
 export default function Home() {
   const today = todayStr();
+  // Directory mode: no dates, no availability, no booking wording (D3).
+  const { bookingsEnabled } = usePlatformMode();
   const [restored] = useState<DiscoverySnapshot | null>(readDiscovery);
   const [urlFilters] = useState(() => parseUrlFilters(typeof window === 'undefined' ? '' : window.location.search));
   const restoredDates = (() => {
@@ -449,7 +452,7 @@ export default function Home() {
   const guestSelectorRef = useRef<HTMLDivElement>(null);
 
   const [searchProximity, setSearchProximity] = useState(() => clampCount(restored?.form?.proximity, 1, 500, 50));
-  const [appliedSearch, setAppliedSearch] = useState<AppliedSearch>(() => {
+  const [appliedSearchRaw, setAppliedSearch] = useState<AppliedSearch>(() => {
     if (urlFilters.location) return { ...NO_SEARCH, location: urlFilters.location };
     const a = restored?.applied;
     if (!a) return NO_SEARCH;
@@ -463,6 +466,12 @@ export default function Home() {
       proximity: clampCount(a.proximity, 1, 500, 50),
     };
   });
+
+  // Dates only mean something when bookings are on; otherwise they are ignored.
+  const appliedSearch = useMemo<AppliedSearch>(
+    () => (bookingsEnabled ? appliedSearchRaw : { ...appliedSearchRaw, checkIn: '', checkOut: '' }),
+    [bookingsEnabled, appliedSearchRaw]
+  );
 
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
     try {
@@ -827,6 +836,7 @@ export default function Home() {
    * grows with every reservation, so the read is deferred until then.
    */
   const ensureBookings = async (): Promise<BookingLike[]> => {
+    if (!bookingsEnabled) return [];
     if (bookingsLoaded) return bookings;
     // The public inventory mirror; bookings themselves are private.
     const snap = await getDocs(collection(db, 'booking_slots'));
@@ -838,14 +848,15 @@ export default function Home() {
 
   // A restored search with dates must see live availability, not an empty mirror.
   useEffect(() => {
-    if (appliedSearch.checkIn && appliedSearch.checkOut) {
+    if (bookingsEnabled && appliedSearch.checkIn && appliedSearch.checkOut) {
       ensureBookings().catch(error => console.error('Could not load availability:', error));
     }
-    // Runs once for the restored search; later searches load bookings themselves.
+    // Runs for the restored search once the mode is known; later searches load bookings themselves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bookingsEnabled]);
 
   const applySearch = async (next: AppliedSearch) => {
+    if (!bookingsEnabled) next = { ...next, checkIn: '', checkOut: '' };
     if (next.checkIn && next.checkOut && next.checkOut <= next.checkIn) {
       toast.error('Check-out must be after check-in.');
       return;
@@ -1371,7 +1382,9 @@ export default function Home() {
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
             <p className="mt-2.5 text-xs sm:text-sm text-stone-300/85 font-light max-w-md leading-relaxed mx-auto text-balance">
-              Cottages, lodges, guest houses, and safari camps booked direct across Malawi — zero commission.
+              {bookingsEnabled
+                ? 'Cottages, lodges, guest houses, and safari camps booked direct across Malawi — zero commission.'
+                : 'Cottages, lodges, guest houses, and safari camps across Malawi. Find a place, then contact it directly.'}
             </p>
           </motion.div>
         </div>
@@ -1384,15 +1397,15 @@ export default function Home() {
         >
           <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <ShieldCheck className="h-3 w-3 text-stone-300" />
-            <span>Zero booking fees</span>
+            <span>{bookingsEnabled ? 'Zero booking fees' : 'Free to browse'}</span>
           </li>
           <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <MessageCircle className="h-3 w-3 text-stone-300" />
-            <span>Direct host communication</span>
+            <span>{bookingsEnabled ? 'Direct host communication' : 'Contact details on every listing'}</span>
           </li>
           <li className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900/40 border border-stone-700/40">
             <Smartphone className="h-3 w-3 text-stone-300" />
-            <span>Pay directly at property</span>
+            <span>{bookingsEnabled ? 'Pay directly at property' : 'Arrange everything with the property'}</span>
           </li>
         </motion.ul>
       </section>
@@ -1606,6 +1619,8 @@ export default function Home() {
 
             <div className="hidden md:block h-5 w-px bg-stone-200/80 mx-1" />
 
+            {bookingsEnabled && (
+              <>
             {/* Check In */}
             <div
               onClick={openCheckInPicker}
@@ -1669,6 +1684,8 @@ export default function Home() {
             </div>
 
             <div className="hidden md:block h-5 w-px bg-stone-200/80 mx-1" />
+              </>
+            )}
 
             {/* Who / Guests */}
             <div
@@ -1699,7 +1716,7 @@ export default function Home() {
 
               {showGuestDropdown && (
                 <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-[#FBF9F5] rounded-2xl shadow-sm ring-1 ring-stone-200 p-2 z-[100]">
-                  {(!searchCheckIn || !searchCheckOut) && (
+                  {bookingsEnabled && (!searchCheckIn || !searchCheckOut) && (
                     <div className="mb-2 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2">
                       <div className="text-[11px] text-amber-900 leading-tight">
                         <span className="font-semibold block">Select dates first</span>
@@ -1722,7 +1739,7 @@ export default function Home() {
                     { label: 'Adults', hint: 'Ages 13 or above', value: adults, set: setAdults, min: 1, max: 16 },
                     { label: 'Children', hint: 'Ages 2–12', value: children, set: setChildren, min: 0, max: 16 },
                     { label: 'Rooms', hint: 'Up to 8', value: roomsWanted, set: setRoomsWanted, min: 1, max: 8 },
-                  ] as const).map((row, rIdx) => (
+                  ] as const).filter(row => bookingsEnabled || row.label !== 'Rooms').map((row, rIdx) => (
                     <div key={`${row.label}-${rIdx}`} className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-stone-200/50">
                       <div>
                         <span className="block text-xs font-semibold text-stone-900">{row.label}</span>
@@ -2568,7 +2585,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <div className="w-4 h-4 border-2 border-stone-300 border-t-emerald-600 rounded-full animate-spin" />
                   <span className="text-xs md:text-sm font-semibold text-stone-800">
-                    Finding available stays across Malawi…
+                    {bookingsEnabled ? 'Finding available stays across Malawi…' : 'Finding stays across Malawi…'}
                   </span>
                 </div>
               </div>
@@ -2611,10 +2628,13 @@ export default function Home() {
                       <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
                         <Search className="w-6 h-6 text-stone-400" />
                       </div>
-                      <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">Nothing free on those terms</h3>
+                      <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">
+                        {bookingsEnabled ? 'Nothing free on those terms' : 'No stays match your search'}
+                      </h3>
                       <p className="text-stone-500 text-sm max-w-md mb-6">
-                        Try a wider stretch of dates, a smaller party, or somewhere else along the lake —
-                        most properties have more room midweek.
+                        {bookingsEnabled
+                          ? 'Try a wider stretch of dates, a smaller party, or somewhere else along the lake — most properties have more room midweek.'
+                          : 'Try a smaller party or somewhere else along the lake.'}
                       </p>
                       <button
                         onClick={clearFilters}
@@ -2665,10 +2685,13 @@ export default function Home() {
                       <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
                         <Search className="w-6 h-6 text-stone-400" />
                       </div>
-                      <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">Nothing free on those terms</h3>
+                      <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">
+                        {bookingsEnabled ? 'Nothing free on those terms' : 'No stays match your search'}
+                      </h3>
                       <p className="text-stone-500 text-sm max-w-md mb-6">
-                        Try a wider stretch of dates, a smaller party, or somewhere else along the lake —
-                        most properties have more room midweek.
+                        {bookingsEnabled
+                          ? 'Try a wider stretch of dates, a smaller party, or somewhere else along the lake — most properties have more room midweek.'
+                          : 'Try a smaller party or somewhere else along the lake.'}
                       </p>
                       <button
                         onClick={clearFilters}

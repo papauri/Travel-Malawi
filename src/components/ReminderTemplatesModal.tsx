@@ -21,6 +21,7 @@ import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { doc, updateDoc } from 'firebase/firestore';
 import { whatsappDigits } from '../lib/contact';
 import { db } from '../lib/firebase';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface ReminderTemplatesModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ interface ReminderTemplatesModalProps {
   onReminderSent?: () => void;
 }
 
-export default function ReminderTemplatesModal({
+function ReminderTemplatesModalBody({
   isOpen,
   onClose,
   booking,
@@ -674,4 +675,15 @@ export default function ReminderTemplatesModal({
       </div>
     </Modal>
   );
+}
+
+/**
+ * Booking reminders (email/WhatsApp to the guest) exist only in booking mode.
+ * Gated in a wrapper so none of the body's hooks (Firestore listeners, writes)
+ * run while the platform is a directory (D3).
+ */
+export default function ReminderTemplatesModal(props: ReminderTemplatesModalProps) {
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled) return null;
+  return <ReminderTemplatesModalBody {...props} />;
 }

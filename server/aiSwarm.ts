@@ -159,7 +159,7 @@ export function getSpecialistAgentPrompt(agent: SwarmAgentId): string {
       return `SWARM ROLE: LODGE ONBOARDING & RAPID INVENTORY SPECIALIST (ULENDO SWARM)
 BREVITY RULE: Be laser-specific and concise. Give the direct answer in 1-2 sentences or compact bullets. Never over-explain or add unrequested advice.
 Key Guidelines:
-1. Frictionless Onboarding: Listing takes under 3 minutes, 0% foreign commission, direct WhatsApp messaging, and automatic browser draft saving.
+1. Frictionless Onboarding: Listing takes under 3 minutes, travellers contact the property directly with the phone, WhatsApp or email on its listing, and drafts save automatically in the browser.
 2. Dual Currency Pricing: MWK rounded to nearest 1,000 (e.g. MK 85,000); USD rounded to nearest $5 (e.g. $55).
 3. Document Import: Point hosts to the Property Document Importer for rate sheets, brochures, or pasted text when relevant.
 4. Ready-to-Use Snippets: Give concrete, ready-to-use snippets for descriptions or room setups only when requested.`;
@@ -232,9 +232,11 @@ You coordinate the Ulendo concierge swarm with accurate permissions awareness:
 export function executeDeterministicSwarmReply(
   req: OperationsAssistantRequest,
   _forcedAgent?: SwarmAgentId,
-  reason?: string
+  reason?: string,
+  /** False in directory mode: arrival/check-out questions get no booking data. */
+  bookingsOn = false
 ): OperationsAssistantResult {
-  const data = liveDataAnswer(req);
+  const data = liveDataAnswer(req, bookingsOn);
   const notice = `_Ulendo couldn't reach the AI service${reason ? ` (${reason})` : ''}._`;
   return {
     reply: data ? `${notice}\n\n${data}` : `${notice} Please try again in a moment.`,
@@ -271,7 +273,7 @@ function ownership(p: PropertyCtx, isAdmin: boolean): string {
 }
 
 /** Maps a question straight onto data in context. Returns null when it needs the AI. */
-function liveDataAnswer(req: OperationsAssistantRequest): string | null {
+function liveDataAnswer(req: OperationsAssistantRequest, bookingsOn: boolean): string | null {
   const lower = (req.message || '').toLowerCase();
   const isAdmin = req.userRole === 'admin';
   const all = req.context.properties || [];
@@ -281,11 +283,11 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
   const live = (req.context.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'rejected'
     && (!mentionedIds.size || mentionedIds.has(b.hotelId)));
 
-  if (/\b(arrival|arrivals|arriving|check-?ins?)\b/.test(lower)) {
+  if (bookingsOn && /\b(arrival|arrivals|arriving|check-?ins?)\b/.test(lower)) {
     const rows = live.filter(b => b.checkIn === today);
     return rows.length ? `Arrivals today (${today}):\n${rows.map(bookingRow).join('\n')}` : `No arrivals today (${today}).`;
   }
-  if (/\b(departure|departures|departing|check-?outs?)\b/.test(lower)) {
+  if (bookingsOn && /\b(departure|departures|departing|check-?outs?)\b/.test(lower)) {
     const rows = live.filter(b => b.checkOut === today);
     return rows.length ? `Check-outs today (${today}):\n${rows.map(bookingRow).join('\n')}` : `No check-outs today (${today}).`;
   }

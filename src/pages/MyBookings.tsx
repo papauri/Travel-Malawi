@@ -19,6 +19,7 @@ import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
 import { logSystemEvent } from '../lib/logger';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import StayVoucherModal from '../components/StayVoucherModal';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
@@ -35,7 +36,31 @@ import OfflineBookingsQueue from '../components/OfflineBookingsQueue';
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 type Filter = 'upcoming' | 'past' | 'cancelled';
 
+/**
+ * Directory mode (the default) switches bookings off: a direct link here shows
+ * one line and a way home, and none of the booking listeners below are opened.
+ */
 export default function MyBookings() {
+  const { bookingsEnabled, loading } = usePlatformMode();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-50">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-300 border-t-stone-700"></div>
+    </div>
+  );
+  if (!bookingsEnabled) return (
+    <div className="min-h-screen bg-stone-50 pt-16 pb-24">
+      <div className="max-w-xl mx-auto px-6 text-center">
+        <p className="tm-lead mx-auto mb-6">
+          Bookings and in-app messages are switched off. Contact properties directly from their listing.
+        </p>
+        <Link to="/" className="tm-btn tm-btn-primary">Go to the home page</Link>
+      </div>
+    </div>
+  );
+  return <MyBookingsPage />;
+}
+
+function MyBookingsPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<EnrichedBooking[]>([]);

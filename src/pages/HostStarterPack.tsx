@@ -10,6 +10,7 @@ import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
 import SEOHead from '../components/SEOHead';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 const GUEST_REPLY_TEMPLATE =
   'Muli bwanji! Thank you for your interest. Your dates are free. The rate is MK 180,000 per night ($115) for the whole cottage. Reply YES and I will hold it for you.';
@@ -24,10 +25,13 @@ function Details({ children }: { children: React.ReactNode }) {
 }
 
 export default function HostStarterPack() {
+  const { bookingsEnabled } = usePlatformMode();
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'host-onboarding-pack',
     'Host Starter Pack',
-    'Get listed and take direct bookings in six steps.'
+    bookingsEnabled
+      ? 'Get listed and take direct bookings in six steps.'
+      : 'Get listed so travellers can find you and contact you directly, in five steps.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -78,7 +82,7 @@ export default function HostStarterPack() {
     setTimeout(() => setCopiedTemplate(false), 2000);
   };
 
-  const emailSummaryText = `Travel Malawi: Host Starter Pack
+  const emailSummaryText = bookingsEnabled ? `Travel Malawi: Host Starter Pack
 
 Six steps to take direct bookings:
 1. Take four photos: bed, view, bathroom, dining.
@@ -87,6 +91,16 @@ Six steps to take direct bookings:
 4. Sync your calendar (optional).
 5. Get paid straight to Airtel Money, TNM Mpamba or your bank.
 6. Send us an enquiry with your stay details and our team follows up by email.
+
+Full guide: ${window.location.origin}/host-guide
+How hosting works: ${window.location.origin}/how-hosting-works` : `Travel Malawi: Host Starter Pack
+
+Five steps to get listed:
+1. Take four photos: bed, view, bathroom, dining.
+2. Set clean "from" rates in MWK (nearest 1,000) and USD (nearest $5).
+3. Add your phone, WhatsApp or email so travellers can contact you directly.
+4. No commission and no listing fee: you agree prices and payment with your guests.
+5. Send us an enquiry with your stay details and our team follows up by email.
 
 Full guide: ${window.location.origin}/host-guide
 How hosting works: ${window.location.origin}/how-hosting-works`;
@@ -169,7 +183,7 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
     <div className="min-h-screen bg-stone-50 text-stone-700 font-sans print:bg-white">
       <SEOHead
         title="Host Starter Pack - Travel Malawi"
-        description="Six short steps for lodges, cottages, B&Bs and camps in Malawi to get listed and take direct bookings."
+        description="Six short steps for lodges, cottages, B&Bs and camps in Malawi so travellers can find them and contact them directly."
         keywords="Malawi host guide, lodge onboarding Malawi, cottage rental Malawi, Travel Malawi starter pack"
         url="https://ulendomalawi.com/host-starter-pack"
       />
@@ -238,8 +252,12 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
           </li>
 
           <li id="section-whatsapp" className="tm-divider p-4 sm:p-5">
-            <h2 className="tm-h2">3. Answer guests directly</h2>
-            <p className="mt-1 text-sm">Guests message you in the app or on WhatsApp. Reply quickly.</p>
+            <h2 className="tm-h2">{bookingsEnabled ? '3. Answer guests directly' : '3. Add your contact details'}</h2>
+            <p className="mt-1 text-sm">
+              {bookingsEnabled
+                ? 'Guests message you in the app or on WhatsApp. Reply quickly.'
+                : 'Travellers contact you on the phone, WhatsApp or email shown on your listing. Reply quickly.'}
+            </p>
             <Details>
               <p>Ulendo, the concierge in your dashboard, can draft replies and suggest rates.</p>
               <p className="italic">&ldquo;{GUEST_REPLY_TEMPLATE}&rdquo;</p>
@@ -250,6 +268,7 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
             </Details>
           </li>
 
+          {bookingsEnabled && (
           <li id="section-calendar-sync" className="tm-divider p-4 sm:p-5">
             <h2 className="tm-h2">4. Sync your calendar (optional)</h2>
             <p className="mt-1 text-sm">Optional. If you use Airbnb, Booking.com or a PMS, paste your iCal link.</p>
@@ -259,18 +278,29 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
               <p>No other calendars? Skip this step and manage your dates directly in your dashboard.</p>
             </Details>
           </li>
+          )}
 
-          <li id="section-get-listed" className="tm-divider p-4 sm:p-5">
-            <h2 className="tm-h2">5. Get paid direct</h2>
-            <p className="mt-1 text-sm">No commission. Guests pay you by mobile money, bank or card.</p>
-            <Details>
-              <p>Airtel Money, TNM Mpamba, NBM, Standard Bank, FDH Bank, Centenary Bank.</p>
-              <p>Cash on arrival is available where your policy allows it.</p>
-            </Details>
-          </li>
+          {bookingsEnabled ? (
+            <li id="section-get-listed" className="tm-divider p-4 sm:p-5">
+              <h2 className="tm-h2">5. Get paid direct</h2>
+              <p className="mt-1 text-sm">No commission. Guests pay you by mobile money, bank or card.</p>
+              <Details>
+                <p>Airtel Money, TNM Mpamba, NBM, Standard Bank, FDH Bank, Centenary Bank.</p>
+                <p>Cash on arrival is available where your policy allows it.</p>
+              </Details>
+            </li>
+          ) : (
+            <li id="section-get-listed" className="tm-divider p-4 sm:p-5">
+              <h2 className="tm-h2">4. No commission, no fees</h2>
+              <p className="mt-1 text-sm">Travel Malawi charges no commission and no listing fee.</p>
+              <Details>
+                <p>Travel Malawi does not take bookings or payments. You agree dates, prices and payment with your guests directly.</p>
+              </Details>
+            </li>
+          )}
 
           <li className="tm-divider p-4 sm:p-5">
-            <h2 className="tm-h2">6. Send us an enquiry</h2>
+            <h2 className="tm-h2">{bookingsEnabled ? '6' : '5'}. Send us an enquiry</h2>
             <p className="mt-1 text-sm">
               Fill in the short enquiry form below. We review your stay details and follow up with you by email.
             </p>
@@ -337,7 +367,7 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
           ) : (
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
               <div>
-                <span className="tm-label">How is it booked?</span>
+                <span className="tm-label">How is it let?</span>
                 <div className="tm-actions">
                   <button
                     type="button"

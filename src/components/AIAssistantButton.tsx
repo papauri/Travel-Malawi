@@ -67,7 +67,7 @@ export default function AIAssistantButton({
   const handleApply = () => {
     if (!suggestion) return;
     onChange(suggestion);
-    toast.success('Applied to description');
+    toast.success(`Applied to ${fieldLabel}`);
     setIsOpen(false);
     setSuggestion('');
     setCustomNote('');

@@ -4,6 +4,7 @@ import { Palmtree, Mail, Phone } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { isAdmin, isMarketing, isHotelManager } from '../lib/roles';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -21,6 +22,8 @@ export default function Footer() {
   }, []);
 
   
+  // Directory mode: no bookings, so no booking explainer or refund policy links.
+  const { bookingsEnabled } = usePlatformMode();
   const showMarketingPlaybook = user && (isAdmin(user) || isMarketing(user));
   const showHostStarterPack = user && isHotelManager(user);
 
@@ -33,7 +36,9 @@ export default function Footer() {
             <span className="text-lg sm:text-xl font-serif font-bold tracking-tight">Travel Malawi</span>
           </Link>
           <p className="text-stone-400 text-xs sm:text-sm leading-relaxed max-w-sm lg:max-w-none">
-            Discover Malawi. Direct bookings with independent cottages, lodges, guest houses, and safari camps.
+            {bookingsEnabled
+              ? 'Discover Malawi. Direct bookings with independent cottages, lodges, guest houses, and safari camps.'
+              : 'Discover Malawi. A directory of independent cottages, lodges, guest houses, and safari camps.'}
           </p>
           <SocialLinks
             facebook={settings.socialFacebook}
@@ -47,7 +52,9 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Explore Stays</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            <li><Link to="/how-it-works?tab=guest" className="text-emerald-400 hover:text-white font-medium transition inline-block py-0.5">How Booking Works</Link></li>
+            {bookingsEnabled && (
+              <li><Link to="/how-it-works?tab=guest" className="text-emerald-400 hover:text-white font-medium transition inline-block py-0.5">How Booking Works</Link></li>
+            )}
             <li><Link to="/?category=Lake%20%26%20Beach" className="hover:text-white transition inline-block py-0.5">Lake Malawi</Link></li>
             <li><Link to="/?category=Safari%20%26%20Wildlife" className="hover:text-white transition inline-block py-0.5">Safari Camps</Link></li>
             <li><Link to="/?stayType=entire_place" className="hover:text-white transition inline-block py-0.5">Whole Houses &amp; Villas</Link></li>
@@ -135,7 +142,9 @@ export default function Footer() {
           </button>
           <Link to="/privacy" className="hover:text-white transition py-1">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white transition py-1">Terms of Service</Link>
-          <Link to="/refunds" className="hover:text-white transition py-1">Refunds &amp; Cancellations</Link>
+          {bookingsEnabled && (
+            <Link to="/refunds" className="hover:text-white transition py-1">Refunds &amp; Cancellations</Link>
+          )}
         </div>
       </div>
 

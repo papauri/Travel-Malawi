@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   room?: RoomType;
@@ -33,6 +34,8 @@ export default function IcalSyncManager({
   onClose,
 }: Props) {
   const { user } = useAuth();
+  // iCal sync is a booking flow: hidden in directory mode (the /api/calendar routes refuse too).
+  const { bookingsEnabled } = usePlatformMode();
   const isRoomMode = Boolean(room && room.id);
   const targetId = isRoomMode ? room!.id! : hotel.id!;
   const targetName = isRoomMode ? `${hotel.name} — ${room!.name}` : hotel.name;
@@ -343,6 +346,8 @@ export default function IcalSyncManager({
   const totalBlockedDates = isRoomMode
     ? (room?.icalBlockedDates?.length || 0)
     : (hotel.icalBlockedDates?.length || 0);
+
+  if (!bookingsEnabled) return null;
 
   return (
     <div className="space-y-4 text-stone-900 min-w-0">

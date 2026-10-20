@@ -25,6 +25,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Image as ImageIcon, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
@@ -87,7 +88,12 @@ const TAB_GROUPS: Tab[][] = [
   ['stayos'],
 ];
 
-const tabGroupOf = (tab: Tab): Tab[] => TAB_GROUPS.find(group => group.includes(tab)) ?? TAB_GROUPS[0];
+/** Views switched off in directory mode (D3): bookings, guest chats, guest broadcasts, reminder templates. */
+const BOOKING_ONLY_TABS: Tab[] = ['bookings', 'inquiries', 'broadcasts', 'templates'];
+
+const DIRECTORY_TAB_GROUPS: Tab[][] = TAB_GROUPS
+  .map(group => group.filter(tab => !BOOKING_ONLY_TABS.includes(tab)))
+  .filter(group => group.length > 0);
 
 /** Section names used in the new labels, accepted in links too. */
 const TAB_ALIASES: Record<string, Tab> = {
@@ -132,6 +138,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactWhatsapp: data.contactWhatsapp ?? '',
     socialFacebook: data.socialFacebook ?? '',
     socialInstagram: data.socialInstagram ?? '',
+    tourismLicenceNumber: data.tourismLicenceNumber ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
@@ -181,6 +188,7 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
     contactWhatsapp: data.contactWhatsapp ?? '',
     socialFacebook: data.socialFacebook ?? '',
     socialInstagram: data.socialInstagram ?? '',
+    tourismLicenceNumber: data.tourismLicenceNumber ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
@@ -320,8 +328,8 @@ function RoomMediaEditor({
         <div className="lg:col-span-5 flex flex-col justify-start space-y-2">
           <ImageUpload
             label="Room cover photo"
-            hint="Primary thumbnail in room list & booking picker. Drag photo from gallery here."
-            tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
+            hint="Main thumbnail for this room on your listing. Drag a photo from the gallery here."
+            tooltip="Guest view: this image is the main thumbnail for this room type on your property page."
             value={imageUrl}
             onChange={(url) => {
               if (!url) {
@@ -434,7 +442,13 @@ export default function ManageHotel() {
 
   // Effective permission for editing elevated fields (disabled when simulating manager view)
   const canEditElevatedFields = isElevatedUser && !viewAsManager;
-  const activeTab: Tab = tabFromParam(searchParams.get('tab'));
+  // Directory mode (D3): the workspace is for keeping the listing accurate.
+  // Bookings, guest chats, broadcasts and reminder templates are switched off
+  // (their data is untouched); old links to them land on Details.
+  const { bookingsEnabled } = usePlatformMode();
+  const requestedTab: Tab = tabFromParam(searchParams.get('tab'));
+  const activeTab: Tab = !bookingsEnabled && BOOKING_ONLY_TABS.includes(requestedTab) ? 'details' : requestedTab;
+  const tabGroups = bookingsEnabled ? TAB_GROUPS : DIRECTORY_TAB_GROUPS;
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
   const [stayOsDirty, setStayOsDirty] = useState(false);
   const [promotionsDirty, setPromotionsDirty] = useState(false);
@@ -622,7 +636,7 @@ export default function ManageHotel() {
         setRooms(prev => [...prev, ...createdRooms]);
         toast.success(`Imported property details and ${createdRooms.length} room type(s).`);
         if (unpricedImports > 0) {
-          toast(`${unpricedImports} imported room${unpricedImports === 1 ? ' has' : 's have'} no rate in the document. Set a nightly rate before guests can book.`, { duration: 8000 });
+          toast(`${unpricedImports} imported room${unpricedImports === 1 ? ' has' : 's have'} no rate in the document. Set a nightly rate so travellers see a price.`, { duration: 8000 });
         }
       } catch (err) {
         console.error('Failed to save imported rooms:', err);
@@ -822,7 +836,6 @@ export default function ManageHotel() {
       return;
     }
 
-    let unsubInquiries: (() => void) | undefined;
     // Set on cleanup so a fetch that resolves after unmount (or after `id`
     // changes) does not subscribe a listener nobody will ever remove.
     let cancelled = false;
@@ -894,40 +907,6 @@ export default function ManageHotel() {
         const roomsDocs = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', id)));
         setRooms(roomsDocs.docs.map(d => ({ id: d.id, ...d.data() } as RoomType)));
 
-        // Kept out of the same Promise.all as the rooms: if the bookings read
-        // is refused, the manager should still be able to edit their rooms and
-        // rates rather than land on a blank page.
-        try {
-          const bookingsDocs = await getDocs(query(collection(db, 'bookings'), where('hotelId', '==', id)));
-          setBookings(bookingsDocs.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
-        } catch (bookingsError) {
-          console.error('Could not load bookings for this property:', bookingsError);
-          toast.error('Bookings could not be loaded. Property and room editing still work.');
-        }
-
-        if (cancelled) return;
-        try {
-          const targetManagerId = hRaw?.managerId && hRaw.managerId !== 'unassigned' && hRaw.managerId !== 'none'
-            ? hRaw.managerId
-            : user?.uid;
-          const inquiriesQuery = query(
-            collection(db, 'hotel_chats'),
-            where('hotelId', '==', id),
-            where('managerId', '==', targetManagerId)
-          );
-          unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
-            const docs = snap.docs
-              .map(d => ({ id: d.id, ...d.data() }))
-              .filter((d: any) => d.status !== 'deleted' && d.status !== 'cleared' && (d.lastMessage || d.lastSenderId));
-            docs.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
-            setInquiries(docs);
-          }, (err) => {
-            console.error('Error listening to inquiries:', err);
-          });
-        } catch (inquiriesError) {
-          console.error('Could not setup inquiries listener:', inquiriesError);
-        }
-
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -938,9 +917,58 @@ export default function ManageHotel() {
 
     return () => {
       cancelled = true;
-      if (unsubInquiries) unsubInquiries();
     };
   }, [id, user, authLoading, navigate]);
+
+  // Bookings and guest inquiries are read only while the booking platform is
+  // on (D3). Loaded after the property itself, and separately, so a refused
+  // bookings read never blocks editing the listing.
+  const inquiryManagerId = hotel?.managerId && hotel.managerId !== 'unassigned' && hotel.managerId !== 'none'
+    ? hotel.managerId
+    : user?.uid;
+  const loadedHotelId = hotel?.id;
+  useEffect(() => {
+    if (!bookingsEnabled || !id || loadedHotelId !== id || !inquiryManagerId) {
+      setBookings([]);
+      setInquiries([]);
+      return;
+    }
+    let cancelled = false;
+    let unsubInquiries: (() => void) | undefined;
+
+    getDocs(query(collection(db, 'bookings'), where('hotelId', '==', id)))
+      .then(bookingsDocs => {
+        if (!cancelled) setBookings(bookingsDocs.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
+      })
+      .catch(bookingsError => {
+        console.error('Could not load bookings for this property:', bookingsError);
+        if (!cancelled) toast.error('Bookings could not be loaded. Property and room editing still work.');
+      });
+
+    try {
+      const inquiriesQuery = query(
+        collection(db, 'hotel_chats'),
+        where('hotelId', '==', id),
+        where('managerId', '==', inquiryManagerId)
+      );
+      unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
+        const docs = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((d: any) => d.status !== 'deleted' && d.status !== 'cleared' && (d.lastMessage || d.lastSenderId));
+        docs.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        setInquiries(docs);
+      }, (err) => {
+        console.error('Error listening to inquiries:', err);
+      });
+    } catch (inquiriesError) {
+      console.error('Could not setup inquiries listener:', inquiriesError);
+    }
+
+    return () => {
+      cancelled = true;
+      if (unsubInquiries) unsubInquiries();
+    };
+  }, [bookingsEnabled, id, loadedHotelId, inquiryManagerId]);
 
   // --- PERFORMANCE ---
   /**
@@ -1067,6 +1095,15 @@ export default function ManageHotel() {
         setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
         return;
     }
+    // Directory mode (D3): the listing's contact details are the only way
+    // travellers reach the property, so the last one cannot be removed. A
+    // listing that never had any can still save its other changes.
+    const directContact = (data: Partial<Hotel>) =>
+      [data.contactPhone, data.contactWhatsapp, data.contactEmail].some(value => String(value ?? '').trim() !== '');
+    if (!bookingsEnabled && !directContact(editHotelData) && directContact(editBaselineRef.current)) {
+      toast.error('Keep at least one way for travellers to reach you: phone, WhatsApp or email.');
+      return;
+    }
     setSaving(true);
     try {
       // Amenities and the gallery are typed as comma-separated text in the UI
@@ -1107,6 +1144,9 @@ export default function ManageHotel() {
         }
       } else if (typeof updateData.name === 'string') {
         updateData.name = updateData.name.trim();
+      }
+      if (typeof updateData.tourismLicenceNumber === 'string') {
+        updateData.tourismLicenceNumber = updateData.tourismLicenceNumber.trim();
       }
 
       // Strip out undefined values (Firestore rejects them) and anything the
@@ -1815,6 +1855,95 @@ export default function ManageHotel() {
   }
   if (!hotel) return null;
 
+  // Guest contact details. Booking mode keeps them inside "Contacts and
+  // policies"; directory mode (D3) gives them their own open card near the
+  // top, since they are the only way travellers reach the property.
+  const showWhatsappField = whatsappEnabled || !bookingsEnabled;
+  const hasDirectContact = [editHotelData.contactPhone, editHotelData.contactWhatsapp, editHotelData.contactEmail]
+    .some(value => String(value ?? '').trim() !== '');
+  const contactFields = (
+            <>
+              {/* Guest contact (shown on the listing) */}
+              <div className={`grid grid-cols-1 ${showWhatsappField ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2`}>
+                  <div>
+                    <label className="tm-label">{bookingsEnabled ? 'Booking email (shown to guests)' : 'Email (shown to travellers)'}</label>
+                    <input
+                      type="email"
+                      value={editHotelData.contactEmail ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, contactEmail: e.target.value })}
+                      className="tm-input"
+                      placeholder={bookingsEnabled ? 'reservations@yourlodge.mw' : 'hello@yourlodge.mw'}
+                    />
+                    <FieldError message={contactProblems.contactEmail} />
+                  </div>
+                  <div>
+                    <label className="tm-label">{bookingsEnabled ? 'Phone (shown to guests)' : 'Phone (shown to travellers)'}</label>
+                    <input
+                      type="tel"
+                      value={editHotelData.contactPhone ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, contactPhone: e.target.value })}
+                      className="tm-input"
+                      placeholder="+265 991 234 567"
+                    />
+                    <FieldError message={contactProblems.contactPhone} />
+                  </div>
+                  {showWhatsappField && (
+                    <div>
+                      <label className="tm-label">WhatsApp</label>
+                      <input
+                        type="tel"
+                        value={editHotelData.contactWhatsapp ?? ''}
+                        onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
+                        className="tm-input"
+                        placeholder="Same as phone"
+                      />
+                      <FieldError message={contactProblems.contactWhatsapp} />
+                    </div>
+                  )}
+              </div>
+
+              {/* Optional: an icon appears on the listing only when a link is filled in. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2">
+                {([
+                  ['socialFacebook', 'facebook', 'Facebook page', 'https://facebook.com/yourlodge'],
+                  ['socialInstagram', 'instagram', 'Instagram', '@yourlodge or a link'],
+                ] as const).map(([field, network, label, placeholder]) => {
+                  const value = editHotelData[field] ?? '';
+                  const invalid = value.trim() !== '' && !socialUrl(value, network);
+                  return (
+                    <div key={field}>
+                      <label className="tm-label">{label} <span className="font-normal text-stone-400">(optional)</span></label>
+                      <input
+                        type="text"
+                        inputMode="url"
+                        autoComplete="off"
+                        value={value}
+                        onChange={e => setEditHotelData({ ...editHotelData, [field]: e.target.value })}
+                        className="tm-input"
+                        placeholder={placeholder}
+                      />
+                      <FieldError message={invalid ? `That doesn't look like a ${label.split(' ')[0]} link.` : undefined} />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-1 sm:pt-2">
+                <label className="tm-label">Tourism licence number <span className="font-normal text-stone-400">(optional)</span></label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  maxLength={80}
+                  value={editHotelData.tourismLicenceNumber ?? ''}
+                  onChange={e => setEditHotelData({ ...editHotelData, tourismLicenceNumber: e.target.value })}
+                  className="tm-input md:max-w-sm"
+                  placeholder="As printed on your licence"
+                />
+                <p className="tm-muted mt-1">Shown on your listing as provided by you. Travel Malawi does not verify it.</p>
+              </div>
+            </>
+  );
+
   return (
     <div className="tm-page py-4 sm:py-6 md:py-8 min-w-0">
       <div className="mb-5 sm:mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 min-w-0">
@@ -1876,7 +2005,8 @@ export default function ManageHotel() {
             </button>
           )}
 
-          {/* 1-Click Live Status Switch */}
+          {/* 1-Click Live Status Switch (chat presence: booking mode only, D3) */}
+          {bookingsEnabled && (
           <button
             type="button"
             onClick={handleToggleOnlineStatus}
@@ -1887,6 +2017,7 @@ export default function ManageHotel() {
             <span className={`h-2 w-2 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-400'}`} />
             <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
           </button>
+          )}
 
           {hotel.status === 'pending' ? (
             <span className="tm-tag tm-tag-warn">
@@ -1953,7 +2084,7 @@ export default function ManageHotel() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-stone-900">
                   {hotel.status === 'approved'
-                    ? 'Live and taking bookings'
+                    ? (bookingsEnabled ? 'Live and taking bookings' : 'Live in the directory')
                     : hotel.status === 'rejected'
                     ? 'Unpublished — hidden from search'
                     : 'Waiting for review'}
@@ -2024,7 +2155,9 @@ export default function ManageHotel() {
               </h3>
               <p className="text-sm text-stone-700 mt-0.5">
                 {hotel.status === 'pending'
-                  ? 'You can keep setting up rooms, rates and photos. Bookings open once it is approved.'
+                  ? (bookingsEnabled
+                    ? 'You can keep setting up rooms, rates and photos. Bookings open once it is approved.'
+                    : 'You can keep setting up rooms, rates and photos. Travellers can find it once it is approved.')
                   : 'Guests cannot find it in search. Contact Travel Malawi support if you need help.'}
               </p>
               {hotel.moderationNotes?.trim() && (
@@ -2048,7 +2181,7 @@ export default function ManageHotel() {
       ) : null}
 
       {/* Performance snapshot with mobile dropdown / toggle */}
-      {canSeeFinancials && (
+      {canSeeFinancials && bookingsEnabled && (
         <div className="mb-5 sm:mb-6">
           <div className="flex items-center justify-between mb-2.5">
             <button
@@ -2101,6 +2234,12 @@ export default function ManageHotel() {
         </div>
       )}
 
+      {!bookingsEnabled && BOOKING_ONLY_TABS.includes(requestedTab) && (
+        <p className="mb-4 text-sm text-stone-600">
+          Bookings and in-app messages are switched off. Travellers contact you directly with the details on your listing.
+        </p>
+      )}
+
       {/* Section navigation: seven sections, some with a second row of sub-tabs.
           Both rows scroll sideways on narrow screens instead of overflowing. */}
       <div className="relative z-20 mb-5 sm:mb-6 min-w-0 space-y-2">
@@ -2117,7 +2256,7 @@ export default function ManageHotel() {
             conferences: 'Dining & events',
             broadcasts: 'Guest messages',
             templates: 'Guest messages',
-            stayos: 'Ulendo Stay',
+            stayos: bookingsEnabled ? 'Ulendo Stay' : 'Practical info',
           };
           const subLabel: Partial<Record<Tab, string>> = {
             rooms: isEntirePlace ? 'Whole space' : 'Rooms',
@@ -2137,7 +2276,7 @@ export default function ManageHotel() {
           ).length;
           const countFor = (tab: Tab) =>
             tab === 'bookings' ? totalPendingBookings : tab === 'inquiries' ? totalUnreadInquiries : 0;
-          const activeGroup = tabGroupOf(activeTab);
+          const activeGroup = tabGroups.find(group => group.includes(activeTab)) ?? tabGroups[0];
 
           const badges = (tabs: Tab[]) => {
             const dirty = tabs.some(t => dirtyOn(t));
@@ -2162,7 +2301,7 @@ export default function ManageHotel() {
                 role="tablist"
                 aria-label="Property management sections"
               >
-                {TAB_GROUPS.map(group => {
+                {tabGroups.map(group => {
                   const isActive = group === activeGroup;
                   return (
                     <button
@@ -2261,7 +2400,7 @@ export default function ManageHotel() {
                 <FieldError message={detailProblems.name} />
                 <p className="text-xs text-stone-400 mt-1">
                   {canEditElevatedFields
-                    ? 'Changes show on bookings, invoices and the listing.'
+                    ? (bookingsEnabled ? 'Changes show on bookings, invoices and the listing.' : 'Changes show on the listing.')
                     : 'Only Travel Malawi staff can change the name.'}
                 </p>
               </div>
@@ -2305,7 +2444,7 @@ export default function ManageHotel() {
                   >
                     <div className="flex items-center gap-2">
                       <BedDouble className="w-4 h-4 shrink-0" />
-                      <span>Rooms booked one by one</span>
+                      <span>{bookingsEnabled ? 'Rooms booked one by one' : 'Rooms let one by one'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {!canEditElevatedFields && <Lock className="w-3.5 h-3.5 opacity-60" />}
@@ -2475,6 +2614,24 @@ export default function ManageHotel() {
               </div>
     </div>
   </SectionCard>
+
+  {!bookingsEnabled && (
+  <SectionCard
+    title="How travellers contact you"
+    description="Shown on your listing. Travel Malawi does not take bookings or payments; travellers contact you directly."
+    collapsible
+    forceOpen={(['contactEmail', 'contactPhone', 'contactWhatsapp'] as const).some(key => Boolean((detailProblems as Record<string, string | undefined>)[key])) || !hasDirectContact}
+  >
+    <div className="space-y-4 sm:space-y-6">
+      {!hasDirectContact && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Add at least one: phone, WhatsApp or email. It is the only way travellers can reach you.
+        </p>
+      )}
+      {contactFields}
+    </div>
+  </SectionCard>
+  )}
 
   <SectionCard title="Location" description="Where you are and how guests find you." collapsible defaultOpen={false} forceOpen={Boolean(detailProblems.location)}>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
@@ -2696,7 +2853,7 @@ export default function ManageHotel() {
 
   <SectionCard
     title="Contacts and policies"
-    description="Manager, owner, guest contacts, check-in times and children."
+    description={bookingsEnabled ? 'Manager, owner, guest contacts, check-in times and children.' : 'Manager, owner, check-in times and children.'}
     collapsible
     defaultOpen={false}
     forceOpen={(['managerName', 'managerEmail', 'managerPhone', 'contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'] as const).some(key => Boolean((detailProblems as Record<string, string | undefined>)[key]))}
@@ -2808,70 +2965,7 @@ export default function ManageHotel() {
                 </div>
               </div>
 
-              {/* Guest Booking Contact */}
-              <div className={`grid grid-cols-1 ${whatsappEnabled ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2`}>
-                  <div>
-                    <label className="tm-label">Booking email (shown to guests)</label>
-                    <input
-                      type="email"
-                      value={editHotelData.contactEmail ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, contactEmail: e.target.value })}
-                      className="tm-input"
-                      placeholder="reservations@yourlodge.mw"
-                    />
-                    <FieldError message={contactProblems.contactEmail} />
-                  </div>
-                  <div>
-                    <label className="tm-label">Phone (shown to guests)</label>
-                    <input
-                      type="tel"
-                      value={editHotelData.contactPhone ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, contactPhone: e.target.value })}
-                      className="tm-input"
-                      placeholder="+265 991 234 567"
-                    />
-                    <FieldError message={contactProblems.contactPhone} />
-                  </div>
-                  {whatsappEnabled && (
-                    <div>
-                      <label className="tm-label">WhatsApp</label>
-                      <input
-                        type="tel"
-                        value={editHotelData.contactWhatsapp ?? ''}
-                        onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
-                        className="tm-input"
-                        placeholder="Same as phone"
-                      />
-                      <FieldError message={contactProblems.contactWhatsapp} />
-                    </div>
-                  )}
-              </div>
-
-              {/* Optional: an icon appears on the listing only when a link is filled in. */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2">
-                {([
-                  ['socialFacebook', 'facebook', 'Facebook page', 'https://facebook.com/yourlodge'],
-                  ['socialInstagram', 'instagram', 'Instagram', '@yourlodge or a link'],
-                ] as const).map(([field, network, label, placeholder]) => {
-                  const value = editHotelData[field] ?? '';
-                  const invalid = value.trim() !== '' && !socialUrl(value, network);
-                  return (
-                    <div key={field}>
-                      <label className="tm-label">{label} <span className="font-normal text-stone-400">(optional)</span></label>
-                      <input
-                        type="text"
-                        inputMode="url"
-                        autoComplete="off"
-                        value={value}
-                        onChange={e => setEditHotelData({ ...editHotelData, [field]: e.target.value })}
-                        className="tm-input"
-                        placeholder={placeholder}
-                      />
-                      <FieldError message={invalid ? `That doesn't look like a ${label.split(' ')[0]} link.` : undefined} />
-                    </div>
-                  );
-                })}
-              </div>
+              {bookingsEnabled && contactFields}
 
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on
                   every listing, whatever the property actually did. */}
@@ -3197,6 +3291,8 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
+  {/* Chat/call settings and deposit accounts are booking-mode only (D3). */}
+  {bookingsEnabled && (<>
   <SectionCard title="Guest messaging" description="How guests can chat with or call you." collapsible defaultOpen={false}>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
                   <div>
@@ -3496,6 +3592,7 @@ export default function ManageHotel() {
       </div>
     </div>
   </SectionCard>
+  </>)}
 
   <SectionCard title="Opening hours" description="When guests can arrive and get service." collapsible defaultOpen={false}>
     <div className="space-y-4">
@@ -4543,13 +4640,14 @@ export default function ManageHotel() {
               <div className="flex items-start gap-3 min-w-0">
                 <Home className="w-4 h-4 mt-0.5 shrink-0 text-stone-600" />
                 <div className="min-w-0">
-                  <h4 className="text-sm font-semibold text-stone-900">Booked as a whole place</h4>
+                  <h4 className="text-sm font-semibold text-stone-900">{bookingsEnabled ? 'Booked as a whole place' : 'Let as a whole place'}</h4>
                   <p className="tm-muted mt-0.5">
                     {editHotelData.entirePlaceDetails?.bedrooms || 2} bedrooms &middot; up to {editHotelData.entirePlaceDetails?.maxGuests || 6} guests. The entry below is its nightly rate.
                   </p>
                 </div>
               </div>
               <div className="tm-actions shrink-0">
+                {bookingsEnabled && (
                 <button
                   type="button"
                   onClick={() => setShowHotelSyncModal(true)}
@@ -4563,6 +4661,7 @@ export default function ManageHotel() {
                       : 'Sync calendars'}
                   </span>
                 </button>
+                )}
                 <button
                   type="button"
                   onClick={() => requestTab('details')}
@@ -5004,6 +5103,9 @@ export default function ManageHotel() {
                 </div>
                 </SectionCard>
 
+                {/* Manual blocks only matter while bookings are on (D3); the
+                    room's blockedDates are kept as they are either way. */}
+                {bookingsEnabled && (
                 <SectionCard title="Availability and blocked dates">
                 <div id="room-calendar-section">
                   <h4 className="text-sm font-semibold text-stone-800 mb-2">Blocked dates</h4>
@@ -5181,6 +5283,7 @@ export default function ManageHotel() {
                   )}
                 </div>
                 </SectionCard>
+                )}
 
                 {/* The room form runs past a packages list and a month
                     calendar, so its actions are pinned to the viewport. */}
@@ -5268,6 +5371,7 @@ export default function ManageHotel() {
 
                         {/* Room Card Actions */}
                         <div className="tm-actions border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 sm:shrink-0 mt-1 sm:mt-0 justify-end">
+                          {bookingsEnabled && (
                           <button 
                             type="button"
                             onClick={() => setSyncingRoom(room)}
@@ -5281,6 +5385,7 @@ export default function ManageHotel() {
                                 : 'Sync calendar'}
                             </span>
                           </button>
+                          )}
 
                           <button 
                             type="button"
@@ -6230,7 +6335,7 @@ export default function ManageHotel() {
         }}
       />
 
-      {reminderModalBooking && hotel && (
+      {bookingsEnabled && reminderModalBooking && hotel && (
         <ReminderTemplatesModal
           isOpen={!!reminderModalBooking}
           onClose={() => setReminderModalBooking(null)}
@@ -6309,13 +6414,13 @@ export default function ManageHotel() {
 
       {/* Room iCal / PMS Synchronization Modal */}
       <Modal
-        open={Boolean(syncingRoom)}
+        open={bookingsEnabled && Boolean(syncingRoom)}
         onClose={() => setSyncingRoom(null)}
         title={`Channel Sync — ${syncingRoom?.name || 'Room'}`}
         description="2-way calendar sync with RoomRaccoon, Airbnb, Booking.com, and other PMS systems."
         size="3xl"
       >
-        {syncingRoom && hotel && (
+        {bookingsEnabled && syncingRoom && hotel && (
           <IcalSyncManager
             room={syncingRoom}
             hotel={hotel}
@@ -6330,13 +6435,13 @@ export default function ManageHotel() {
 
       {/* Entire Property iCal / PMS Synchronization Modal */}
       <Modal
-        open={showHotelSyncModal}
+        open={bookingsEnabled && showHotelSyncModal}
         onClose={() => setShowHotelSyncModal(false)}
         title={`Property Channel Sync — ${hotel?.name || 'Property'}`}
         description="2-way calendar sync for whole-house / entire-property reservations."
         size="3xl"
       >
-        {hotel && (
+        {bookingsEnabled && hotel && (
           <IcalSyncManager
             hotel={hotel}
             onHotelUpdated={(updated) => {

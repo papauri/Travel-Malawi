@@ -6,6 +6,7 @@ import {
   MAX_LEARNED_RULE_CHARS,
   MAX_MESSAGE_CHARS,
   MAX_PROPERTIES_SUMMARY_CHARS,
+  DIRECTORY_MODE_OPS,
   UNTRUSTED_DATA_RULE,
   capLearnedRules,
   clip,
@@ -23,6 +24,8 @@ import { findMentionedPropertyIds } from '../src/lib/queryIntent';
  *   included, and only the properties it names get full detail.
  * - Stable content comes first and volatile content (time, history, message)
  *   last, so provider prefix caching can reuse the bulk of the prompt.
+ * - Directory mode (D3): booking context, the front-desk agent and booking
+ *   action proposals are dropped and a short directory module is added.
  */
 
 const OPS_CORE_PROMPT = `You are Ulendo (Chichewa for "journey"), the resident hospitality concierge for Travel Malawi, the Warm Heart of Africa. You work beside lodge managers and platform admins and have their live properties, rooms, rates, bookings, menus and operations in the context below.
@@ -105,6 +108,9 @@ Types and their fields:
 - apply_promotion: promotionName, discountPercentage, startDate, endDate (YYYY-MM-DD)
 - Admin only: update_property_status (oldStatus, newStatus "approved" | "rejected" | "pending"); toggle_featured (featured)
 For several or all properties: list every id in "hotelIds" and name in "hotelNames", set "targetScope": "all" (or "single"), and say how many properties are targeted.`;
+
+/** Action schemas without booking changes, for directory mode. */
+const ACTIONS_MODULE_DIRECTORY = ACTIONS_MODULE.replace(/^- update_booking_status:.*\n/m, '');
 
 const MALAWI_KNOWLEDGE_MODULE = `MALAWI INSIDER KNOWLEDGE (use for guest and travel advice; places and culture only, never name a lodge, hotel or camp that is not in the context):
 - Lake Malawi: Cape Maclear (Thumbi West snorkelling, Otter Point, mbuna cichlids, sunset dhows), Monkey Bay, Senga Bay (Salima), Nkhata Bay (cliff jumping, Chikale beach), Likoma (St Peter's Cathedral), Chizumulu, Mangochi.
@@ -286,8 +292,11 @@ export interface OperationsChatPrompts {
 export function buildOperationsChatPrompts(
   req: OperationsAssistantRequest,
   resolvedDisplayName: string,
-  agent: SwarmAgentId
+  requestedAgent: SwarmAgentId,
+  /** False in directory mode: no booking context, agent or proposals. */
+  bookingsOn: boolean
 ): OperationsChatPrompts {
+  const agent: SwarmAgentId = !bookingsOn && requestedAgent === 'frontdesk_specialist' ? 'swarm_coordinator' : requestedAgent;
   const isAdminUser = req.userRole === 'admin';
   const today = req.context.currentDateStr;
   const history = req.history || [];
@@ -297,6 +306,7 @@ export function buildOperationsChatPrompts(
   // Short follow-ups ("and the other lodge?", "yes do it") inherit the topic of the previous turns.
   const recentText = [message, ...history.slice(-2).map(h => h.content || '')].join('\n');
   const topics = detectTopics(recentText);
+  if (!bookingsOn) topics.delete('bookings');
   const broad = BROAD_REQUEST.test(message) || topics.size === 0;
 
   const properties = (req.context.properties || []).slice(0, 40);
@@ -317,7 +327,7 @@ export function buildOperationsChatPrompts(
     : propertyBlocks;
 
   // Bookings relative to today; full lines only when the question is about bookings or performance.
-  const active = (req.context.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'rejected');
+  const active = (bookingsOn ? req.context.bookings || [] : []).filter(b => b.status !== 'cancelled' && b.status !== 'rejected');
   const scoped = mentioned.size > 0 ? active.filter(b => mentioned.has(b.hotelId)) : active;
   const arrivals = scoped.filter(b => b.checkIn === today);
   const departures = scoped.filter(b => b.checkOut === today);
@@ -361,8 +371,9 @@ export function buildOperationsChatPrompts(
 
   const systemPrompt = [
     OPS_CORE_PROMPT,
+    bookingsOn ? '' : DIRECTORY_MODE_OPS,
     getSpecialistAgentPrompt(agent),
-    needsActions ? ACTIONS_MODULE : '',
+    needsActions ? (bookingsOn ? ACTIONS_MODULE : ACTIONS_MODULE_DIRECTORY) : '',
     needsKnowledge ? MALAWI_KNOWLEDGE_MODULE : '',
     UNTRUSTED_DATA_RULE,
   ].filter(Boolean).join('\n\n');
@@ -379,10 +390,7 @@ ${memoryLines.length ? memoryLines.join('\n') : '- none yet'}
 PROPERTIES IN SCOPE (${req.context.properties.length}${mentioned.size ? `, ${mentioned.size} in focus` : ''}):
 ${propertiesSummary || (isAdminUser ? 'No properties registered on the platform yet.' : 'No properties in this host\'s scope.')}
 
-BOOKINGS (today ${today}):
-${bookingsSummary}
-
-NOW: ${today} ${req.context.currentTimeStr || ''} | conversation ${history.length ? 'ongoing (no greeting)' : 'first turn'}
+${bookingsOn ? `BOOKINGS (today ${today}):\n${bookingsSummary}\n\n` : ''}NOW: ${today} ${req.context.currentTimeStr || ''} | conversation ${history.length ? 'ongoing (no greeting)' : 'first turn'}
 ${history.length ? `HISTORY:\n${history.slice(-6).map(h => `${h.role === 'user' ? 'User' : 'Ulendo'}: ${clip(h.content, MAX_HISTORY_ITEM_CHARS)}`).join('\n')}\n` : ''}
 USER MESSAGE:
 "${clip(message, MAX_MESSAGE_CHARS)}"`;

@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useIsHost } from './useIsHost';
 import { playDingSound } from '../lib/notificationSound';
 import { Booking } from '../types';
@@ -45,6 +46,8 @@ export type UnreadMessageItem = ActiveChatItem;
 export function useUnreadMessagesSource() {
   const { user } = useAuth();
   const isHost = useIsHost();
+  // Directory mode (D3): in-app chat is off, so no chat/booking listener opens.
+  const { bookingsEnabled } = usePlatformMode();
   const [unreadItems, setUnreadItems] = useState<ActiveChatItem[]>([]);
   const [activeChats, setActiveChats] = useState<ActiveChatItem[]>([]);
   const [inactiveChats, setInactiveChats] = useState<ActiveChatItem[]>([]);
@@ -70,7 +73,7 @@ export function useUnreadMessagesSource() {
   }, [triggerVibration]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !bookingsEnabled) {
       setUnreadItems([]);
       setActiveChats([]);
       setInactiveChats([]);
@@ -433,7 +436,7 @@ export function useUnreadMessagesSource() {
         clearTimeout(vibrationTimeoutRef.current);
       }
     };
-  }, [user, isHost, triggerVibration]);
+  }, [user, isHost, bookingsEnabled, triggerVibration]);
 
   // Action: Mark Conversation As Read
   const markAsRead = async (item: ActiveChatItem) => {

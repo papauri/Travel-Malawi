@@ -16,7 +16,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'Travel Malawi',
           short_name: 'Travel Malawi',
-          description: 'A direct booking and hospitality platform connecting travelers with independent lodges, B&Bs, cottages, and safari camps across Malawi.',
+          description: 'A directory of independent lodges, B&Bs, cottages and safari camps across Malawi. Discover, plan and contact properties directly.',
           start_url: '/',
           scope: '/',
           display: 'standalone',
@@ -40,16 +40,16 @@ export default defineConfig(() => {
               icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
             },
             {
-              name: 'My Bookings',
-              short_name: 'Bookings',
-              description: 'View your stay vouchers and reservations offline',
-              url: '/my-bookings',
+              name: 'Saved Stays',
+              short_name: 'Saved',
+              description: 'The stays you saved and want to compare',
+              url: '/saved',
               icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
             },
             {
               name: 'Host Dashboard',
               short_name: 'Dashboard',
-              description: 'Manage property rooms, rates, and guest arrivals',
+              description: 'Manage your listing, rooms, rates and photos',
               url: '/dashboard',
               icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
             }

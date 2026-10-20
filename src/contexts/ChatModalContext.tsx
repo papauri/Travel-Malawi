@@ -4,6 +4,8 @@ import PropertyChat from '../components/PropertyChat';
 import BookingChat from '../components/BookingChat';
 import Modal from '../components/Modal';
 import { useAuth } from './AuthContext';
+import { usePlatformMode } from './PlatformModeContext';
+import toast from 'react-hot-toast';
 import { isAdmin, isHotelManager } from '../lib/roles';
 import { useManagerPresence } from '../hooks/usePresence';
 import { MessageSquare, Minus, X, Maximize2 } from 'lucide-react';
@@ -44,6 +46,8 @@ const CHAT_STORAGE_PREFIX = 'kaza_active_chat_session_';
 
 // Remove only this dock's own keys: other features (shadow mode, auth, Ulendo
 // sessions) keep their state in sessionStorage and must survive a chat close.
+const DIRECTORY_CHAT_NOTICE = 'In-app messages are switched off. Contact the property directly from its listing.';
+
 function clearChatSessionStorage() {
   try {
     for (const store of [localStorage, sessionStorage]) {
@@ -56,6 +60,8 @@ function clearChatSessionStorage() {
 
 export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  // Directory mode (D3): no chat window mounts and every opener is a no-op.
+  const { bookingsEnabled } = usePlatformMode();
   const [activeChat, setActiveChat] = useState<ActiveChatState>(null);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [liveHotelStatus, setLiveHotelStatus] = useState<{ isOnline?: boolean; name?: string }>({});
@@ -68,6 +74,19 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
     setIsMinimized(false);
     clearChatSessionStorage();
   }, [user?.uid]);
+
+  // Switching to directory mode closes any open chat (its listeners unmount with it).
+  useEffect(() => {
+    if (bookingsEnabled) return;
+    setActiveChat(null);
+    setIsMinimized(false);
+  }, [bookingsEnabled]);
+
+  const chatSwitchedOff = (): boolean => {
+    if (bookingsEnabled) return false;
+    toast(DIRECTORY_CHAT_NOTICE, { id: 'directory-chat-off' });
+    return true;
+  };
 
   const isChatOpen = (type: 'inquiry' | 'booking', idOrHotelId: string, guestId?: string): boolean => {
     if (!activeChat) return false;
@@ -86,6 +105,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   };
 
   const openInquiryChat = (hotel: Hotel, guestId?: string, guestName?: string) => {
+    if (chatSwitchedOff()) return;
     setActiveChat({
       type: 'inquiry',
       hotel,
@@ -96,6 +116,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   };
 
   const openBookingChat = (booking: Booking) => {
+    if (chatSwitchedOff()) return;
     setActiveChat({
       type: 'booking',
       booking,
@@ -136,7 +157,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const currentHotelName = activeChat?.type === 'inquiry' ? activeChat.hotel.name : 'Property';
   const activeManagerId = activeChat?.type === 'inquiry' ? activeChat.hotel.managerId : 
                           activeChat?.type === 'booking' ? activeChat.booking.managerId : undefined;
-  const managerPresence = useManagerPresence(activeManagerId);
+  const managerPresence = useManagerPresence(bookingsEnabled ? activeManagerId : undefined);
   const isOnline = managerPresence?.status === 'online';
 
   return (
@@ -157,7 +178,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* Global Persistent Floating Chat Dock (Follows user across all pages) */}
-      {activeChat && user && (
+      {bookingsEnabled && activeChat && user && (
         <>
           {isMinimized ? (
             /* Minimised chat button (bottom right) */

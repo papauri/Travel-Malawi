@@ -145,7 +145,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChang
           <div className="text-center py-8 px-4 rounded-lg border border-dashed border-stone-300">
             <Percent className="w-8 h-8 text-stone-300 mx-auto mb-3" />
             <p className="tm-muted max-w-md mx-auto mb-4">
-              No promotions yet. Add one for a holiday, a quiet season or early bookings.
+              No promotions yet. Add one for a holiday, a quiet season or a long stay.
             </p>
             <button 
               onClick={addPromotion}

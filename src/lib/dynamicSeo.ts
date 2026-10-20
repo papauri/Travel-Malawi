@@ -116,7 +116,7 @@ function computeCentroid(hotels: Hotel[]): { lat: number; lng: number } | null {
 
 /**
  * Autonomously generates dynamic, live SEO metadata and Schema.org structured data
- * from real-time Firestore property and booking data with zero hardcoding.
+ * from real-time Firestore property data with zero hardcoding.
  */
 export function generateAutonomousSeo({
   hotels,
@@ -200,20 +200,20 @@ export function generateAutonomousSeo({
   // 3. Autonomous Title, Description, and Keywords
   let title = 'Travel Malawi';
   let description =
-    'Direct booking platform connecting travelers with verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi.';
+    'Travel Malawi is a directory of verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi. Contact each property directly.';
   let keywords =
-    'Travel Malawi, Lake Malawi lodges, Cape Maclear cottages, Liwonde safari camps, Lilongwe hotels, Blantyre guest houses, direct booking Malawi';
+    'Travel Malawi, Lake Malawi lodges, Cape Maclear cottages, Liwonde safari camps, Lilongwe hotels, Blantyre guest houses, Malawi accommodation directory';
   let url = BASE_URL;
 
   if (hasLocationFilter) {
     const priceSnippet = minMwk ? ` from MK ${minMwk.toLocaleString()}` : '';
     title = `${countLabel}${categoryLabel}Lodges & Stays in ${locationLabel}${priceSnippet} — Travel Malawi`;
-    description = `Discover ${countLabel}verified independent lodges, boutique hotels, and cottages in ${locationLabel}. Book direct in MWK and USD with zero booking commissions${priceSnippet ? `. Live rates${priceSnippet}` : ''}.`;
-    keywords = `${locationLabel} lodges, ${locationLabel} hotels, book hotel ${locationLabel}, ${locationLabel} accommodations Malawi, ${categoryLabel}${locationLabel} stays`;
+    description = `Discover ${countLabel}verified independent lodges, boutique hotels, and cottages in ${locationLabel}. Rates in MWK and USD, with each property's own contact details${priceSnippet ? `. Rates${priceSnippet}` : ''}.`;
+    keywords = `${locationLabel} lodges, ${locationLabel} hotels, ${locationLabel} where to stay, ${locationLabel} accommodations Malawi, ${categoryLabel}${locationLabel} stays`;
     url = `${BASE_URL}/?location=${encodeURIComponent(rawLoc)}`;
   } else if (categoryParam) {
-    title = `${countLabel}${categoryParam} Accommodations in Malawi — Direct Booking`;
-    description = `Browse ${countLabel}verified ${categoryParam.toLowerCase()} stays, safari camps, and lakeside cottages across Malawi. Book direct with instant owner confirmation in MWK & USD.`;
+    title = `${countLabel}${categoryParam} Accommodations in Malawi — Travel Malawi`;
+    description = `Browse ${countLabel}verified ${categoryParam.toLowerCase()} stays, safari camps, and lakeside cottages across Malawi. Rates in MWK and USD, with each property's own contact details.`;
     keywords = `${categoryParam} Malawi, Malawi lodges, safari camps Malawi, boutique stays Malawi`;
     url = `${BASE_URL}/?category=${encodeURIComponent(categoryParam)}`;
   }
@@ -227,7 +227,7 @@ export function generateAutonomousSeo({
       name: 'Travel Malawi',
       alternateName: 'Ulendo Malawi',
       description:
-        'Direct booking platform connecting travelers with verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi.',
+        'Travel Malawi is a directory of verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi. Contact each property directly.',
       inLanguage: 'en',
       potentialAction: {
         '@type': 'SearchAction',
@@ -247,9 +247,7 @@ export function generateAutonomousSeo({
       logo: `${BASE_URL}/favicon-32.png`,
       image: `${BASE_URL}/icons/icon-512.png`,
       description:
-        'The Warm Heart of Africa direct booking platform for independent lodges, safari camps, and lakeside cottages in Malawi. Book direct in MWK and USD with zero booking commissions.',
-      currenciesAccepted: 'MWK, USD',
-      paymentAccepted: 'Airtel Money, TNM Mpamba, Bank Transfer, Visa, Mastercard, Cash',
+        'The Warm Heart of Africa directory of independent lodges, safari camps, and lakeside cottages in Malawi. Travel Malawi does not take bookings or payments.',
       areaServed: {
         '@type': 'Country',
         name: 'Malawi',
@@ -264,11 +262,8 @@ export function generateAutonomousSeo({
       '@type': ['LocalBusiness', 'LodgingBusiness'],
       '@id': `${BASE_URL}/#hub-${encodeURIComponent(rawLoc.toLowerCase())}`,
       name: `Travel Malawi — ${locationLabel} Stays & Accommodations`,
-      description: `Verified independent lodges, boutique hotels, and guest houses located in ${locationLabel}, Malawi. Direct booking in MWK and USD with instant owner confirmation.`,
+      description: `Verified independent lodges, boutique hotels, and guest houses located in ${locationLabel}, Malawi. Rates in MWK and USD; contact each property directly.`,
       url,
-      currenciesAccepted: 'MWK, USD',
-      paymentAccepted:
-        'Airtel Money, TNM Mpamba, National Bank of Malawi, Standard Bank, FDH Bank, Visa, Mastercard, Cash',
       address: {
         '@type': 'PostalAddress',
         addressLocality: locationLabel,

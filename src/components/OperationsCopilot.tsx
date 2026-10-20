@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { isAdmin, isHotelManager } from '../lib/roles';
 import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal, QueryIntent } from '../hooks/useAIAssistant';
@@ -203,6 +204,8 @@ export default function OperationsCopilot() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { status: aiStatus, operationsChat, generating } = useAIAssistant();
+  // Directory mode (D3): no bookings are loaded, shown, sent to Ulendo or changed.
+  const { bookingsEnabled } = usePlatformMode();
 
   // User display name strictly honoring profile Display Name (never email username or generic titles)
   const userDisplayName = useMemo(() => {
@@ -369,14 +372,14 @@ export default function OperationsCopilot() {
         const [hotelsSnap, roomsSnap, bookingsSnap, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
           getDocs(collection(db, 'hotels')),
           getDocs(collection(db, 'room_types')),
-          getDocs(collection(db, 'bookings')),
+          bookingsEnabled ? getDocs(collection(db, 'bookings')) : Promise.resolve(null),
           getDocs(collection(db, 'conference_rooms')),
           getDocs(collection(db, 'reviews')),
           getDocs(collection(db, 'broadcasts')),
         ]);
         hotelDocs = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
         roomDocs = roomsSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType));
-        bookingDocs = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+        bookingDocs = bookingsSnap ? bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)) : [];
         confDocs = confSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         reviewDocs = reviewsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Review));
         broadcastDocs = broadcastsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Broadcast));
@@ -418,11 +421,13 @@ export default function OperationsCopilot() {
 
         if (hotelIds.length > 0) {
           // Bookings are private: one equality query per property the manager runs.
-          const bookingsPerHotel = Promise.all(hotelIds.map(hid =>
-            getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
-              .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
-              .catch(() => [] as Booking[])
-          )).then(lists => lists.flat());
+          const bookingsPerHotel = bookingsEnabled
+            ? Promise.all(hotelIds.map(hid =>
+                getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
+                  .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
+                  .catch(() => [] as Booking[])
+              )).then(lists => lists.flat())
+            : Promise.resolve([] as Booking[]);
           const [roomsSnap, scopedBookings, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
             getDocs(collection(db, 'room_types')),
             bookingsPerHotel,
@@ -464,7 +469,7 @@ export default function OperationsCopilot() {
     if (isAuthorized && aiStatus.enabled && aiStatus.available) {
       fetchOperationsData();
     }
-  }, [user?.uid, isAuthorized, aiStatus.enabled, aiStatus.available]);
+  }, [user?.uid, isAuthorized, aiStatus.enabled, aiStatus.available, bookingsEnabled]);
 
 
 
@@ -569,6 +574,23 @@ export default function OperationsCopilot() {
     if (dynamicSuggestions && dynamicSuggestions.length > 0) {
       return dynamicSuggestions;
     }
+    if (!bookingsEnabled) {
+      return userIsAdmin
+        ? [
+            'Summarise active and pending listings on the platform.',
+            'Which listings are missing a phone, WhatsApp or email contact?',
+            'Audit all room rates across the platform.',
+            'What is guest sentiment and recent reviews across our properties?',
+            'Highlight top tourism experiences in Malawi for travellers.'
+          ]
+        : [
+            'Show me all my room rates.',
+            'Are my contact details complete for travellers?',
+            'What are our guest reviews and average rating?',
+            'Recommend local excursions, safari trips, and dining activities for our guests.',
+            'What is our power backup, Wi-Fi password, and utility setup?'
+          ];
+    }
     if (userIsAdmin) {
       return [
         'Give me an executive summary of today: platform arrivals, checkouts, and active listings.',
@@ -586,7 +608,7 @@ export default function OperationsCopilot() {
       "Recommend local excursions, safari trips, and dining activities for our guests.",
       "What is our power backup, Wi-Fi password, and utility setup?"
     ];
-  }, [dynamicSuggestions, userIsAdmin]);
+  }, [dynamicSuggestions, userIsAdmin, bookingsEnabled]);
 
   const detectQueryIntent = (text: string): QueryIntent => {
     const clean = (text || '').trim().toLowerCase();
@@ -707,7 +729,7 @@ export default function OperationsCopilot() {
     if (intent === 'database_action') {
       return 'Preparing operational proposal...';
     }
-    return 'Consulting lodge records & bookings...';
+    return bookingsEnabled ? 'Consulting lodge records & bookings...' : 'Checking your listings...';
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -890,7 +912,7 @@ export default function OperationsCopilot() {
             })),
           };
         }),
-        bookings: isLeanSmallTalk
+        bookings: isLeanSmallTalk || !bookingsEnabled
           ? []
           : bookings
               // Only live bookings from the last 30 days to the next 120 days are useful context.
@@ -1028,6 +1050,10 @@ export default function OperationsCopilot() {
     action: ActionProposal, 
     overrideTargetIds?: string[]
   ) => {
+    if (action.type === 'update_booking_status' && !bookingsEnabled) {
+      toast.error('Bookings are switched off, so booking changes cannot be applied.');
+      return;
+    }
     setExecutingAction(msgId);
     try {
       const targetIds = overrideTargetIds || getEffectiveHotelIds(msgId, action);
@@ -1166,7 +1192,7 @@ export default function OperationsCopilot() {
           ...(action.outOfOfficeMessage !== undefined ? { outOfOfficeMessage: action.outOfOfficeMessage } : {}),
         } : p));
 
-        actionSummaryText = `Set ${targetIds.length === 1 ? targetNames[0] : `${targetIds.length} properties`} to ${isOnline ? '🟢 **ONLINE** (Accepting Bookings)' : '🌙 **OFFLINE**'}.`;
+        actionSummaryText = `Set ${targetIds.length === 1 ? targetNames[0] : `${targetIds.length} properties`} to ${isOnline ? `🟢 **ONLINE** (${bookingsEnabled ? 'Accepting Bookings' : 'Answering enquiries'})` : '🌙 **OFFLINE**'}.`;
         toast.success(`${targetIds.length} properties are now ${isOnline ? 'Online' : 'Offline'}!`, { icon: '✅' });
 
       // 4. DAILY BOARD (StayOS)
@@ -1790,7 +1816,7 @@ export default function OperationsCopilot() {
                 <span>•</span>
                 <span>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</span>
               </div>
-              <div className="flex items-center gap-2">
+              {bookingsEnabled && <div className="flex items-center gap-2">
                 <span className={`inline-flex items-center gap-1 font-medium ${arrivalsCountToday > 0 ? 'text-amber-700 font-bold' : 'text-stone-500'}`}>
                   {arrivalsCountToday} arrival{arrivalsCountToday === 1 ? '' : 's'} today
                 </span>
@@ -1798,7 +1824,7 @@ export default function OperationsCopilot() {
                 <span className={`inline-flex items-center gap-1 font-medium ${departuresCountToday > 0 ? 'text-stone-700' : 'text-stone-400'}`}>
                   {departuresCountToday} out
                 </span>
-              </div>
+              </div>}
             </div>
 
             {/* MAIN CONTENT AREA */}
@@ -1917,7 +1943,7 @@ export default function OperationsCopilot() {
                 <>
                   {messages.length === 0 && (
                     <p className="text-xs text-stone-500 text-center py-6 px-4">
-                      Ask Ulendo about bookings, rates, guests or {userIsAdmin ? 'any property on the platform' : 'your properties'}.
+                      Ask Ulendo about {bookingsEnabled ? 'bookings, rates, guests' : 'rates, menus, contact details'} or {userIsAdmin ? 'any property on the platform' : 'your properties'}.
                     </p>
                   )}
                   {messages.map((msg, mIdx) => (
@@ -1986,6 +2012,7 @@ export default function OperationsCopilot() {
                                     const textContent = String(children || '').toLowerCase();
                                     // Auto-heal links where StayOS was wrongly targeted for bookings or front desk arrivals
                                     if (
+                                      bookingsEnabled &&
                                       targetHref.includes('tab=stayos') &&
                                       (textContent.includes('front desk') || textContent.includes('booking') || textContent.includes('arrival') || textContent.includes('reservation'))
                                     ) {
@@ -2152,7 +2179,7 @@ export default function OperationsCopilot() {
                                 <span className="truncate">
                                   {isAmenityProposal && (proposal.type === 'remove_amenity' ? 'Remove an amenity' : 'Add an amenity')}
                                   {proposal.type === 'update_room_price' && 'Change a room rate'}
-                                  {proposal.type === 'update_property_online' && 'Take bookings on or off'}
+                                  {proposal.type === 'update_property_online' && (bookingsEnabled ? 'Take bookings on or off' : 'Front desk online or away')}
                                   {proposal.type === 'update_property_policy' && 'Update a policy'}
                                   {proposal.type === 'update_daily_board' && 'Update the daily board'}
                                   {proposal.type === 'add_restaurant_dish' && 'Add a dish to the menu'}
@@ -2275,7 +2302,7 @@ export default function OperationsCopilot() {
                               {/* Online / Offline toggle details */}
                               {proposal.type === 'update_property_online' && (
                                 <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
-                                  <p>Bookings: <strong className={proposal.isOnline ? 'text-emerald-700' : 'text-amber-700'}>{proposal.isOnline ? 'Open (taking bookings)' : 'Paused'}</strong></p>
+                                  <p>{bookingsEnabled ? 'Bookings' : 'Front desk'}: <strong className={proposal.isOnline ? 'text-emerald-700' : 'text-amber-700'}>{proposal.isOnline ? (bookingsEnabled ? 'Open (taking bookings)' : 'Online (answering enquiries)') : (bookingsEnabled ? 'Paused' : 'Away')}</strong></p>
                                   {proposal.outOfOfficeMessage && (
                                     <p className="text-[11px] text-stone-500 italic">"{proposal.outOfOfficeMessage}"</p>
                                   )}
@@ -2456,8 +2483,8 @@ export default function OperationsCopilot() {
                   onChange={e => setInputMessage(e.target.value)}
                   placeholder={
                     userIsAdmin
-                      ? 'Ask about any property, booking or listing'
-                      : 'Ask about bookings, check-outs or room rates'
+                      ? (bookingsEnabled ? 'Ask about any property, booking or listing' : 'Ask about any property or listing')
+                      : (bookingsEnabled ? 'Ask about bookings, check-outs or room rates' : 'Ask about room rates, menus or contact details')
                   }
                   disabled={generating}
                   aria-label="Message Ulendo"

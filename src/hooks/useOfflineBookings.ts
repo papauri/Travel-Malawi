@@ -9,6 +9,7 @@ import {
   SyncResult,
 } from '../lib/offlineBookingsDB';
 import toast from 'react-hot-toast';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export interface UseOfflineBookingsReturn {
   allBookings: OfflineBookingRecord[];
@@ -26,6 +27,7 @@ export function useOfflineBookings(): UseOfflineBookingsReturn {
   const [allBookings, setAllBookings] = useState<OfflineBookingRecord[]>([]);
   const [pendingBookings, setPendingBookings] = useState<OfflineBookingRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const { bookingsEnabled } = usePlatformMode();
 
   const refresh = useCallback(async () => {
     try {
@@ -52,6 +54,10 @@ export function useOfflineBookings(): UseOfflineBookingsReturn {
   }, [refresh]);
 
   const syncNow = useCallback(async (): Promise<SyncResult> => {
+    if (!bookingsEnabled) {
+      toast('Bookings are switched off. Saved requests stay on this device.');
+      return { total: 0, synced: 0, failed: 0, records: [] };
+    }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       toast.error('Device is currently offline. Will sync once reconnected.');
       return { total: 0, synced: 0, failed: 0, records: [] };
@@ -81,7 +87,7 @@ export function useOfflineBookings(): UseOfflineBookingsReturn {
     } finally {
       setIsSyncing(false);
     }
-  }, [refresh]);
+  }, [refresh, bookingsEnabled]);
 
   const removeBooking = useCallback(
     async (id: string) => {

@@ -4,6 +4,7 @@ import { UnreadMessageItem } from '../hooks/useUnreadMessages';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { isSoundEnabled, setSoundEnabled } from '../lib/notificationSound';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +47,10 @@ export default function NotificationBell() {
   const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
 
   const isManager = useIsHost();
+  // Directory mode (D3): everything in this bell is a chat, call or booking
+  // alert (lodge announcements reach guests through their bookings), so the
+  // bell is not shown at all.
+  const { bookingsEnabled } = usePlatformMode();
   const totalAlertsCount = unreadCount + unreadBroadcasts;
 
   // Whenever opened, if no unread messages, default to active chats tab
@@ -149,6 +154,8 @@ export default function NotificationBell() {
       handleOpenItem(item);
     }
   };
+
+  if (!bookingsEnabled) return null;
 
   return (
     <div className="relative" ref={dropdownRef}>

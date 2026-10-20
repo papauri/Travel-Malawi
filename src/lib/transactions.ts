@@ -4,7 +4,7 @@ import { isRoomAvailable, BookingLike } from './availability';
 import { computeBookingPricing, entirePlaceRoom, entirePlaceRoomId, withPropertyBlocks } from './booking';
 import { getActivePromotion } from './promotions';
 import { roomPrice } from './currency';
-import { updateBookingWithSlotTx } from './bookingWrites';
+import { updateBookingWithSlotTx, bookingsEnabledNow, DirectoryModeError } from './bookingWrites';
 import { Booking, CurrencyCode, Hotel, Promotion, RoomType } from '../types';
 
 /**
@@ -37,6 +37,8 @@ export async function safeRunTransactionAvailability(
   operation: (transaction: Transaction) => void,
   ignoreBookingId?: string
 ) {
+  // D3: confirming or re-dating a booking is a booking flow; refuse it in directory mode.
+  if (!(await bookingsEnabledNow())) throw new DirectoryModeError();
   const lockRef = doc(db, 'room_locks', roomId);
 
   let retries = 3;
@@ -202,6 +204,7 @@ export function confirmErrorMessage(err: unknown): string {
   if (err instanceof PriceMismatchError) {
     return 'The stored total is lower than the current price for this stay.';
   }
+  if (err instanceof DirectoryModeError) return err.message;
   const msg = (err as any)?.message;
   if (msg === 'ROOM_UNAVAILABLE') return 'No units of this room are free for these dates. Confirming would overbook it.';
   if (msg === 'TOO_MANY_RETRIES') return 'Inventory changed several times while confirming. Please try again.';

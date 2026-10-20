@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import Modal from './Modal';
 import { Star, ShieldCheck, CheckCircle2, AlertCircle, ExternalLink, BedDouble, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/handleFirestoreError';
@@ -34,6 +35,7 @@ export function ReviewModal({
   onReviewSubmitted
 }: ReviewModalProps) {
   const { user } = useAuth();
+  const { bookingsEnabled } = usePlatformMode();
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [title, setTitle] = useState('');
@@ -162,7 +164,7 @@ export function ReviewModal({
           <div>
             <h4 className="font-serif font-bold text-stone-900 text-base">Sign in required</h4>
             <p className="text-stone-500 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
-              You must be signed in with the account used for your booking to submit a verified guest review.
+              {bookingsEnabled ? 'You must be signed in with the account used for your booking to submit a verified guest review.' : 'You must be signed in with the account you used for your stay to submit a verified guest review.'}
             </p>
           </div>
           <button
@@ -177,7 +179,7 @@ export function ReviewModal({
         <div className="py-10 text-center space-y-3">
           <Loader2 className="w-6 h-6 animate-spin text-stone-600 mx-auto" />
           <p className="text-stone-500 text-xs sm:text-sm font-medium">
-            Verifying stay reservation records for {hotelName || 'this property'}...
+            {bookingsEnabled ? 'Verifying stay reservation records for' : 'Checking your stay records for'} {hotelName || 'this property'}...
           </p>
         </div>
       ) : userBookings.length === 0 ? (
@@ -192,7 +194,7 @@ export function ReviewModal({
                   Honest reviews only
                 </h4>
                 <p className="text-amber-900 text-xs leading-relaxed">
-                  To protect travelers from fake, sponsored, or bot-generated feedback, reviews on Travel Malawi can only be posted by <strong>verified guests with a confirmed booking</strong> at {hotelName || 'this property'}.
+                  To protect travelers from fake, sponsored, or bot-generated feedback, reviews on Travel Malawi can only be posted by <strong>verified guests</strong> of {hotelName || 'this property'}. {bookingsEnabled ? '' : 'New reviews are not being collected right now; reviews already posted stay visible.'}
                 </p>
               </div>
             </div>
@@ -200,11 +202,11 @@ export function ReviewModal({
 
           <div className="space-y-2 pt-1">
             <p className="text-stone-600 text-xs leading-relaxed">
-              Have you stayed here? Make sure you are signed in with the same email used when booking. If you are exploring accommodations, you can reserve a room below or browse live community feedback directly on Google Maps.
+              {bookingsEnabled ? 'Have you stayed here? Make sure you are signed in with the same email used when booking. If you are exploring accommodations, you can reserve a room below or browse live community feedback directly on Google Maps.' : 'Have you stayed here? Make sure you are signed in with the same email you used for your stay.'}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-              <button
+              {bookingsEnabled && <button
                 type="button"
                 onClick={() => {
                   onClose();
@@ -215,7 +217,7 @@ export function ReviewModal({
               >
                 <BedDouble className="w-4 h-4 text-amber-400" />
                 <span>Book a Stay at {hotelName || 'This Stay'}</span>
-              </button>
+              </button>}
 
               {googleMapsReviewsUrl && (
                 <a

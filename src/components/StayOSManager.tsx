@@ -1,6 +1,7 @@
 import SectionCard from './SectionCard';
 import React, { useEffect, useState } from 'react';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import ConfirmDialog from './ConfirmDialog';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -66,6 +67,11 @@ const CustomSelect = ({ value, options, onChange, placeholder }: { value: string
 };
 
 export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSManagerProps) {
+  // Directory mode (D3): no vouchers, no in-stay guest contact, no payments.
+  // Only the practical facts shown on the listing (power, water, road,
+  // internet, workspace) stay editable; crew, daily board, Wi-Fi-on-voucher
+  // and cash-on-arrival are kept in Firestore untouched until bookings return.
+  const { bookingsEnabled } = usePlatformMode();
   const [saving, setSaving] = useState(false);
   const [infrastructure, setInfrastructure] = useState<InfrastructureDetails>(
     hotel.infrastructure || {
@@ -103,6 +109,13 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (!bookingsEnabled) {
+        await updateDoc(doc(db, 'hotels', hotel.id!), { infrastructure });
+        setSaved(prev => ({ ...prev, infrastructure }));
+        onSaved?.({ infrastructure, crew: saved.crew, dailyBoard: saved.dailyBoard });
+        toast.success('Practical details saved');
+        return;
+      }
       const savedBoard = { ...dailyBoard, updatedAt: Date.now() };
       await updateDoc(doc(db, 'hotels', hotel.id!), {
         infrastructure,
@@ -142,10 +155,10 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
         <div className="mb-6">
           <h2 className="tm-h2 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-stone-500" />
-            Stay details
+            {bookingsEnabled ? 'Stay details' : 'Practical details'}
           </h2>
           <p className="tm-muted mt-1 max-w-2xl">
-            Shown on your guests' stay vouchers.
+            {bookingsEnabled ? "Shown on your guests' stay vouchers." : 'Power, water, road and internet, shown on your listing.'}
           </p>
         </div>
 
@@ -245,6 +258,7 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
             />
           </div>
           
+          {bookingsEnabled && (<>
           <div className="md:col-span-3 pt-4 border-t border-stone-200 flex items-center gap-4">
             <button
               onClick={() => setInfrastructure({...infrastructure, offlineTrustBadge: !infrastructure.offlineTrustBadge})}
@@ -309,8 +323,11 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
               </div>
             )}
           </div>
+          </>)}
         </div>
       </div>
+
+      {bookingsEnabled && (<>
 
       <div>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -430,8 +447,8 @@ export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSM
           </div>
         </div>
       </div>
+      </>)}
 
-      
       <div className="sticky bottom-0 py-3 bg-white border-t border-stone-200 tm-actions justify-between mt-8 z-20">
         <div className="text-sm text-stone-500">
           {isDirty ? <span className="text-amber-800 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500" /> Unsaved changes</span> : 'Everything is saved'}

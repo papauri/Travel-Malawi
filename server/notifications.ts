@@ -1,8 +1,16 @@
 import { sendSystemEmail } from './emailConfig';
 import { escapeHtml } from './auth';
+import { bookingsEnabled } from './platformMode';
 
-/** Sends a plain-text notification; the text is escaped before it goes into HTML. */
+/**
+ * Sends a plain-text notification; the text is escaped before it goes into HTML.
+ * Every notice sent through here is about a booking or an in-app chat, so in
+ * directory mode (D3) nothing is sent.
+ */
 export async function sendOfflineNotification(email: string, subject: string, message: string) {
+  if (!(await bookingsEnabled())) {
+    return { success: false, error: 'directory_mode' };
+  }
   try {
     const result = await sendSystemEmail({
       to: email,

@@ -46,6 +46,8 @@ export default function ReviewListingModal({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isFetchingReviews, setIsFetchingReviews] = useState(false);
+  const [licenceInput, setLicenceInput] = useState<string | null>(null);
+  const [savingLicence, setSavingLicence] = useState(false);
 
   if (!hotel) return null;
 
@@ -69,6 +71,16 @@ export default function ReviewListingModal({
   const rawWa = hotel.contactWhatsapp || hotel.contactPhone || hotel.managerPhone || '';
   const cleanWa = rawWa.replace(/[^\d]/g, '');
   const waUrl = cleanWa ? `https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${hotel.managerName || 'Host'}, inquiring regarding your listing "${hotel.name}" on Travel Malawi.`)}` : '';
+
+  // In directory mode the listing's own contacts are the only way travellers
+  // reach the property, so approval needs at least one of them.
+  const directContacts = [
+    hotel.contactPhone?.trim() && 'phone',
+    hotel.contactWhatsapp?.trim() && 'WhatsApp',
+    hotel.contactEmail?.trim() && 'email',
+  ].filter(Boolean) as string[];
+  const hasDirectContact = directContacts.length > 0;
+  const licence = hotel.tourismLicenceNumber?.trim() || '';
 
   // Pricing assessment
   const hasRooms = hotelRooms.length > 0;
@@ -106,7 +118,7 @@ export default function ReviewListingModal({
         ? `Configured from $${primaryRateUsd} / MK ${primaryRateMwk.toLocaleString()} per night`
         : hasRooms
         ? `${hotelRooms.length} room unit(s) configured`
-        : 'Nightly rates require review before bookings can be enabled',
+        : 'No nightly rate yet',
       icon: DollarSign
     },
     {
@@ -122,13 +134,11 @@ export default function ReviewListingModal({
     },
     {
       id: 'contact',
-      title: 'Direct Host & WhatsApp Reachability',
-      passed: !!cleanWa && !!cleanPhone,
-      detail: cleanWa
-        ? `Direct WhatsApp (+${cleanWa}) & Phone verified`
-        : cleanPhone
-        ? `Phone verified (${rawPhone}), WhatsApp missing`
-        : 'No direct host contact registered',
+      title: 'Direct contact for travellers',
+      passed: hasDirectContact,
+      detail: hasDirectContact
+        ? `Listing shows ${directContacts.join(', ')}`
+        : 'No phone, WhatsApp or email on the listing. Required before approval.',
       icon: MessageSquare
     },
     {
@@ -217,7 +227,28 @@ export default function ReviewListingModal({
     }
   };
 
+  const handleSaveLicence = async () => {
+    if (!hotel.id || licenceInput === null) return;
+    const next = licenceInput.trim().slice(0, 60);
+    setSavingLicence(true);
+    try {
+      await updateDoc(doc(db, 'hotels', hotel.id), { tourismLicenceNumber: next });
+      onHotelUpdated?.({ ...hotel, tourismLicenceNumber: next });
+      setLicenceInput(null);
+      toast.success('Licence number saved.');
+    } catch (err: any) {
+      console.error('Could not save licence number:', err);
+      toast.error(err?.message || 'Could not save the licence number.');
+    } finally {
+      setSavingLicence(false);
+    }
+  };
+
   const handleApproveClick = async () => {
+    if (!hasDirectContact) {
+      toast.error('Add a phone, WhatsApp or email to the listing before approving it.');
+      return;
+    }
     await onApprove(hotel.id!);
     onClose();
   };
@@ -442,8 +473,8 @@ export default function ReviewListingModal({
                     <p className="font-semibold">No rooms added yet</p>
                     <p className="text-[11px] text-amber-800 mt-0.5">
                       {hotel.stayType === 'entire_place'
-                        ? 'Entire-place stay: bookings use the entire-place rate.'
-                        : 'Add at least one room type before this listing can take bookings.'}
+                        ? 'Entire-place stay: the listing shows the entire-place rate.'
+                        : 'Add at least one room type before this listing goes live.'}
                     </p>
                   </div>
                 </div>
@@ -485,7 +516,16 @@ export default function ReviewListingModal({
               <div className="min-w-0">
                 <span className="text-[11px] text-stone-500 block">Host</span>
                 <p className="font-semibold text-stone-900 mt-0.5">{hotel.managerName || 'Not specified'}</p>
-                <p className="text-stone-500 text-[11px] truncate">{hotel.managerEmail || hotel.contactEmail || 'No email'}</p>
+                <p className="text-stone-500 text-[11px] truncate">{hotel.managerEmail || 'No host email'}</p>
+                <span className="text-[11px] text-stone-500 block mt-2">Listing email</span>
+                {hotel.contactEmail ? (
+                  <a href={`mailto:${hotel.contactEmail}`} className="font-semibold text-stone-900 hover:underline flex items-center gap-1 mt-0.5 min-w-0">
+                    <Mail className="w-3 h-3 text-stone-500 shrink-0" />
+                    <span className="truncate">{hotel.contactEmail}</span>
+                  </a>
+                ) : (
+                  <p className="text-stone-400 mt-0.5 italic">None listed</p>
+                )}
               </div>
 
               <div>
@@ -517,6 +557,46 @@ export default function ReviewListingModal({
                   <p className="text-stone-400 mt-0.5 italic">None listed</p>
                 )}
               </div>
+            </div>
+
+            {!hasDirectContact && (
+              <p role="alert" className="text-xs text-amber-800 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>No phone, WhatsApp or email on the listing. Travellers could not reach the property, so it cannot be approved yet.</span>
+              </p>
+            )}
+
+            {/* Tourism licence (as provided; never shown as verified) */}
+            <div className="text-xs">
+              <span className="text-[11px] text-stone-500 block">Tourism licence number</span>
+              {licenceInput === null ? (
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                  <p className={licence ? 'font-semibold text-stone-900 break-all' : 'text-stone-400 italic'}>
+                    {licence ? `${licence} (provided by the property, not verified)` : 'Not provided'}
+                  </p>
+                  <button type="button" onClick={() => setLicenceInput(licence)} className="tm-link inline-flex items-center gap-1">
+                    <Edit3 className="w-3 h-3" />
+                    <span>{licence ? 'Edit' : 'Add'}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    aria-label="Tourism licence number"
+                    maxLength={60}
+                    value={licenceInput}
+                    onChange={e => setLicenceInput(e.target.value)}
+                    className="tm-input max-w-xs"
+                  />
+                  <button type="button" disabled={savingLicence} onClick={handleSaveLicence} className="tm-btn tm-btn-secondary">
+                    {savingLicence ? 'Saving…' : 'Save'}
+                  </button>
+                  <button type="button" disabled={savingLicence} onClick={() => setLicenceInput(null)} className="tm-btn tm-btn-quiet">
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Amenities Chips */}
@@ -781,7 +861,8 @@ export default function ReviewListingModal({
 
                 <button
                   type="button"
-                  disabled={isUpdating}
+                  disabled={isUpdating || !hasDirectContact}
+                  title={hasDirectContact ? undefined : 'Needs a phone, WhatsApp or email on the listing'}
                   onClick={handleApproveClick}
                   className="tm-btn tm-btn-primary"
                 >
@@ -792,7 +873,8 @@ export default function ReviewListingModal({
             ) : hotel.status === 'rejected' ? (
               <button
                 type="button"
-                disabled={isUpdating}
+                disabled={isUpdating || !hasDirectContact}
+                title={hasDirectContact ? undefined : 'Needs a phone, WhatsApp or email on the listing'}
                 onClick={handleApproveClick}
                 className="tm-btn tm-btn-primary"
               >

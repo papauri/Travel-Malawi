@@ -12,7 +12,7 @@ export default function Refunds() {
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
       <SEOHead
         title="Refunds & Cancellation Policy — Travel Malawi"
-        description="Guidelines on guest cancellations, deposit refunds, host settlement, and booking modification rules across Malawi."
+        description="Travel Malawi does not handle payments: cancellations and refunds are agreed directly between travellers and the property."
         keywords="Malawi lodge refunds, cancellation policy Malawi, Travel Malawi refunds"
         url="https://ulendomalawi.com/refunds"
       />
@@ -108,7 +108,7 @@ export default function Refunds() {
                       Travel Malawi does not collect, receive, hold, or disburse any monies.
                     </p>
                     <p className="text-stone-600 leading-relaxed">
-                      We operate exclusively as a discovery and direct booking coordination platform. We do not act as an escrow agent, payment processor, or financial intermediary. Any deposit, partial payment, or full settlement made for a stay (whether via Airtel Money, TNM Mpamba, local bank transfer, or cash on arrival) is paid <strong>directly by you (the guest) to the property owner or management</strong>.
+                      We operate exclusively as a discovery platform that connects travellers with properties. We do not act as an escrow agent, payment processor, or financial intermediary. Any deposit, partial payment, or full settlement made for a stay (whether via Airtel Money, TNM Mpamba, local bank transfer, or cash on arrival) is paid <strong>directly by you (the guest) to the property owner or management</strong>.
                     </p>
                   </div>
                 </section>
@@ -130,7 +130,7 @@ export default function Refunds() {
                       <strong>No Platform Guarantee:</strong> Travel Malawi does not set, mandate, guarantee, underwrite, or enforce cancellation policies or refund payouts. We make no representations that any deposit will be refunded in whole or in part upon cancellation.
                     </li>
                     <li>
-                      <strong>Direct Agreement:</strong> Your booking agreement and any financial conditions are formed directly between you and the property host. You are strongly advised to review the specific stay&apos;s policies and confirm deposit terms with the property manager before transferring funds.
+                      <strong>Direct Agreement:</strong> Any agreement and financial conditions for your stay are formed directly between you and the property host. You are strongly advised to review the specific stay&apos;s policies and confirm deposit terms with the property manager before transferring funds.
                     </li>
                   </ul>
                 </section>
@@ -176,7 +176,7 @@ export default function Refunds() {
                     <span>Contacting Your Property Host</span>
                   </h2>
                   <p>
-                    To modify, reschedule, or cancel a booking, or to discuss deposit and refund arrangements, please communicate directly with the property manager using the WhatsApp number, phone number, or email provided on your booking voucher and confirmation message.
+                    To modify, reschedule, or cancel a stay, or to discuss deposit and refund arrangements, please communicate directly with the property manager using the WhatsApp number, phone number, or email shown on the property's listing (or on your voucher, if you have one).
                   </p>
                 </section>
               </>

@@ -3,6 +3,7 @@ import { MapPin, Mic, Video, Check, Locate, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from './Modal';
 import { MALAWI_HUBS, MalawiHub, LatLng } from '../lib/geo';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 const STORAGE_KEY = 'tm_permissions_prefs';
 export const MANUAL_LOCATION_STORAGE_KEY = 'tm_manual_user_location';
@@ -38,6 +39,8 @@ export function openLocationSettingsModal() {
 }
 
 export default function AccessRequestModal() {
+  // Voice messages and video calls exist only while in-app chat is switched on.
+  const { bookingsEnabled } = usePlatformMode();
   const [isOpen, setIsOpen] = useState(false);
 
   // Permission states - default to true
@@ -337,7 +340,8 @@ export default function AccessRequestModal() {
               </button>
             </div>
 
-            {/* Microphone Toggle */}
+            {/* Microphone Toggle (voice messages: in-app chat only) */}
+            {bookingsEnabled && (
             <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-stone-50">
               <div className="flex items-start gap-2 min-w-0">
                 <Mic className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
@@ -362,6 +366,7 @@ export default function AccessRequestModal() {
                 />
               </button>
             </div>
+            )}
 
             {/* Camera Toggle */}
             <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-stone-50">
@@ -369,7 +374,7 @@ export default function AccessRequestModal() {
                 <Video className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Camera</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Used for photos and video calls.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">{bookingsEnabled ? 'Used for photos and video calls.' : 'Used for photos.'}</p>
                 </div>
               </div>
               <button

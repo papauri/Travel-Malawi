@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 const CHANNELS = [
   { id: 'whatsapp', label: 'WhatsApp and phone calls' },
@@ -31,6 +32,15 @@ const FEATURES = [
   { id: 'calendar', label: 'Date blocker for offline bookings' },
 ];
 
+// Directory mode (default): no payouts, booking calendar or guest chat on offer.
+const DIRECTORY_FEATURES = [
+  { id: 'listing_page', label: 'A free listing with photos, rooms, rates and a map pin' },
+  { id: 'direct_contact', label: 'Our own phone, WhatsApp and email shown to travellers' },
+  { id: 'zero_comm', label: 'No commission and no listing fee' },
+  { id: 'ai_concierge', label: 'Ulendo answering traveller questions at any hour' },
+  { id: 'shadow_support', label: 'Live setup help from our team' },
+];
+
 const PILOT = [
   { id: 'yes', label: 'Yes, we want to join the Founding Host Pilot' },
   { id: 'briefing', label: 'Maybe, we would like a quick call first' },
@@ -38,9 +48,11 @@ const PILOT = [
 ];
 
 export default function ConceptValidationSurvey() {
+  const { bookingsEnabled } = usePlatformMode();
+  const features = bookingsEnabled ? FEATURES : DIRECTORY_FEATURES;
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'concept-validation-survey',
-    'Host survey: direct bookings and local payments',
+    bookingsEnabled ? 'Host survey: direct bookings and local payments' : 'Host survey: how travellers find you',
     'Three minutes. Tell us what slows your property down so we build the right tools.'
   );
 
@@ -62,7 +74,7 @@ export default function ConceptValidationSurvey() {
       manualMessaging: 4,
       doubleBookings: 3,
     },
-    features: ['payouts', 'zero_comm', 'ai_concierge'],
+    features: ['zero_comm', 'ai_concierge'],
     pilotInterest: 'yes'
   });
 
@@ -252,7 +264,7 @@ export default function ConceptValidationSurvey() {
             </section>
 
             <section className="tm-divider pt-6">
-              <h2 className="tm-h2">How do guests book today?</h2>
+              <h2 className="tm-h2">How do guests find and reach you today?</h2>
               <div className="mt-2">
                 {CHANNELS.map(item => (
                   <label key={item.id} className={optionCls}>
@@ -308,7 +320,7 @@ export default function ConceptValidationSurvey() {
             <section className="tm-divider pt-6">
               <h2 className="tm-h2">What would help most?</h2>
               <div className="mt-2">
-                {FEATURES.map(item => (
+                {features.map(item => (
                   <label key={item.id} className={optionCls}>
                     <input
                       type="checkbox"
@@ -324,7 +336,9 @@ export default function ConceptValidationSurvey() {
 
             <section className="tm-divider pt-6">
               <h2 className="tm-h2">Join the Founding Host Pilot?</h2>
-              <p className="tm-muted mt-1">10 stays per district, 0% commission for 90 days.</p>
+              <p className="tm-muted mt-1">
+                {bookingsEnabled ? '10 stays per district, 0% commission for 90 days.' : '10 stays per district, free listing and setup.'}
+              </p>
               <div className="mt-2">
                 {PILOT.map(item => (
                   <label key={item.id} className={optionCls}>

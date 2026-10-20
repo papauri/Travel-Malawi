@@ -7,8 +7,10 @@ import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export default function OperationsStarterPack() {
+  const { bookingsEnabled } = usePlatformMode();
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'operations-starter-pack',
     'Field guide: signing up and checking hosts',
@@ -95,7 +97,39 @@ export default function OperationsStarterPack() {
     }
   };
 
-  const steps = [
+  // Directory mode (default): no booking, deposit, chat or calendar-sync pitch.
+  const directorySteps = [
+    {
+      title: 'Ask for photos and rates, not a sign-up',
+      detail: 'Say: "Send 3 photos and your rate card on WhatsApp. We set up your listing for free." Never ask a host to fill in forms or learn a system.',
+    },
+    {
+      title: 'Message on WhatsApp, three times over three days',
+      detail: 'Day 1: a sincere compliment and a question about how travellers find them today. Day 2: show a private preview of their listing. Day 3: offer a founding-host place for their region.',
+    },
+    {
+      title: 'Answer objections plainly',
+      detail: '"We use Booking.com": keep it, a directory listing sits alongside it. "No time": travellers contact you directly on the phone, WhatsApp or email you choose. "What is the catch?": none, there is no commission and no listing fee. "How do guests pay?": that is agreed between you and the guest; Travel Malawi takes no part in it.',
+    },
+    {
+      title: 'Show the listing and Ulendo',
+      detail: 'Travellers see rooms, indicative rates, the menu, the map pin and the "Contact the property" details. Ulendo in the Host Dashboard helps with rates in MWK and USD, descriptions and menu updates.',
+    },
+    {
+      title: 'Check the listing before approving',
+      detail: 'Gate GPS pin. Four daytime photos (bed, view, bathroom, dining). MWK in clean thousands, USD in whole dollars or nearest $5. At least one direct contact (phone, WhatsApp or email); the WhatsApp number answers a test message within 15 minutes. Then approve in the Admin Dashboard. Never describe a listing as licensed or verified by the Ministry.',
+    },
+    {
+      title: 'Help a host live with Shadow mode',
+      detail: 'Choose Shadow a Manager in the menu, search the property, click Shadow Host. Check the amber banner shows. Do the fix, then click Exit Shadow Mode. Every action is logged and no password is shared.',
+    },
+    {
+      title: 'Log the lead below',
+      detail: 'Enter the lodge, area and contact so the Admin Hub can start onboarding.',
+    },
+  ];
+
+  const bookingSteps = [
     {
       title: 'Ask for photos and rates, not a sign-up',
       detail: 'Say: "Send 3 photos and your rate card on WhatsApp. We set up your page for free." Never ask a host to fill in forms or learn a system.',
@@ -125,6 +159,8 @@ export default function OperationsStarterPack() {
       detail: 'Enter the lodge, area and contact so the Admin Hub can start onboarding.',
     },
   ];
+
+  const steps = bookingsEnabled ? bookingSteps : directorySteps;
 
   return (
     <div className="min-h-screen bg-white text-stone-700 font-sans">
@@ -215,7 +251,7 @@ export default function OperationsStarterPack() {
               </div>
               <div>
                 <label className="tm-label">Notes</label>
-                <textarea rows={3} placeholder="e.g. Interested, has 6 chalets, unhappy with booking-site fees" value={formData.notes}
+                <textarea rows={3} placeholder="e.g. Interested, has 6 chalets, wants more domestic guests" value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })} className="tm-input" />
               </div>
               <div className="tm-actions justify-between">

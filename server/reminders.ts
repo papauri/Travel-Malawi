@@ -6,6 +6,7 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { sendSystemEmail } from './emailConfig';
 import { sendWhatsAppMessage } from './whatsappConfig';
 import { escapeHtml, PROJECT_ID, DATABASE_ID } from './auth';
+import { bookingsEnabled } from './platformMode';
 import { READY_REMINDER_TEMPLATES, fillTemplate, formatReminderEmailHtml, ReminderVariables } from '../src/lib/reminderTemplates';
 
 /**
@@ -561,6 +562,9 @@ let firing = false;
 /** Called every minute by the server. Never runs two passes at once. */
 export async function checkAndFireReminders(): Promise<{ fired: ServerReminder[] }> {
   if (firing) return { fired: [] };
+  // Directory mode: no booking reminders go out. Pending ones are left as they
+  // are, so switching bookings back on resumes them (stale ones then expire).
+  if (!(await bookingsEnabled())) return { fired: [] };
   firing = true;
   const fired: ServerReminder[] = [];
   try {

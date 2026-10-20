@@ -4,15 +4,19 @@ import { ShieldCheck, ArrowLeft, Lock, FileText, RefreshCcw, Mail, MapPin, Check
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import MarkdownContent from '../components/MarkdownContent';
 import SEOHead from '../components/SEOHead';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export default function Privacy() {
   const { settings } = useSystemSettings();
+  const { bookingsEnabled } = usePlatformMode();
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
       <SEOHead
         title="Privacy Policy — Travel Malawi"
-        description="How Travel Malawi protects and handles guest and host data with zero third-party ad tracking, secure communication, and transparent direct booking."
+        description={bookingsEnabled
+          ? 'How Travel Malawi protects and handles guest and host data with zero third-party ad tracking, secure communication, and transparent direct booking.'
+          : 'How Travel Malawi protects and handles traveller and host data, with zero third-party ad tracking.'}
         keywords="Travel Malawi privacy, data protection Malawi, guest privacy"
         url="https://ulendomalawi.com/privacy"
       />
@@ -38,12 +42,14 @@ export default function Privacy() {
             >
               Terms of Service
             </Link>
-            <Link
-              to="/refunds"
-              className="bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200 font-semibold px-3 py-1.5 rounded-xl transition shadow-2xs"
-            >
-              Refunds &amp; Cancellations
-            </Link>
+            {bookingsEnabled && (
+              <Link
+                to="/refunds"
+                className="bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200 font-semibold px-3 py-1.5 rounded-xl transition shadow-2xs"
+              >
+                Refunds &amp; Cancellations
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -100,11 +106,11 @@ export default function Privacy() {
                     <span>What Information We Collect</span>
                   </h2>
                   <p>
-                    When you browse stays, submit a booking inquiry, or register as a property host on Travel Malawi, we collect only the essential details needed to arrange your stay:
+                    When you browse stays, {bookingsEnabled ? 'submit a booking inquiry' : 'submit an enquiry or survey'}, or register as a property host on Travel Malawi, we collect only the essential details needed to {bookingsEnabled ? 'arrange your stay' : 'run the directory'}:
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-stone-600">
                     <li><strong>Guest Contact Details:</strong> Full Name, Email Address, WhatsApp / Phone Number, and any special dietary or check-in arrival notes.</li>
-                    <li><strong>Booking Specifications:</strong> Selected check-in/check-out dates, guest party count (adults and children), and selected accommodation unit (e.g. Whole 3-Bedroom Cottage, Master Lake Chalet, or Deluxe Room).</li>
+                    {bookingsEnabled && <li><strong>Booking Specifications:</strong> Selected check-in/check-out dates, guest party count (adults and children), and selected accommodation unit (e.g. Whole 3-Bedroom Cottage, Master Lake Chalet, or Deluxe Room).</li>}
                     <li><strong>Host &amp; Property Information:</strong> Property name, physical district/gps entrance coordinates, official manager contacts, published rates (in MWK and USD), and room inventory.</li>
                   </ul>
                 </section>
@@ -119,7 +125,7 @@ export default function Privacy() {
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-stone-600">
                     <li><strong>Direct Connection:</strong> When you send an inquiry, your contact details are transmitted directly to the assigned property manager so they can confirm availability, issue gate arrival directions, and coordinate with you on WhatsApp.</li>
-                    <li><strong>Voucher Delivery:</strong> We generate your printable booking confirmation voucher and keep your upcoming itinerary accessible in your private trip dashboard.</li>
+                    {bookingsEnabled && <li><strong>Voucher Delivery:</strong> We generate your printable booking confirmation voucher and keep your upcoming itinerary accessible in your private trip dashboard.</li>}
                     <li><strong>Service Reliability:</strong> Our concierge team (*Ulendo*) uses your details to verify listing authenticity and assist with road directions or force majeure re-routings when requested.</li>
                   </ul>
                 </section>
@@ -159,7 +165,7 @@ export default function Privacy() {
                     <span>Your Rights &amp; Account Deletion</span>
                   </h2>
                   <p>
-                    You maintain full control of your personal information. You may request a complete export or permanent deletion of your account and booking history at any time by contacting our data desk at <a href="mailto:info@ulendomalawi.com" className="text-stone-900 font-semibold underline">info@ulendomalawi.com</a>.
+                    You maintain full control of your personal information. You may request a complete export or permanent deletion of your account{bookingsEnabled ? ' and booking history' : ' and saved data'} at any time by contacting our data desk at <a href="mailto:info@ulendomalawi.com" className="text-stone-900 font-semibold underline">info@ulendomalawi.com</a>.
                   </p>
                 </section>
               </>
@@ -171,7 +177,7 @@ export default function Privacy() {
               Travel Malawi Digital Directory · ulendomalawi.com
             </div>
             <div className="text-xs text-stone-500">
-              0% Booking Commission · Direct Connection
+              {bookingsEnabled ? '0% Booking Commission · Direct Connection' : 'No commission · Direct contact'}
             </div>
           </footer>
         </article>

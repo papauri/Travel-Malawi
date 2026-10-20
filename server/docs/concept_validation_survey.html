@@ -47,6 +47,7 @@
     <p class="subtitle">Partner discovery framework and survey for lodges, cottages, hotels and camps in Malawi</p>
     <hr class="rule">
   </header>
+  <!-- booking-only -->
   <h2>Summary</h2>
   <p>Before opening Travel Malawi to domestic and international travellers, we are speaking with property operators first. Rather than asking lodge owners, boutique hoteliers, lakeside cottage hosts and safari camp managers to adopt another piece of software, we want to understand how they work today. We are talking to operators in Lilongwe, Blantyre, Mangochi, Cape Maclear, Nkhata Bay, Nyika, Majete and Liwonde.</p>
   <h3>Why we are starting this way</h3>
@@ -88,6 +89,47 @@
     <li><strong>Input into the roadmap.</strong> Monthly contact with the Travel Malawi team to discuss which features matter most to your property.</li>
   </ul>
   <h2>Partner survey</h2>
+  <!-- /booking-only -->
+  <!-- directory-only -->
+  <h2>Summary</h2>
+  <p>Before opening Travel Malawi to domestic and international travellers, we are speaking with property operators first. Rather than asking lodge owners, boutique hoteliers, lakeside cottage hosts and safari camp managers to adopt another piece of software, we want to understand how they work today. We are talking to operators in Lilongwe, Blantyre, Mangochi, Cape Maclear, Nkhata Bay, Nyika, Majete and Liwonde.</p>
+  <h3>Why we are starting this way</h3>
+  <ol>
+  <li><strong>Listen first.</strong> We want to hear about real day-to-day problems before proposing anything.</li>
+  <li><strong>Design with property owners.</strong> Partners help shape features around how business works in Malawi: generator and solar backup, seasonal road access, and keeping listing details accurate.</li>
+  <li><strong>Benefits for early partners.</strong> Founding properties get free listing setup and help with photos and menus.</li>
+  </ol>
+  <h2>Part 1: Current habits and pain points</h2>
+  <h3>1.1 How travellers find properties in Malawi today</h3>
+  <p>From early conversations with operators in the Southern, Central and Northern regions, travellers usually reach properties through four channels:</p>
+  <ul>
+  <li><strong>WhatsApp and phone calls (about 55–70%).</strong> A lot of back-and-forth about availability, photos, rates and directions, often at odd hours.</li>
+  <li><strong>Foreign online travel agencies (about 20–30%).</strong> Generic descriptions of Malawi and limited local support.</li>
+  <li><strong>Corporate, NGO and government requests (about 10–20%).</strong> Slow approvals and paper-based requests.</li>
+  <li><strong>Walk-ins and referrals (about 5–15%).</strong> Unpredictable and affected by weather and holidays.</li>
+  </ul>
+  <h3>1.2 Main problems</h3>
+  <ol>
+  <li><strong>Visibility.</strong> Many properties are hard to find online, or show out-of-date photos, rates and directions.</li>
+  <li><strong>Scattered information.</strong> Details sit in WhatsApp threads, Facebook pages and foreign sites.</li>
+  <li><strong>Contact.</strong> Travellers cannot always find a working phone or WhatsApp number.</li>
+  <li><strong>Repeated questions.</strong> Managers spend hours each day answering the same questions about road conditions, boat transfers, power, Wi-Fi and meals.</li>
+  </ol>
+  <h2>Part 2: What Travel Malawi offers</h2>
+  <ul>
+  <li><strong>A property page with no technical setup.</strong> Each property gets a mobile-friendly listing page with photos, a map pin, indicative rates and clear policies.</li>
+  <li><strong>Direct contact.</strong> Your phone, WhatsApp, email and social links are shown on the page, and travellers contact you directly. Travel Malawi is an information directory only. Arrangements are made directly with the property.</li>
+  <li><strong>Ulendo, the AI trip planner.</strong> Ulendo answers traveller questions at any hour about areas, meals and excursions, and points them to your contact details. It replies in English, and in Chichewa when a traveller writes in Chichewa.</li>
+  <li><strong>Concierge Onboarding &amp; Support Shadow Mode.</strong> Verified operations staff can securely shadow your manager dashboard live to help configure rates or upload photos without requiring passwords.</li>
+  <li><strong>Reviews.</strong> Verified reviews from TripAdvisor and Google can be shown on the property page.</li>
+  </ul>
+  <h2>Part 3: Founding partner offer</h2>
+  <ul>
+  <li><strong>Free listing setup.</strong> Our team helps with photos, room categories and menus at no cost.</li>
+  <li><strong>Input into the roadmap.</strong> Monthly contact with the Travel Malawi team to discuss which features matter most to your property.</li>
+  </ul>
+  <h2>Partner survey</h2>
+  <!-- /directory-only -->
   <form id="surveyForm">
     <h3>Section A: Property profile</h3>
     <label for="propName">Property name</label>
@@ -105,6 +147,7 @@
     <label for="avgRate">Average nightly rate (MWK or USD)</label>
     <input type="text" id="avgRate" name="avgRate">
 
+    <!-- booking-only -->
     <h3>Section B: Current habits</h3>
     <p>Rate each statement from 1 (disagree) to 5 (strongly agree).</p>
     <label for="q1">Managing direct enquiries on WhatsApp takes too much time.</label>
@@ -130,10 +173,42 @@
     <input type="number" id="f5" name="f5" min="1" max="6" data-feature="Concierge onboarding with live host shadow support">
     <label for="f6">Verified TripAdvisor and Google reviews on our page</label>
     <input type="number" id="f6" name="f6" min="1" max="6" data-feature="Verified TripAdvisor and Google reviews on our page">
+    <!-- /booking-only -->
+    <!-- directory-only -->
+    <h3>Section B: Current habits</h3>
+    <p>Rate each statement from 1 (disagree) to 5 (strongly agree).</p>
+    <label for="q1">Managing direct enquiries on WhatsApp takes too much time.</label>
+    <select id="q1" name="q1"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q2">Travellers often cannot find our correct phone number, photos or directions online.</label>
+    <select id="q2" name="q2"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q3">Our information is scattered across WhatsApp, Facebook and other sites.</label>
+    <select id="q3" name="q3"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q4">We spend too much time answering the same questions.</label>
+    <select id="q4" name="q4"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+
+    <h3>Section C: Most useful features</h3>
+    <p>Rank these from 1 (most useful) to 5 (least useful).</p>
+    <label for="f1">A free listing with photos, rooms, rates and a map pin</label>
+    <input type="number" id="f1" name="f1" min="1" max="5" data-feature="A free listing with photos, rooms, rates and a map pin">
+    <label for="f2">Our own phone, WhatsApp and email shown to travellers</label>
+    <input type="number" id="f2" name="f2" min="1" max="5" data-feature="Our own phone, WhatsApp and email shown to travellers">
+    <label for="f3">Ulendo answering traveller questions at any hour</label>
+    <input type="number" id="f3" name="f3" min="1" max="5" data-feature="Ulendo answering traveller questions at any hour">
+    <label for="f4">Concierge onboarding with live host shadow support</label>
+    <input type="number" id="f4" name="f4" min="1" max="5" data-feature="Concierge onboarding with live host shadow support">
+    <label for="f5">Verified TripAdvisor and Google reviews on our page</label>
+    <input type="number" id="f5" name="f5" min="1" max="5" data-feature="Verified TripAdvisor and Google reviews on our page">
+
+    <!-- /directory-only -->
 
     <h3>Section D: Interest</h3>
     <fieldset>
+      <!-- booking-only -->
       <legend>Would you like to join the founding partner group (0% commission for the first 90 days)?</legend>
+      <!-- /booking-only -->
+      <!-- directory-only -->
+      <legend>Would you like to join the founding partner group (free listing setup)?</legend>
+      <!-- /directory-only -->
       <label class="option"><input type="radio" name="pilotInterest" value="yes"> Yes, please sign us up.</label>
       <label class="option"><input type="radio" name="pilotInterest" value="briefing"> Yes, but we would like a 15-minute briefing first.</label>
       <label class="option"><input type="radio" name="pilotInterest" value="later"> Not right now, please keep us updated.</label>

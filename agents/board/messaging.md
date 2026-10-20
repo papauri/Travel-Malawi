@@ -41,3 +41,16 @@ status: in-progress
 - [messaging-38] P2 FIXED src/components/CallModal.tsx — emerald-300 signal icons on video overlay → stone (new D2 neon-green rule) (D2)
 - [H-orch-D2] DONE 10 messaging screens restyled to the D2 kit (messaging-28..38); d2.mjs 34 → 3 hits, all font-mono on booking ref/arrival PIN (legitimate); behaviour unchanged; tsc clean in owned files
 status: done
+status: in-progress
+- [messaging-39] P1 FIXED src/contexts/ChatModalContext.tsx — directory mode: openInquiryChat/openBookingChat (and toggles) no-op with one deduped toast, open chat closed on switch, dock never mounts, no presence listener (D3)
+- [messaging-40] P1 FIXED src/hooks/useUnreadMessages.ts — directory mode: no hotel_chats/bookings unread listeners open, counts reset to 0 (so UnreadMessagesProvider, badges and ActiveChatsMenu stay empty) (D3)
+- [messaging-41] P1 FIXED src/components/GlobalNotificationManager.tsx — directory mode: no hotel_chats/bookings/calls listeners, no ringing, no notification-permission prompt; ringing call toasts now dismissed when the listeners tear down (D3)
+- [messaging-42] P1 FIXED server.ts /api/reminders/send-whatsapp — behind requireBookingMode after requireAuth (403 directory_mode); /api/whatsapp/status and admin-only generic /api/whatsapp/send left on (no guest/booking coupling, admin→host comms) (D3)
+- [messaging-43] P1 FIXED server/notifications.ts — sendOfflineNotification sends nothing in directory mode (all callers are booking/chat notices; /api/notify already gated by platform) (D3)
+- [messaging-44] P1 FIXED src/components/NotificationBell.tsx — directory mode: bell not rendered (all its content is chat/call/booking alerts and booking-linked lodge announcements); booking mode unchanged (D3)
+- [messaging-45] P1 FIXED src/hooks/useUnreadBroadcasts.ts — directory mode: no bookings/broadcasts listener, count 0 (Navbar/MobileNav dots stay clear) (D3)
+- [messaging-46] P1 FIXED src/hooks/usePresence.ts — directory mode: no presence listener, no heartbeat/visibility writes, manual status no-op; useManagerPresence returns null (D3)
+- [messaging-47] P1 FIXED src/components/{BookingChat,PropertyChat,ReminderTemplatesModal,ManagerMessageTemplatesHub,BroadcastManager}.tsx — mode-gated wrapper default export: in directory mode the body (listeners, WebRTC, writes) never mounts; chats/reminders render nothing, templates/announcements show one plain line; booking mode renders the unchanged body (D3)
+- [messaging-48] P1 FIXED src/components/ActiveChatsMenu.tsx — directory mode: menu not rendered (ref.openMenu stays safe) (D3)
+- [H-orch-D3] DONE directory mode gates every chat/call/unread/presence/broadcast listener and mount in messaging files (messaging-39..48); openChat no-op + deduped toast; /api/reminders/send-whatsapp + offline notices off; booking mode unchanged; d3.mjs 20 → 0 hits; tsc clean in owned files
+status: done

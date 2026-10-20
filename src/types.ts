@@ -226,6 +226,11 @@ export interface Hotel {
   contactPhone?: string;
   /** Optional; falls back to `contactPhone` when the property uses one number. */
   contactWhatsapp?: string;
+  /**
+   * Tourism licence number as given by the property (Tourism Act, 2025).
+   * Not verified by Travel Malawi; shown as "provided by the property".
+   */
+  tourismLicenceNumber?: string;
   /** Optional profile links; the listing shows an icon only for the ones filled in. */
   socialFacebook?: string;
   socialInstagram?: string;

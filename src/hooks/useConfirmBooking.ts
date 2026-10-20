@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Booking } from '../types';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { confirmBooking, confirmErrorMessage, ConfirmOptions, PriceCheck, PriceMismatchError } from '../lib/transactions';
 
 export interface ConfirmRequest extends ConfirmOptions {
@@ -22,8 +23,14 @@ export interface PendingMismatch {
 export function useConfirmBooking() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [mismatch, setMismatch] = useState<PendingMismatch | null>(null);
+  const { bookingsEnabled } = usePlatformMode();
 
   const run = useCallback(async (booking: Booking, request: ConfirmRequest): Promise<boolean> => {
+    // Directory mode: the platform takes no part in confirming stays.
+    if (!bookingsEnabled) {
+      toast.error('Bookings are switched off.');
+      return false;
+    }
     setBusyId(booking.id ?? null);
     try {
       const patch = await confirmBooking(booking, request);
@@ -41,7 +48,7 @@ export function useConfirmBooking() {
     } finally {
       setBusyId(null);
     }
-  }, []);
+  }, [bookingsEnabled]);
 
   const confirm = useCallback((booking: Booking, request: ConfirmRequest = {}) => run(booking, request), [run]);
 

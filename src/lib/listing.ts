@@ -129,10 +129,12 @@ export interface ListingDraft {
   ownerName: string;
   ownerEmail: string;
   ownerPhone: string;
-  /** How guests reach the property once they have booked — or before. */
+  /** How travellers reach the property directly. */
   contactEmail: string;
   contactPhone: string;
   contactWhatsapp: string;
+  /** Optional, as provided by the property. Never verified by Travel Malawi. */
+  tourismLicenceNumber?: string;
   rooms: RoomInput[];
 }
 
@@ -297,10 +299,10 @@ export function validateProperty(
     if (mgrPhoneProblem) errors.managerPhone = mgrPhoneProblem;
   }
 
-  // A booking request is only the start of a conversation: the property has to
-  // be reachable for it to become a stay. Required to publish for that reason;
+  // Travellers reach the property directly, so it has to be reachable.
+  // Required to publish for that reason;
   // WhatsApp never is, since most properties use one number for both.
-  const email = emailProblem(data.contactEmail ?? '', 'A booking email', strict);
+  const email = emailProblem(data.contactEmail ?? '', 'A contact email', strict);
   if (email) errors.contactEmail = email;
   const phone = phoneProblem(data.contactPhone ?? '', 'A phone number', strict);
   if (phone) errors.contactPhone = phone;
@@ -487,6 +489,7 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
     // Falls back to the phone number, so a property that uses one number for
     // both does not have to type it twice.
     contactWhatsapp: draft.contactWhatsapp.trim() || draft.contactPhone.trim(),
+    tourismLicenceNumber: (draft.tourismLicenceNumber ?? '').trim().slice(0, 60) || undefined,
     // Starting points the host can change later, rather than absent fields
     // that show as "not published" on the property page.
     hours: defaultWeek(),

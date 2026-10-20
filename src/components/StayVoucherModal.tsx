@@ -14,6 +14,7 @@ import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { Booking, Hotel, RoomType } from '../types';
 import { formatDateStr, toDateStr } from '../lib/dates';
 import PriceDisplay from '../components/PriceDisplay';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 
@@ -24,12 +25,14 @@ interface Props {
 }
 
 export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
+  // Vouchers are booking-only: nothing opens in directory mode.
+  const { bookingsEnabled } = usePlatformMode();
   const [showWifi, setShowWifi] = useState(false);
   const [copiedWifi, setCopiedWifi] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
-  useBodyScrollLock(isOpen);
-  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
+  useBodyScrollLock(isOpen && bookingsEnabled);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen && bookingsEnabled);
   
   // Arrival PIN Lock State
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -57,7 +60,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
     }
   };
 
-  if (!booking || !booking.hotel) return null;
+  if (!bookingsEnabled || !booking || !booking.hotel) return null;
   const hotel = booking.hotel;
 
   // Local calendar date (not UTC), and only a confirmed stay unlocks on arrival day.

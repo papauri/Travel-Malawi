@@ -56,7 +56,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
     id: 'marketing-presentation',
     audience: 'admin',
     title: 'Marketing and Commercial Strategy',
-    subtitle: "Direct booking for independent stays in Malawi: audiences, positioning and launch plan",
+    subtitle: "Independent stays in Malawi: audiences, positioning and launch plan",
     category: 'Marketing',
     filename: 'marketing_presentation.md',
     htmlFilename: 'marketing_presentation.html',
@@ -377,9 +377,36 @@ export function getAdminDocsList(): AdminDocMeta[] {
 }
 
 /**
+ * Applies the platform mode (D3) to document source (markdown or HTML).
+ * Blocks `<!-- booking-only -->...<!-- /booking-only -->` are dropped in directory mode and
+ * `<!-- directory-only -->...<!-- /directory-only -->` blocks are dropped in booking mode; the
+ * matching blocks stay and only their marker comments are removed. A document without markers is
+ * returned unchanged. Editors load raw source and never go through this.
+ */
+export function filterDocForMode(content: string, mode: 'directory' | 'booking'): string {
+  if (!content) return '';
+  if (!/<!--\s*\/?(booking|directory)-only\s*-->/i.test(content)) return content;
+  const dropTag = mode === 'directory' ? 'booking-only' : 'directory-only';
+  const keepTag = mode === 'directory' ? 'directory-only' : 'booking-only';
+  const dropBlock = new RegExp(String.raw`[ \t]*<!--\s*${dropTag}\s*-->[\s\S]*?<!--\s*/${dropTag}\s*-->[ \t]*\r?\n?`, 'gi');
+  // Unpaired opening marker of the dropped kind: remove only the comment, never swallow the rest of the doc.
+  const strayDrop = new RegExp(String.raw`[ \t]*<!--\s*/?${dropTag}\s*-->[ \t]*\r?\n?`, 'gi');
+  const keepMarker = new RegExp(String.raw`[ \t]*<!--\s*/?${keepTag}\s*-->[ \t]*\r?\n?`, 'gi');
+  return content
+    .replace(dropBlock, '')
+    .replace(strayDrop, '')
+    .replace(keepMarker, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+/**
  * Retrieves the document content in plain text format, raw markdown, or standalone HTML.
  */
-export function getAdminDocContent(id: string, format: 'text' | 'md' | 'html' = 'text'): {
+export function getAdminDocContent(
+  id: string,
+  format: 'text' | 'md' | 'html' = 'text',
+  mode?: 'directory' | 'booking',
+): {
   doc: AdminDocMeta;
   content: string;
   format: 'text' | 'md' | 'html';
@@ -390,12 +417,14 @@ export function getAdminDocContent(id: string, format: 'text' | 'md' | 'html' = 
   if (!docMeta) return null;
 
   const docsDir = getDocsDir();
+  // `mode` undefined = raw source with markers (editors); otherwise the mode filter is applied.
+  const forMode = (src: string) => (mode ? filterDocForMode(src, mode) : src);
 
   // If HTML format is specifically requested and an htmlFilename is provided
   if (format === 'html' && docMeta.htmlFilename) {
     const htmlPath = path.join(docsDir, docMeta.htmlFilename);
     if (fs.existsSync(htmlPath)) {
-      const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+      const htmlContent = forMode(fs.readFileSync(htmlPath, 'utf-8'));
       return {
         doc: docMeta,
         content: htmlContent,
@@ -408,7 +437,7 @@ export function getAdminDocContent(id: string, format: 'text' | 'md' | 'html' = 
   const filePath = path.join(docsDir, docMeta.filename);
   if (!fs.existsSync(filePath)) return null;
 
-  const rawMarkdown = fs.readFileSync(filePath, 'utf-8');
+  const rawMarkdown = forMode(fs.readFileSync(filePath, 'utf-8'));
   let content = rawMarkdown;
   let extension = 'md';
 

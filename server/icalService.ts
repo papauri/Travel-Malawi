@@ -9,6 +9,7 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { PROJECT_ID, DATABASE_ID } from './auth';
+import { bookingsEnabled } from './platformMode';
 
 let firestoreInstance: Firestore | null = null;
 function getDb(): Firestore {
@@ -642,6 +643,9 @@ export async function syncAllActiveFeeds(): Promise<{
   let roomsSynced = 0;
   let hotelsSynced = 0;
   let totalFeeds = 0;
+
+  // Directory mode: no calendar sync (feeds are kept for when bookings return).
+  if (!(await bookingsEnabled())) return { roomsSynced, hotelsSynced, totalFeeds };
 
   try {
     // 1. Sync rooms

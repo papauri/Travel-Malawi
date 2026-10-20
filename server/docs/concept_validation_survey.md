@@ -7,10 +7,19 @@ Before opening Travel Malawi to domestic and international travellers, we are sp
 
 ### Why we are starting this way
 
+<!-- booking-only -->
 1. **Listen first.** We want to hear about real day-to-day problems before proposing anything.
 2. **Design with property owners.** Partners help shape features around how business works in Malawi: Airtel Money and TNM Mpamba reconciliation, generator and solar backup, seasonal road access, and foreign exchange.
 3. **Benefits for early partners.** Founding properties get a commission-free introductory period and help with marketing.
+<!-- /booking-only -->
 
+<!-- directory-only -->
+1. **Listen first.** We want to hear about real day-to-day problems before proposing anything.
+2. **Design with property owners.** Partners help shape features around how business works in Malawi: generator and solar backup, seasonal road access, and keeping listing details accurate.
+3. **Benefits for early partners.** Founding properties get free listing setup and help with photos and menus.
+<!-- /directory-only -->
+
+<!-- booking-only -->
 ## Part 1: Current habits and pain points
 
 ### 1.1 How properties in Malawi get bookings today
@@ -44,6 +53,40 @@ From early conversations with operators in the Southern, Central and Northern re
 * **Free listing setup.** Our team helps with photos, room categories and menus at no cost.
 * **Featured placement.** Founding properties are featured on the Travel Malawi homepage and in destination searches such as "Cape Maclear cottages" or "Liwonde safari camps".
 * **Input into the roadmap.** Monthly contact with the Travel Malawi team to discuss which features matter most to your property.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+## Part 1: Current habits and pain points
+
+### 1.1 How travellers find properties in Malawi today
+
+From early conversations with operators in the Southern, Central and Northern regions, travellers usually reach properties through four channels:
+
+* **WhatsApp and phone calls (about 55–70%).** A lot of back-and-forth about availability, photos, rates and directions, often at odd hours.
+* **Foreign online travel agencies (about 20–30%).** Generic descriptions of Malawi and limited local support.
+* **Corporate, NGO and government requests (about 10–20%).** Slow approvals and paper-based requests.
+* **Walk-ins and referrals (about 5–15%).** Unpredictable and affected by weather and holidays.
+
+### 1.2 Main problems
+
+1. **Visibility.** Many properties are hard to find online, or show out-of-date photos, rates and directions.
+2. **Scattered information.** Details sit in WhatsApp threads, Facebook pages and foreign sites.
+3. **Contact.** Travellers cannot always find a working phone or WhatsApp number.
+4. **Repeated questions.** Managers spend hours each day answering the same questions about road conditions, boat transfers, power, Wi-Fi and meals.
+
+## Part 2: What Travel Malawi offers
+
+* **A property page with no technical setup.** Each property gets a mobile-friendly listing page with photos, a map pin, indicative rates and clear policies.
+* **Direct contact.** Your phone, WhatsApp, email and social links are shown on the page, and travellers contact you directly. Travel Malawi is an information directory only. Arrangements are made directly with the property.
+* **Ulendo, the AI trip planner.** Ulendo answers traveller questions at any hour about areas, meals and excursions, and points them to your contact details. It replies in English, and in Chichewa when a traveller writes in Chichewa.
+* **Concierge Onboarding & Support Shadow Mode.** Verified operations staff can securely shadow your manager dashboard live to help configure rates or upload photos without requiring passwords.
+* **Reviews.** Verified reviews from TripAdvisor and Google can be shown on the property page.
+
+## Part 3: Founding partner offer
+
+* **Free listing setup.** Our team helps with photos, room categories and menus at no cost.
+* **Input into the roadmap.** Monthly contact with the Travel Malawi team to discuss which features matter most to your property.
+<!-- /directory-only -->
 
 ## Partner survey
 
@@ -54,6 +97,7 @@ From early conversations with operators in the Southern, Central and Northern re
 * Number of rooms or units:
 * Average nightly rate (MWK or USD):
 
+<!-- booking-only -->
 ### Section B: Current habits
 
 Rate each statement from 1 (disagree) to 5 (strongly agree).
@@ -73,10 +117,38 @@ Rank these from 1 (most useful) to 6 (least useful).
 * Ulendo answering guest questions at any hour
 * Concierge onboarding with live host shadow support
 * Verified TripAdvisor and Google reviews on our page
+<!-- /booking-only -->
+
+<!-- directory-only -->
+### Section B: Current habits
+
+Rate each statement from 1 (disagree) to 5 (strongly agree).
+
+1. Managing direct enquiries on WhatsApp takes too much time.
+2. Travellers often cannot find our correct phone number, photos or directions online.
+3. Our information is scattered across WhatsApp, Facebook and other sites.
+4. We spend too much time answering the same questions.
+
+### Section C: Most useful features
+
+Rank these from 1 (most useful) to 5 (least useful).
+
+* A free listing with photos, rooms, rates and a map pin
+* Our own phone, WhatsApp and email shown to travellers
+* Ulendo answering traveller questions at any hour
+* Concierge onboarding with live host shadow support
+* Verified TripAdvisor and Google reviews on our page
+<!-- /directory-only -->
 
 ### Section D: Interest
 
+<!-- booking-only -->
 Would you like to join the founding partner group (0% commission for the first 90 days)?
+<!-- /booking-only -->
+
+<!-- directory-only -->
+Would you like to join the founding partner group (free listing setup)?
+<!-- /directory-only -->
 
 * Yes, please sign us up.
 * Yes, but we would like a 15-minute briefing first.

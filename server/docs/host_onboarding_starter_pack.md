@@ -1,6 +1,12 @@
 # Host Starter Pack & Field Guide
 *A short, practical guide for independent lodges, whole lakeside cottages, private villas, B&Bs, and safari camps across Malawi.*
+<!-- booking-only -->
 *0% Commission · Direct WhatsApp Bookings · 3-Minute Read*
+<!-- /booking-only -->
+
+<!-- directory-only -->
+*Free Listing · Direct Contact via WhatsApp and Phone · 3-Minute Read*
+<!-- /directory-only -->
 
 ---
 
@@ -8,7 +14,13 @@
 
 Whether you host an **entire lakeside cottage** in Cape Maclear, a **private family holiday villa** in Mangochi, a **mountain cabin** in Mulanje, an exclusive **safari camp** in Liwonde, or a **boutique guest room** in Lilongwe Area 10 — travelers come to you for **peace of mind, comfort, and an honest Malawian welcome**.
 
+<!-- booking-only -->
 Stays on Travel Malawi can be booked as **Whole Houses / Entire Places** (exclusive private kitchen, lawn, beach frontage, caretaker) or **Room-by-Room** (individual suites, chalets, or B&Bs). Both models enjoy 0% commission with direct payouts straight to your Airtel Money, TNM Mpamba, or Bank account.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+Listings on Travel Malawi can describe **Whole Houses / Entire Places** (exclusive private kitchen, lawn, beach frontage, caretaker) or **Room-by-Room** (individual suites, chalets, or B&Bs). Rates are shown as indicative "from" rates, and travellers contact you directly by phone, WhatsApp or email.
+<!-- /directory-only -->
 
 * **Quick Links:**
   * [List Your Property on Travel Malawi](/list-your-property)
@@ -32,7 +44,13 @@ You do not need an expensive photography crew. Any smartphone taken in morning n
 
 ## 2. Fair Dual Pricing, Whole-House Rates & Anchoring
 
+<!-- booking-only -->
 Travelers in Malawi include domestic residents from Lilongwe and Blantyre booking whole weekend retreats, as well as international NGO consultants and overseas tourists. Provide clean numbers in both currencies:
+<!-- /booking-only -->
+
+<!-- directory-only -->
+Travelers in Malawi include domestic residents from Lilongwe and Blantyre planning whole weekend retreats, as well as international NGO consultants and overseas tourists. Provide clean numbers in both currencies:
+<!-- /directory-only -->
 
 * **Malawian Kwacha (MWK):** Always round to the nearest **MK 1,000**:
   * *Whole 3-Bed Cottage:* MK 280,000 / night
@@ -46,6 +64,7 @@ Travelers in Malawi include domestic residents from Lilongwe and Blantyre bookin
 
 ---
 
+<!-- booking-only -->
 ## 3. Two-Way Direct Guest Chat & 24/7 Ulendo Concierge Copilot
 
 Travel Malawi eliminates middleman call centers and masked numbers. You have two powerful communication loops built right into your dashboard:
@@ -61,9 +80,29 @@ Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI 
 * **Drafting Guest Messages:** Generate welcoming Chichewa & English confirmations with one tap.
 * **Daily Restaurant & Fish Blackboard:** Update today's fresh catch (Chambo, Kampango, Usipa) and dinner specials effortlessly.
 * **Amenity & Listing Tuning:** Get recommendations on highlighting solar backup, lakeshore Wi-Fi, and excursion perks.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+## 3. Direct Contact & 24/7 Ulendo Concierge Copilot
+
+Travel Malawi eliminates middleman call centers and masked numbers. Two things help travellers reach you and help you run your listing:
+
+### Loop 1: Direct contact from your listing
+* **Your Own Details:** Your phone, WhatsApp, email and social links appear under "Contact the property". Travellers ask about boat transfers from Monkey Bay/Likoma Island, Lake Chambo dinners, road access, and gate directions.
+* **Direct WhatsApp Route:** For travelers on mobile, the WhatsApp link opens straight to your phone.
+* **Keep Them Current:** Update your numbers in the Host Dashboard whenever they change.
+
+### Loop 2: Ulendo Concierge AI (Your 24/7 Listing Copilot)
+Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI concierge. Ask Ulendo anytime for:
+* **Seasonal Rate Guidance:** Benchmark "from" rates for Easter, Christmas, or Lake of Stars in clean MWK and whole USD.
+* **Drafting Replies:** Generate welcoming Chichewa & English replies you can send from your own phone.
+* **Daily Restaurant & Fish Blackboard:** Update today's fresh catch (Chambo, Kampango, Usipa) and dinner specials effortlessly.
+* **Amenity & Listing Tuning:** Get recommendations on highlighting solar backup, lakeshore Wi-Fi, and excursion perks.
+<!-- /directory-only -->
 
 ---
 
+<!-- booking-only -->
 ### Copy-and-Paste Message Templates:
 
 #### Template 1: Instant Reservation & Deposit
@@ -74,9 +113,21 @@ Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI 
 
 #### Template 3: Ulendo AI-Assisted Boat Transfer & Arrival Note
 > *"Takulandirani [Guest Name]! We are getting your lake stay ready at [Property Name]. If you require boat transfer from [Harbor/Bay], our skipper departs at [Time]. Please reply here with your vehicle arrival time so our team can assist with luggage and fresh welcome drinks!"*
+<!-- /booking-only -->
+
+<!-- directory-only -->
+### Copy-and-Paste Message Templates:
+
+#### Template 1: Road Directions & Gate Pin
+> *"Muli bwanji [Guest Name]! We look forward to welcoming you today at [Property Name]. Coming down the Lakeshore Road, take the turn-off at [Landmark]. Follow our marked signs for 3 km. Gate GPS pin: [Google Maps Link]. Our resident manager [Name] is ready on WhatsApp at [Phone Number] if you need any directions along the road!"*
+
+#### Template 2: Ulendo AI-Assisted Boat Transfer & Arrival Note
+> *"Takulandirani [Guest Name]! We are getting your lake stay ready at [Property Name]. If you require boat transfer from [Harbor/Bay], our skipper departs at [Time]. Please reply here with your vehicle arrival time so our team can assist with luggage and fresh welcome drinks!"*
+<!-- /directory-only -->
 
 ---
 
+<!-- booking-only -->
 ## 4. 2-Way Calendar Synchronization (Optional)
 
 Do you already use **RoomRaccoon, NightsBridge, Airbnb, Booking.com**, or Google Calendar? If so, you can sync calendars automatically (or simply manage availability manually).
@@ -93,27 +144,61 @@ Travel Malawi features native **2-way iCal (.ics) calendar synchronization with 
 4. **Multi-Unit Inventory Protection:** For properties with multiple chalets, whole cottages, or campsite spaces, the engine blocks individual unit availability or whole dates with zero manual intervention.
 
 > **Big Win for Independent Lodges:** You get the full benefit of direct bookings and 0% commission from Malawian and international travelers without any fear of double booking or tedious manual updates.
+<!-- /booking-only -->
 
 ---
 
+<!-- booking-only -->
 ## 5. Hands-On Concierge Onboarding & Support Shadow Mode
+<!-- /booking-only -->
+
+<!-- directory-only -->
+## 4. Hands-On Concierge Onboarding & Support Shadow Mode
+<!-- /directory-only -->
 
 Never feel stuck with setup. Travel Malawi provides high-touch concierge onboarding for every partner property:
 
+<!-- booking-only -->
 * **Live Shadow Support:** If you ever need help linking your PMS calendar, configuring room types, adjusting seasonal pricing, or uploading photos, our verified support team can securely **shadow your host dashboard** live.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+* **Live Shadow Support:** If you ever need help configuring room types, adjusting seasonal pricing, or uploading photos, our verified support team can securely **shadow your host dashboard** live.
+<!-- /directory-only -->
 * **No Passwords Shared:** You never share passwords. Staff shadow sessions are strictly authenticated, audit-logged, and clearly indicated by a golden session banner on the screen.
 * **One-on-One Field Assistance:** We assist you directly over WhatsApp or phone to ensure your lodge is operating smoothly and receiving direct inquiries.
 
 ---
 
+<!-- booking-only -->
 ## 6. Get Listed in 8 Minutes
+<!-- /booking-only -->
 
+<!-- directory-only -->
+## 5. Get Listed in 8 Minutes
+<!-- /directory-only -->
+
+<!-- booking-only -->
 1. **Send your 4 photos:** Bed, view, bathroom, and sunset dining/fire pit.
 2. **Send property name & rates:** Whole house rate or room rates in MWK or USD, plus any inclusions.
 3. **Share your calendar link (optional):** If you use RoomRaccoon, NightsBridge, or Airbnb, share your room iCal link. We link and test it for you so your calendar is synchronized from moment one!
 4. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
+<!-- /booking-only -->
 
+<!-- directory-only -->
+1. **Send your 4 photos:** Bed, view, bathroom, and sunset dining/fire pit.
+2. **Send property name & rates:** Whole house rate or room rates in MWK or USD, plus any inclusions.
+3. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
+4. **Share a direct contact:** Your phone, WhatsApp or email. At least one is needed before your listing can be approved.
+<!-- /directory-only -->
+
+<!-- booking-only -->
 **Result:** Our team verifies your details, sets up your listing page, tests your calendar sync, and connects you directly with travellers — with 0% commission and 100% payout retention.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+**Result:** Our team verifies your details, sets up your listing page, and shows your own phone and WhatsApp so travellers contact you directly, at no cost.
+<!-- /directory-only -->
 
 * **Ready to list?** [Submit your property online now](/how-hosting-works) or email our team at `info@ulendomalawi.com`.
 

@@ -7,12 +7,16 @@ import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export default function MarketingDeck() {
+  const { bookingsEnabled } = usePlatformMode();
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'marketing-presentation',
-    'Direct booking for Malawi',
-    'Take bookings directly, keep your revenue and talk to your guests.'
+    bookingsEnabled ? 'Direct booking for Malawi' : "A directory of Malawi's independent stays",
+    bookingsEnabled
+      ? 'Take bookings directly, keep your revenue and talk to your guests.'
+      : 'Get found by travellers planning a trip in Malawi. They contact you directly.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -149,6 +153,8 @@ export default function MarketingDeck() {
           )}
         </header>
 
+        {bookingsEnabled ? (
+          <>
         {/* Section 1 */}
         <section>
           <h2 className="tm-h2 mt-10">1. What lodges lose to booking-site fees</h2>
@@ -250,6 +256,95 @@ export default function MarketingDeck() {
           </blockquote>
         </section>
 
+          </>
+        ) : (
+          <>
+        {/* Section 1 */}
+        <section>
+          <h2 className="tm-h2 mt-10">1. Who is looking for your stay</h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
+            Travel Malawi is an information directory of independent places to stay. It helps travellers who are:
+          </p>
+          <ul className="mt-5 space-y-4">
+            <li>
+              <h3 className="text-base font-semibold text-stone-900">Case A: The Lilongwe Resident</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
+                A diplomat or NGO professional driving 3 hours from Area 10 for a weekend on the lake.
+              </p>
+            </li>
+            <li>
+              <h3 className="text-base font-semibold text-stone-900">Case B: The Blantyre Corporate</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
+                A business executive planning a quarterly offsite in Salima or Mangochi.
+              </p>
+            </li>
+            <li>
+              <h3 className="text-base font-semibold text-stone-900">Case C: The International Eco-Traveller</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
+                A safari traveller who wants clear photos, rates, directions and a way to reach the lodge directly.
+              </p>
+            </li>
+          </ul>
+          <div className="mt-6 tm-panel text-[15px] leading-relaxed text-stone-700">
+            <strong className="font-semibold text-stone-900">How it works: </strong>
+            Your listing shows your rooms, indicative rates, menu, map pin and your own phone, WhatsApp and email. Travellers contact you directly and you agree dates, prices and payment with them. Travel Malawi does not take bookings or payments and charges no commission or listing fee.
+          </div>
+        </section>
+
+        {/* Section 2 */}
+        <section className="tm-divider mt-10">
+          <h2 className="tm-h2 mt-10">2. How the options compare</h2>
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full text-sm border border-stone-200">
+              <thead>
+                <tr>
+                  <th className={th}>What matters</th>
+                  <th className={th}>Overseas travel sites</th>
+                  <th className={th}>Word of mouth only</th>
+                  <th className={th}>Travel Malawi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>Cost to the property</td>
+                  <td className={td}>15% to 25% deducted</td>
+                  <td className={td}>Free</td>
+                  <td className={`${td} font-medium text-stone-900`}>Free: no commission, no listing fee</td>
+                </tr>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>How travellers reach you</td>
+                  <td className={td}>Masked emails; numbers hidden</td>
+                  <td className={td}>Only people who already know you</td>
+                  <td className={`${td} font-medium text-stone-900`}>Your own phone, WhatsApp and email on your listing</td>
+                </tr>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>Navigation &amp; Arrival</td>
+                  <td className={td}>Fails when cell reception drops</td>
+                  <td className={td}>Vague text directions</td>
+                  <td className={`${td} font-medium text-stone-900`}>Cached Offline Satellite GPS &amp; Gate Pin</td>
+                </tr>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>Host Onboarding &amp; Support</td>
+                  <td className={td}>Overseas ticketing queue</td>
+                  <td className={td}>Zero assistance</td>
+                  <td className={`${td} font-medium text-stone-900`}>Help setting up your listing &amp; Local Phone Support</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Section 3 */}
+        <section className="tm-divider mt-10">
+          <h2 className="tm-h2 mt-10">3. Keep your other channels</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
+            A Travel Malawi listing sits alongside whatever you already use. Keep your other listings and your own regulars; a directory listing simply helps domestic and regional travellers find you and contact you directly.
+          </p>
+        </section>
+
+          </>
+        )}
+
         {/* Section 4: Partnership form */}
         <section id="partner-form" className="tm-divider mt-10">
           <h2 className="tm-h2 mt-10">4. Become a partner</h2>
@@ -324,7 +419,7 @@ export default function MarketingDeck() {
                 <label className={labelCls}>What would you like to do?</label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. Listing 5 properties in Lake Malawi region, bulk corporate bookings for Lilongwe staff"
+                  placeholder="e.g. Listing 5 properties in Lake Malawi region, group stays for Lilongwe staff"
                   value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   className={inputCls}

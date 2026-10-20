@@ -7,8 +7,10 @@ import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export default function PropertyListingGuide() {
+  const { bookingsEnabled } = usePlatformMode();
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'property-listing-guide',
     'The Science of High-Converting Hospitality Listings',
@@ -98,7 +100,7 @@ export default function PropertyListingGuide() {
     }
   };
 
-  const steps = [
+  const allSteps = [
     {
       title: 'Name each room by what guests get',
       detail: 'Use "Sunrise Shore Chalet" or "Baobab Family Cottage (Self-Catering)" instead of "Room 1" or "Double Room". Say if it is self-catering.',
@@ -117,17 +119,26 @@ export default function PropertyListingGuide() {
     },
     {
       title: 'Sync your calendar (optional)',
+      bookingOnly: true,
       detail: 'Optional: If you use Airbnb, Booking.com, NightsBridge or RoomRaccoon, paste the iCal export feed to stop double bookings. If not, manage dates manually. Use Test Connection to check it.',
     },
     {
       title: 'Answer guests in the chat',
+      bookingOnly: true,
       detail: 'Guests message you in the app before and after booking. Reply about transfers, arrival times and meals.',
+    },
+    {
+      title: 'Add your contact details',
+      directoryOnly: true,
+      detail: 'Add at least one of phone, WhatsApp or email. Travellers contact you directly from your listing; Travel Malawi does not take bookings or payments. Reply about transfers, arrival times and meals.',
     },
     {
       title: 'Need a hand? Ask us',
       detail: 'Our team can help set up your listing. Staff only join your dashboard session with your approval, never with your password, and a banner shows when they are there. Or use the form below.',
     },
   ];
+
+  const steps = allSteps.filter((step) => (bookingsEnabled ? !step.directoryOnly : !step.bookingOnly));
 
   return (
     <div className="min-h-screen bg-white text-stone-700 font-sans">

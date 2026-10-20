@@ -15,6 +15,7 @@ import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
 import { useIsHost } from '../hooks/useIsHost';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -32,6 +33,8 @@ export default function Navbar() {
   const { presence, setManualStatus } = usePresence();
   // Role or own listing; fresh accounts listing their first property count too.
   const hosting = useIsHost();
+  // Directory mode: no bookings, no in-app chat, so their links and listeners go away.
+  const { bookingsEnabled } = usePlatformMode();
   const { isOnline } = useNetworkStatus();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showShadowModal, setShowShadowModal] = useState(false);
@@ -67,7 +70,7 @@ export default function Navbar() {
   useEffect(() => onSoundPreferenceChange(setSoundOn), []);
 
   useEffect(() => {
-    if (user && hosting) {
+    if (user && hosting && bookingsEnabled) {
       const q = query(
         collection(db, 'bookings'),
         where('managerId', '==', user.uid),
@@ -86,7 +89,7 @@ export default function Navbar() {
     }
     // Otherwise clear any count left over from a previous session.
     setPendingCount(0);
-  }, [user, hosting]);
+  }, [user, hosting, bookingsEnabled]);
 
   // User initials for avatar
   const initials = user?.displayName
@@ -189,22 +192,24 @@ export default function Navbar() {
                   >
                     Saved
                   </Link>
-                  <Link
-                    to="/my-bookings"
-                    className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
-                      location.pathname.startsWith('/my-bookings')
-                        ? 'bg-stone-100 text-stone-950 font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                    }`}
-                  >
-                    <span className="hidden xl:inline">My Bookings</span>
-                    <span className="xl:hidden">Bookings</span>
-                  </Link>
+                  {bookingsEnabled && (
+                    <Link
+                      to="/my-bookings"
+                      className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
+                        location.pathname.startsWith('/my-bookings')
+                          ? 'bg-stone-100 text-stone-950 font-semibold'
+                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                      }`}
+                    >
+                      <span className="hidden xl:inline">My Bookings</span>
+                      <span className="xl:hidden">Bookings</span>
+                    </Link>
+                  )}
                 </div>
 
                 {/* Active Chats & Notification Bell */}
                 <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-                  <ActiveChatsMenu ref={activeChatsMenuRef} />
+                  {bookingsEnabled && <ActiveChatsMenu ref={activeChatsMenuRef} />}
                   <NotificationBell />
                 </div>
 
@@ -247,13 +252,15 @@ export default function Navbar() {
                             >
                               <Heart className="h-3.5 w-3.5" /> Saved properties
                             </Link>
-                            <Link
-                              to="/my-bookings"
-                              onClick={() => setShowUserMenu(false)}
-                              className="w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
-                            >
-                              <Briefcase className="h-3.5 w-3.5" /> My bookings
-                            </Link>
+                            {bookingsEnabled && (
+                              <Link
+                                to="/my-bookings"
+                                onClick={() => setShowUserMenu(false)}
+                                className="w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                              >
+                                <Briefcase className="h-3.5 w-3.5" /> My bookings
+                              </Link>
+                            )}
                           </>
                         )}
                         {hosting ? (
@@ -322,6 +329,7 @@ export default function Navbar() {
                         >
                           <UserCircle className="h-3.5 w-3.5" /> Profile Settings
                         </Link>
+                        {bookingsEnabled && (
                         <button
                           type="button"
                           onClick={() => {
@@ -342,9 +350,10 @@ export default function Navbar() {
                             </span>
                           )}
                         </button>
+                        )}
                       </div>
 
-                      {/* Chat notification sound */}
+                      {/* Notification sound */}
                       <button
                         onClick={() => {
                           const next = !soundOn;

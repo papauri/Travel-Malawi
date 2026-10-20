@@ -8,6 +8,7 @@ import { ChatModalProvider } from './contexts/ChatModalContext';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CompareProvider } from './contexts/CompareContext';
 import { WishlistProvider } from './contexts/WishlistContext';
+import { PlatformModeProvider, usePlatformMode } from './contexts/PlatformModeContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
 import ShadowBanner from './components/ShadowBanner';
@@ -55,6 +56,27 @@ function NotFound() {
         The page you are looking for does not exist or has been moved.
       </p>
       <Link to="/" className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition">
+        Back to home
+      </Link>
+    </div>
+  );
+}
+
+// Booking-only screens (D3): in directory mode a direct URL shows one line and a way home
+// instead of mounting the page, so nothing is subscribed or rendered.
+function BookingOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { bookingsEnabled, loading } = usePlatformMode();
+  if (loading) {
+    return <div className="min-h-[60vh] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" role="status" aria-label="Loading" /></div>;
+  }
+  if (bookingsEnabled) return <>{children}</>;
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
+      <SEOHead title="Bookings are switched off" description="Contact properties directly from their listing." noindex />
+      <p className="text-stone-600 text-lg max-w-md mb-8">
+        Bookings and in-app messages are switched off. Contact properties directly from their listing.
+      </p>
+      <Link to="/" className="bg-stone-100 text-stone-700 px-8 py-3 rounded-full font-medium hover:bg-stone-200 transition">
         Back to home
       </Link>
     </div>
@@ -239,6 +261,7 @@ function RootContent({ children }: { children?: React.ReactNode }) {
 
 function RootLayout({ children }: { children?: React.ReactNode }) {
   return (
+      <PlatformModeProvider>
       <AuthDialogProvider>
         <ChatModalProvider>
           <UnreadMessagesProvider>
@@ -253,6 +276,7 @@ function RootLayout({ children }: { children?: React.ReactNode }) {
           </UnreadMessagesProvider>
         </ChatModalProvider>
       </AuthDialogProvider>
+      </PlatformModeProvider>
   );
 }
 
@@ -273,13 +297,13 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <ManagerDashboard /> },
       { path: "dashboard/hotel/:id", element: <ManageHotel /> },
       { path: "manage/:id", element: <ManageHotel /> },
-      { path: "my-bookings", element: <MyBookings /> },
-      { path: "bookings", element: <MyBookings /> },
-      { path: "mybookings", element: <MyBookings /> },
-      { path: "my-booking", element: <MyBookings /> },
-      { path: "booking", element: <MyBookings /> },
-      { path: "trips", element: <MyBookings /> },
-      { path: "my-trips", element: <MyBookings /> },
+      { path: "my-bookings", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "bookings", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "mybookings", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "my-booking", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "booking", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "trips", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
+      { path: "my-trips", element: <BookingOnlyRoute><MyBookings /></BookingOnlyRoute> },
       { path: "saved", element: <SavedProperties /> },
       { path: "profile", element: <Profile /> },
       { path: "admin", element: <AdminDashboard /> },

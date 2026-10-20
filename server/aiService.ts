@@ -17,11 +17,14 @@ import {
   MAX_LEARNED_RULE_CHARS,
   MAX_MESSAGE_CHARS,
   UNTRUSTED_DATA_RULE,
+  DIRECTORY_MODE_OPS,
+  DIRECTORY_MODE_TRAVELLER,
   capLearnedRules,
   clip,
   untrusted,
 } from './promptUtils';
 import { buildOperationsChatPrompts } from './opsPrompt';
+import { getPlatformMode } from './platformMode';
 import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 import { parseMenuText } from './localMenuParser';
@@ -73,7 +76,8 @@ Domain Knowledge & Principles:
 - Dual-currency pricing:
   * US Dollar (USD): standard for international holidaymakers, safari seekers, and overseas travelers ($35-$60 for budget/campsites, $70-$180 for boutique chalets, $200-$600+ for high-end safari lodges).
   * Malawi Kwacha (MK / MWK): standard for domestic travelers, resident families, local conferences, and regional visitors (approximately 1 USD = 1,750 MWK, rounded cleanly e.g. MK 60,000 to MK 350,000+).
-- Tone: Warm, welcoming, optimistic, super friendly, and deeply practical. Always helpful, showing that nothing is impossible with the right hospitality setup.`;
+- Tone: Warm, welcoming, optimistic, super friendly, and deeply practical. Always helpful, showing that nothing is impossible with the right hospitality setup.
+- Listing copy is stored and shown whatever the platform mode: never add calls to action such as "book now", "reserve today", "check availability" or "message us on Travel Malawi"; at most invite guests to contact the property directly.`;
 
 function buildUserPrompt(req: GenerationRequest): string {
   const { action, entityType, currentText, details } = req;
@@ -2150,7 +2154,9 @@ function sanitizeAssistantReply(
 async function executeOperationsChatWithProvider(
   providerId: AIProviderId,
   req: OperationsAssistantRequest,
-  config: AISystemConfig
+  config: AISystemConfig,
+  /** False in directory mode (D3): no booking context, wording or proposals. */
+  bookingsOn: boolean
 ): Promise<OperationsAssistantResult> {
   if (config.providers[providerId]?.enabled === false) {
     throw new Error(`AI provider ${providerId.toUpperCase()} is completely disabled in Admin settings.`);
@@ -2232,7 +2238,7 @@ async function executeOperationsChatWithProvider(
 
     const chatSystemPrompt = `You are Ulendo, the Warm, Polished & Professional Concierge for Travel Malawi hospitality platform (The Warm Heart of Africa).
 Your name comes from the Chichewa word "Ulendo" (meaning journey, voyage, or expedition). You are an intelligent, natural, and efficient hospitality partner that continuously learns and adapts to the host.
-If asked who you are, what your name is, or what you can do: introduce yourself warmly as Ulendo, your resident Travel Malawi concierge, ready to assist with property operations, bookings, or guest travel experiences.
+If asked who you are, what your name is, or what you can do: introduce yourself warmly as Ulendo, your resident Travel Malawi concierge, ready to assist with ${bookingsOn ? 'property operations, bookings, or guest travel experiences' : 'listings, property operations, or guest travel advice'}.
 
 CRITICAL CONVERSATIONAL & TONE RULES (100% ADAPTIVE MIRRORING):
 1. 100% CAPACITY PERSONALITY MIRRORING: You must dynamically and constantly adapt your personality, tone, and vocabulary to perfectly mirror how the manager interacts with you. If they are highly formal, be strictly professional. If they use slang, emojis, or casual banter, match their casual energy exactly. If they are rushed or curt, be extremely brief. Shift your personality to align 100% with their current conversational energy based on the conversation history.
@@ -2269,11 +2275,11 @@ If the user provides feedback, preferences, or rules on communication flow, tone
 Return your response followed by any \`\`\`learned_rule / \`\`\`autonomous_patch blocks, and conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis or icons):
 \`\`\`suggested_follow_ups
 [
-  "Check today's arrivals",
   "Review room rates",
+  "Update the menu",
   "View active listings"
 ]
-\`\`\``;
+\`\`\`${bookingsOn ? '' : `\n\n${DIRECTORY_MODE_OPS}`}`;
 
     const cappedRules = capLearnedRules(req.context.learnedRules);
     const learnedRulesSummary = cappedRules.length > 0
@@ -2360,7 +2366,7 @@ USER MESSAGE:
 
   const classification = classifySwarmIntent(req);
   const { systemPrompt, userPrompt, maxTokens, thinkingBudget, isUserGreeting, effectiveDisplayName } =
-    buildOperationsChatPrompts(req, resolvedDisplayName, classification.primaryAgent);
+    buildOperationsChatPrompts(req, resolvedDisplayName, classification.primaryAgent, bookingsOn);
   const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, userPrompt, 0.45, maxTokens, false, { thinkingBudget });
 
   // Parse out action proposal
@@ -2390,6 +2396,10 @@ USER MESSAGE:
 
     } catch (e) {
     }
+  }
+  // Directory mode: booking changes are never proposed, whatever the model emitted.
+  if (!bookingsOn && actionProposal?.type === 'update_booking_status') {
+    actionProposal = null;
   }
 
   // Parse out learned rule
@@ -2452,24 +2462,29 @@ USER MESSAGE:
   };
 }
 
-export async function executeOperationsAssistantChat(req: OperationsAssistantRequest): Promise<OperationsAssistantResult> {
+export async function executeOperationsAssistantChat(incoming: OperationsAssistantRequest): Promise<OperationsAssistantResult> {
   const config = loadAIConfig();
+  // Directory mode (D3): booking data never reaches a prompt or the plain-data fallback.
+  const bookingsOn = (await getPlatformMode()) === 'booking';
+  const req: OperationsAssistantRequest = bookingsOn
+    ? incoming
+    : { ...incoming, context: { ...incoming.context, bookings: [] } };
   const classification = classifySwarmIntent(req);
 
   if (!config.enabled) {
-    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'AI is switched off in Admin settings');
+    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'AI is switched off in Admin settings', bookingsOn);
   }
 
   const providers = getAvailableProviders();
   if (providers.length === 0) {
     console.info(`[OperationsChat Swarm] No cloud AI providers active. Dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`);
-    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'no AI provider is configured');
+    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'no AI provider is configured', bookingsOn);
   }
 
   const errors: any[] = [];
   for (const providerId of providers) {
     try {
-      const result = await executeOperationsChatWithProvider(providerId, req, config);
+      const result = await executeOperationsChatWithProvider(providerId, req, config, bookingsOn);
       return result;
     } catch (err: any) {
       errors.push(err);
@@ -2488,7 +2503,7 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
       : errors.some(e => e?.status === 503)
         ? 'the provider is overloaded'
         : 'provider error';
-  return executeDeterministicSwarmReply(req, classification.primaryAgent, reason);
+  return executeDeterministicSwarmReply(req, classification.primaryAgent, reason, bookingsOn);
 }
 
 export async function testProviderConnection(
@@ -3026,7 +3041,7 @@ function buildAuthenticMalawiFallbackInsights(params: TripInsightsParams): TripI
     logisticsAdvice: {
       roadAndVehicle: hasSafari ? 'A high-clearance SUV or 4x4 is recommended for park gates, while all inter-city highways are smooth tarmac.' : 'Standard 2WD vehicles can easily navigate the entire route on paved highways (M1, M5, M3).',
       bestTimeToDrive: 'Depart your lodge around 9:00 AM after breakfast to arrive at your next destination in time for lunch and afternoon relaxation.',
-      currencyAndCash: 'Credit cards are accepted at all lodges on this route. Keep MK 50,000–100,000 cash for toll gates, fuel, and community artisan crafts.',
+      currencyAndCash: 'Card acceptance varies by property, so confirm with each one directly. Keep MK 50,000–100,000 cash for toll gates, fuel, and community artisan crafts.',
       simAndConnectivity: 'Pick up an Airtel or TNM SIM at Lilongwe or Blantyre airport; 4G coverage is excellent along the lakeshore and main corridors.',
     },
     packingHighlights: [
@@ -3056,12 +3071,13 @@ export async function generateTripInsights(params: TripInsightsParams): Promise<
     return { ...buildAuthenticMalawiFallbackInsights(params), aiNotice: aiUnavailableNotice([], false) };
   }
   const failures: any[] = [];
+  const directoryModule = (await getPlatformMode()) === 'booking' ? '' : `\n${DIRECTORY_MODE_TRAVELLER}`;
 
   const systemPrompt = `You are the chief travel designer and safari curator for Travel Malawi (https://travel-malawi.ai.studio).
 You have encyclopedic knowledge of Malawi's geography, highways (M1, M3, M5, M10), game reserves (Liwonde, Majete, Nyika), Lake Malawi shoreline (Cape Maclear, Senga Bay, Nkhata Bay, Likoma), tea estates (Thyolo, Mulanje), and highland plateaus (Zomba).
 Your goal is to craft an inspiring, deeply practical, and authentic road-trip itinerary analysis for travellers.
 Return ONLY valid JSON matching the requested schema. No markdown backticks, no markdown code blocks, no conversational preamble.
-Only name accommodation from the traveller's stops listed here; never recommend or mention any other lodge, hotel, camp or restaurant in Malawi (use towns, parks and the lake instead).
+Only name accommodation from the traveller's stops listed here; never recommend or mention any other lodge, hotel, camp or restaurant in Malawi (use towns, parks and the lake instead).${directoryModule}
 ${UNTRUSTED_DATA_RULE}`;
 
   const stopsText = stops.slice(0, 15).map((s, i) => `${i + 1}. "${clip(s.name, 120)}" located in ${clip(s.location, 120) || 'Malawi'} (${clip(s.category, 60) || 'Lodge/Stay'})`).join('\n');
@@ -3151,6 +3167,7 @@ export async function executeTripConciergeChat(params: {
 
   const stopsList = (stops || []).slice(0, 15).map((s, i) => `${i + 1}. ${clip(s.name, 120)} (${clip(s.location, 120) || 'Malawi'})`).join(', ');
   const failures: any[] = [];
+  const directoryModule = (await getPlatformMode()) === 'booking' ? '' : `\n${DIRECTORY_MODE_TRAVELLER}`;
 
   const systemPrompt = `You are Ulendo, the friendly, expert Travel Malawi Route Concierge.
 You are helping a traveller who has planned a trip with these stops in Malawi:
@@ -3162,7 +3179,7 @@ CRITICAL CONVERSATIONAL RULE - 100% ADAPTIVE MIRRORING: You must dynamically ada
 Scope: Malawi roads, travel times, vehicle recommendations, park rules, lake safety, packing, local food (Chambo, nsima, Dedza pottery), and currency.
 Keep answers concise, direct, helpful, and formatted with clean paragraphs or brief bullet points.
 Only name accommodation from the traveller's stops listed here; never recommend or mention any other lodge, hotel, camp or restaurant in Malawi (use towns, parks and the lake instead).
-If the question is unclear, use the conversation and their stops to infer what they most likely mean and say so briefly; only if it could mean quite different things, ask one short question offering the likely options (e.g. "Driving from Lilongwe or from Blantyre?").
+If the question is unclear, use the conversation and their stops to infer what they most likely mean and say so briefly; only if it could mean quite different things, ask one short question offering the likely options (e.g. "Driving from Lilongwe or from Blantyre?").${directoryModule}
 ${UNTRUSTED_DATA_RULE}`;
 
   const conversation = (history || []).slice(-4).map(h => `${h.role === 'user' ? 'Traveller' : 'Concierge'}: ${clip(h.text, MAX_HISTORY_ITEM_CHARS)}`).join('\n');

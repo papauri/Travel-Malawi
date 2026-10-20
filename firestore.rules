@@ -233,6 +233,25 @@ service cloud.firestore {
       return exists(chatPath(chatId)) && isChatParticipant(chatData(chatId));
     }
 
+    // ---- Platform mode (agents/directives/D3-directory-mode.md) ----
+
+    function settingsPath() {
+      return /databases/$(database)/documents/system/settings;
+    }
+
+    // system/settings.platformMode: 'booking' turns on bookings and in-app
+    // chat/calls; missing, unreadable or anything else means 'directory'.
+    // Only creates are gated, so existing bookings and chats can still be
+    // updated and wound down after the switch is turned off.
+    function bookingMode() {
+      return exists(settingsPath())
+        && get(settingsPath()).data.get('platformMode', 'directory') == 'booking';
+    }
+
+    function validPlatformMode() {
+      return request.resource.data.get('platformMode', 'directory') in ['directory', 'booking'];
+    }
+
     // ================================================================
 
     match /system/{document=**} {
@@ -242,8 +261,18 @@ service cloud.firestore {
 
     // Site content and listing settings are edited from the admin dashboard's
     // Content, Destinations and Properties tabs, which admins and marketing see.
+    // Only admins may change platformMode (bookings and in-app chat on/off).
     match /system/{docId} {
-      allow write: if docId in ['content', 'settings'] && (isAdmin() || isMarketing());
+      allow write: if docId == 'content' && (isAdmin() || isMarketing());
+      allow create: if docId == 'settings' && validPlatformMode()
+                    && (isAdmin()
+                        || (isMarketing() && request.resource.data.get('platformMode', 'directory') == 'directory'));
+      allow update: if docId == 'settings' && validPlatformMode()
+                    && (isAdmin()
+                        || (isMarketing()
+                            && request.resource.data.get('platformMode', 'directory')
+                               == resource.data.get('platformMode', 'directory')));
+      allow delete: if docId == 'settings' && isAdmin();
     }
 
     match /documents/{docId} {
@@ -388,7 +417,8 @@ service cloud.firestore {
 
       // Guest checkout works without an account. The client must also write
       // booking_slots/{bookingId} in the same batch.
-      allow create: if request.resource.data.status == 'pending'
+      allow create: if bookingMode()
+                    && request.resource.data.status == 'pending'
                     && request.resource.data.hotelId is string
                     && exists(hotelPath(request.resource.data.hotelId))
                     && request.resource.data.roomTypeId is string
@@ -433,7 +463,8 @@ service cloud.firestore {
     // can only be written alongside its booking and must match it exactly.
     match /booking_slots/{bookingId} {
       allow read: if true;
-      allow create, update: if existsAfter(bookingPath(bookingId))
+      allow create, update: if (request.method == 'update' || bookingMode())
+                    && existsAfter(bookingPath(bookingId))
                     && request.resource.data.keys().hasOnly(
                          ['hotelId', 'roomTypeId', 'checkIn', 'checkOut', 'quantity', 'status', 'updatedAt'])
                     && request.resource.data.hotelId == getAfter(bookingPath(bookingId)).data.hotelId
@@ -448,7 +479,8 @@ service cloud.firestore {
 
     match /bookings/{bookingId}/messages/{messageId} {
       allow read: if isBookingParticipant(bookingDoc(bookingId));
-      allow create: if isBookingParticipant(bookingDoc(bookingId))
+      allow create: if bookingMode()
+                    && isBookingParticipant(bookingDoc(bookingId))
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.bookingId == bookingId
                     && request.resource.data.guestId == bookingDoc(bookingId).get('guestId', '')
@@ -472,12 +504,14 @@ service cloud.firestore {
 
     match /bookings/{bookingId}/calls/{callId} {
       allow read, update: if isBookingParticipant(bookingDoc(bookingId));
-      allow create: if isBookingParticipant(bookingDoc(bookingId))
+      allow create: if bookingMode()
+                    && isBookingParticipant(bookingDoc(bookingId))
                     && request.resource.data.callerId == request.auth.uid;
       allow delete: if isAdmin();
 
       match /{candidateType}/{candidateId} {
-        allow read, create, update, delete: if isBookingParticipant(bookingDoc(bookingId));
+        allow read, update, delete: if isBookingParticipant(bookingDoc(bookingId));
+        allow create: if bookingMode() && isBookingParticipant(bookingDoc(bookingId));
       }
     }
 
@@ -487,7 +521,8 @@ service cloud.firestore {
       // Queries must filter on guestId == uid, managerId == uid or hotelId.
       allow read: if isChatParticipant(resource.data);
 
-      allow create: if isActive()
+      allow create: if bookingMode()
+                    && isActive()
                     && request.resource.data.hotelId is string
                     && request.resource.data.guestId is string
                     && chatId == request.resource.data.hotelId + '_' + request.resource.data.guestId
@@ -512,7 +547,8 @@ service cloud.firestore {
       // The sender must be one side of the conversation. The very first
       // message may arrive before the chat document exists, in which case the
       // sender must be the guest the chat id names.
-      allow create: if isActive()
+      allow create: if bookingMode()
+                    && isActive()
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.chatId == chatId
                     && request.resource.data.text is string
@@ -534,11 +570,12 @@ service cloud.firestore {
 
     match /hotel_chats/{chatId}/calls/{callId} {
       allow read, update: if isChatMember(chatId);
-      allow create: if isChatMember(chatId) && request.resource.data.callerId == request.auth.uid;
+      allow create: if bookingMode() && isChatMember(chatId) && request.resource.data.callerId == request.auth.uid;
       allow delete: if isAdmin();
 
       match /{candidateType}/{candidateId} {
-        allow read, create, update, delete: if isChatMember(chatId);
+        allow read, update, delete: if isChatMember(chatId);
+        allow create: if bookingMode() && isChatMember(chatId);
       }
     }
 

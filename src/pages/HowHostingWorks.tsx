@@ -14,11 +14,13 @@ import {
   Check,
   Building2,
   Compass,
+  Phone,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import SEOHead from '../components/SEOHead';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 // ---------------------------------------------------------------------------
 // Minimal Architectural Line Illustrations (Stone / Warm Paper / Clean Ink)
@@ -463,6 +465,37 @@ const STEPS = [
   },
 ];
 
+// Directory mode (default): the same steps without calendar sync or guest chat.
+const DIRECTORY_STEPS = [
+  STEPS[0],
+  STEPS[1],
+  {
+    id: 'step-03',
+    num: '3',
+    title: 'Set your "from" rates in MWK',
+    short: 'Enter rates in Malawian Kwacha (MWK), rounded to the nearest 1,000 (e.g. MK 120,000). Travellers see them as a guide and agree the final price with you directly.',
+    details: [
+      'All rates are quoted in Malawian Kwacha (MWK); USD is optional, in whole dollars.',
+      'Clean rounding to the nearest 1,000 MWK (e.g. MK 120,000 or MK 85,000).',
+      'Travel Malawi charges no commission and no listing fee.',
+    ],
+  },
+  {
+    id: 'step-04',
+    num: '4',
+    title: 'Add your contact details',
+    short: 'Travellers reach you directly on the phone, WhatsApp or email you add to your listing. Travel Malawi does not take bookings or payments.',
+    details: [
+      'Add at least one direct contact: phone, WhatsApp or email.',
+      'Your contact details are shown on your listing under "Contact the property".',
+      'Dates, prices and how a guest pays are agreed between you and the guest.',
+      'Travel Malawi takes no commission and no part in the exchange.',
+    ],
+    actionText: 'Start your listing online',
+    actionTo: '/list-your-property',
+  },
+];
+
 const GUEST_STEPS = [
   {
     num: '1',
@@ -490,6 +523,33 @@ const GUEST_STEPS = [
   },
 ];
 
+const DIRECTORY_GUEST_STEPS = [
+  {
+    num: '1',
+    title: 'Discover independent stays',
+    desc: 'Browse lakeside cottages, safari lodges, town guest houses, and mountain chalets across Malawi, with photos, rooms, indicative rates and map locations supplied by each property.',
+    icon: <Compass className="w-5 h-5 text-emerald-800" />,
+  },
+  {
+    num: '2',
+    title: 'Contact the property directly',
+    desc: "Each listing shows the property's own phone, WhatsApp or email. Ask about lake access, boat transfers, 4x4 road conditions, power backup, or meals.",
+    icon: <Phone className="w-5 h-5 text-emerald-800" />,
+  },
+  {
+    num: '3',
+    title: 'Indicative rates in MWK',
+    desc: 'Rates shown are a guide, quoted in Malawian Kwacha (MWK) or US dollars. The property confirms the final price with you.',
+    icon: <BadgePercent className="w-5 h-5 text-emerald-800" />,
+  },
+  {
+    num: '4',
+    title: 'Arrange everything with the property',
+    desc: 'Travel Malawi does not take bookings or payments. Dates, prices and how you pay are agreed directly between you and the property.',
+    icon: <ShieldCheck className="w-5 h-5 text-emerald-800" />,
+  },
+];
+
 const GUIDES = [
   { to: '/host-guide', title: 'Host Starter Pack', note: 'Setup manual and message templates' },
   { to: '/listing-guide', title: 'Property Listing Guide', note: 'Directions, photos and room names' },
@@ -499,6 +559,9 @@ const GUIDES = [
 export default function HowHostingWorks() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const { bookingsEnabled } = usePlatformMode();
+  const steps = bookingsEnabled ? STEPS : DIRECTORY_STEPS;
+  const guestSteps = bookingsEnabled ? GUEST_STEPS : DIRECTORY_GUEST_STEPS;
 
   // Determine active tab: query param takes priority, then URL path, then defaults to guest
   const initialTab = searchParams.get('tab') === 'host'
@@ -598,9 +661,11 @@ export default function HowHostingWorks() {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-16 font-sans">
       <SEOHead
-        title="How Travel Malawi Works — Direct Booking & Hosting Guide"
-        description="Learn how Travel Malawi connects guests directly with independent lodges, cottages, and safari camps across Malawi. 0% booking fees, no payment processing, and direct host settlement."
-        keywords="how Travel Malawi works, direct booking Malawi, how to list lodge Malawi, list cottage Malawi, 0% commission"
+        title={bookingsEnabled ? 'How Travel Malawi Works — Direct Booking & Hosting Guide' : 'How Travel Malawi Works — Directory & Hosting Guide'}
+        description={bookingsEnabled
+          ? 'Learn how Travel Malawi connects guests directly with independent lodges, cottages, and safari camps across Malawi. 0% booking fees, no payment processing, and direct host settlement.'
+          : 'Learn how Travel Malawi lists independent lodges, cottages and safari camps across Malawi, and how travellers contact each property directly. No commission, no listing fees.'}
+        keywords={bookingsEnabled ? 'how Travel Malawi works, direct booking Malawi, how to list lodge Malawi, list cottage Malawi, 0% commission' : 'how Travel Malawi works, Malawi travel directory, how to list lodge Malawi, list cottage Malawi'}
         url="https://ulendomalawi.com/how-it-works"
       />
 
@@ -614,7 +679,9 @@ export default function HowHostingWorks() {
           </div>
           <h1 className="tm-h1">How Travel Malawi works</h1>
           <p className="tm-lead mt-2">
-            Direct connections between travelers and verified independent cottages, lodges, guest houses, and safari camps. We are an inquiry and direct booking platform — zero middleman fees, zero commissions, and we never take or handle payments.
+            {bookingsEnabled
+              ? 'Direct connections between travelers and independent cottages, lodges, guest houses, and safari camps. We are an inquiry and direct booking platform — zero middleman fees, zero commissions, and we never take or handle payments.'
+              : 'A directory of independent cottages, lodges, guest houses and safari camps across Malawi. Travellers contact each property directly. Travel Malawi does not take bookings or payments, and charges no commission.'}
           </p>
 
           {/* Unified Tab Switcher available to ANY guest or host */}
@@ -628,7 +695,7 @@ export default function HowHostingWorks() {
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              For Guests (How to Book)
+              {bookingsEnabled ? 'For Guests (How to Book)' : 'For Travellers'}
             </button>
             <button
               type="button"
@@ -648,15 +715,17 @@ export default function HowHostingWorks() {
         {/* TAB 1: GUEST VIEW — HOW DIRECT BOOKING WORKS                      */}
         {/* ================================================================= */}
         {activeTab === 'guest' && (
-          <section aria-label="How booking works for guests" className="space-y-6">
+          <section aria-label={bookingsEnabled ? 'How booking works for guests' : 'How to find a stay'} className="space-y-6">
             <div className="tm-panel p-4 sm:p-5 bg-white">
-              <h2 className="tm-h2 text-base sm:text-lg mb-1">Direct booking in four simple steps</h2>
+              <h2 className="tm-h2 text-base sm:text-lg mb-1">{bookingsEnabled ? 'Direct booking in four simple steps' : 'Finding a stay in four steps'}</h2>
               <p className="text-xs sm:text-sm text-stone-600">
-                Book directly with independent Malawian properties with complete transparency.
+                {bookingsEnabled
+                  ? 'Book directly with independent Malawian properties with complete transparency.'
+                  : 'Browse independent Malawian properties and contact them directly.'}
               </p>
 
               <ol className="mt-5 space-y-4 list-none p-0">
-                {GUEST_STEPS.map((step) => (
+                {guestSteps.map((step) => (
                   <li key={step.num} className="p-4 rounded-lg bg-stone-50 border border-stone-200 flex items-start gap-3.5">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-stone-900 text-xs font-semibold text-white">
                       {step.num}
@@ -678,8 +747,17 @@ export default function HowHostingWorks() {
               <div className="mt-5 p-3.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
                 <ShieldCheck size={18} className="text-amber-800 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong className="font-semibold block text-amber-900 mb-0.5">Important Notice on Payments:</strong>
-                  Travel Malawi does not collect, process, intermediate, or escrow funds. We are strictly a direct discovery and messaging connection platform. You settle your reservation directly with the property host (via Airtel Money, TNM Mpamba, local bank transfer, or cash on arrival).
+                  {bookingsEnabled ? (
+                    <>
+                      <strong className="font-semibold block text-amber-900 mb-0.5">Important Notice on Payments:</strong>
+                      Travel Malawi does not collect, process, intermediate, or escrow funds. We are strictly a direct discovery and messaging connection platform. You settle your reservation directly with the property host (via Airtel Money, TNM Mpamba, local bank transfer, or cash on arrival).
+                    </>
+                  ) : (
+                    <>
+                      <strong className="font-semibold block text-amber-900 mb-0.5">Please note</strong>
+                      Travel Malawi is an information directory. We do not take bookings or payments. Arrangements are made directly with the property.
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -690,7 +768,7 @@ export default function HowHostingWorks() {
                 Ready to explore stays across Malawi?
               </h2>
               <p className="text-stone-300 text-sm max-w-md mx-auto mt-2 leading-relaxed">
-                Discover verified cottages on Lake Malawi, safari chalets in national parks, and peaceful retreats.
+                Discover cottages on Lake Malawi, safari chalets in national parks, and peaceful retreats.
               </p>
               <div className="tm-actions justify-center pt-4">
                 <Link
@@ -729,7 +807,7 @@ export default function HowHostingWorks() {
 
             {/* Five Illustrated Steps for Self-Service Posting */}
             <ol className="space-y-4 list-none p-0">
-              {STEPS.map((step) => (
+              {steps.map((step, stepIndex) => (
                 <li
                   key={step.id}
                   id={step.id}
@@ -737,7 +815,7 @@ export default function HowHostingWorks() {
                 >
                   <div className="flex items-start gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-stone-900 text-xs font-semibold text-stone-50">
-                      {step.num}
+                      {stepIndex + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -751,7 +829,7 @@ export default function HowHostingWorks() {
                       <p className="mt-1 text-sm text-stone-700">{step.short}</p>
 
                       {/* Clean line illustration */}
-                      {step.illustration}
+                      {'illustration' in step ? step.illustration : null}
 
                       <details className="mt-2 text-sm group">
                         <summary className="tm-link cursor-pointer text-xs select-none">
@@ -787,7 +865,7 @@ export default function HowHostingWorks() {
                 Ready to list your stay?
               </h2>
               <p className="text-stone-300 text-sm max-w-md mx-auto mt-2 leading-relaxed">
-                Our online listing wizard is simple and takes just five minutes at <strong className="text-white font-mono">travelmalawi.mw/list-your-property</strong>. It is free to post, zero commission, and guests settle directly with you.
+                Our online listing wizard is simple and takes just five minutes at <strong className="text-white font-mono">travelmalawi.mw/list-your-property</strong>. It is free to post, with no commission, and travellers contact you directly.
               </p>
               <div className="tm-actions justify-center pt-4">
                 <Link
@@ -838,7 +916,7 @@ export default function HowHostingWorks() {
                 ) : (
                   <form onSubmit={handleSubmitEnquiry} className="space-y-4">
                     <div>
-                      <span className="tm-label">How is it booked?</span>
+                      <span className="tm-label">{bookingsEnabled ? 'How is it booked?' : 'What are you listing?'}</span>
                       <div className="tm-actions">
                         <button
                           type="button"

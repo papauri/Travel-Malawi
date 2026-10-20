@@ -50,3 +50,18 @@ status: in-progress
 - [H-orch-D2] DONE 7 Ulendo/AI screens moved to the tm-* kit with plain wording (ai-33..39); D2 check 29 → 11, all 11 legitimate font-mono on API keys, model/provider IDs and inline code
 - npx tsc --noEmit: clean
 status: done
+status: in-progress
+- [ai-40] P1 FIXED server/promptUtils.ts — added DIRECTORY_MODE_TRAVELLER / DIRECTORY_MODE_OPS prompt modules (no book/reserve/availability/message-the-host; point to the listing's own contact details) (D3)
+- [ai-41] P1 FIXED server/opsPrompt.ts — buildOperationsChatPrompts takes bookingsOn: in directory mode drops BOOKINGS section and booking topic, maps frontdesk agent → coordinator, omits update_booking_status from action schemas, adds DIRECTORY_MODE_OPS module (D3)
+- [ai-42] P1 FIXED server/aiService.ts:executeOperationsAssistantChat — reads getPlatformMode(); in directory mode strips context.bookings before any prompt/fallback, small-talk prompt gets directory wording + DIRECTORY_MODE_OPS, update_booking_status proposals dropped server-side (D3)
+- [ai-43] P1 FIXED server/aiService.ts:generateTripInsights/executeTripConciergeChat — DIRECTORY_MODE_TRAVELLER appended in directory mode (no book/availability/message host; contact the property directly); fallback "cards accepted at all lodges" claim → confirm with each property (D3)
+- [ai-44] P2 FIXED server/aiService.ts SYSTEM_PROMPT — generated listing copy never adds book-now/reserve/check-availability CTAs (stored copy outlives a mode switch) (D3)
+- [ai-45] P1 FIXED server/aiSwarm.ts — plain-data fallback answers arrivals/check-outs only in booking mode; onboarding prompt "0% commission, direct WhatsApp messaging" → travellers contact the property directly (D3)
+- [ai-46] P1 FIXED src/components/OperationsCopilot.tsx — usePlatformMode(): directory mode loads no bookings (admin + per-hotel queries skipped), sends none to Ulendo, hides arrivals/out bar, refuses update_booking_status apply, no stayos→bookings link rewrite; directory starter prompts, placeholders and front-desk wording on online/offline cards (D3)
+- [ai-47] P2 FIXED src/components/TripAIInsights.tsx — single-stop summary "Book directly with your host, with no platform commission" → "Arrange your stay directly with the property"; copied plan footer "book direct with 0% fees" only in booking mode, directory: "contact each property directly" (D3)
+- [ai-48] P3 FIXED src/lib/assistantMemory.ts:27 — default learned directive spoke of "domestic resident reservations" (sent to every ops prompt) → "enquiries" (D3)
+- [ai-49] P3 FIXED src/components/AIAssistantButton.tsx:70 — toast always said "Applied to description" whatever field was written → uses fieldLabel; helper copy has no booking/chat wording (D3 checked)
+- [ai-50] P2 CHECKED server.ts:621-700 — /api/ai/{status,generate,operations-chat,trip-insights,trip-chat} create no bookings/chats and stay on in directory mode (Ulendo is a directory feature); gating happens inside the service via getPlatformMode() (ai-42/43) → no requireBookingMode needed
+- [H-orch-D3] DONE directory-mode prompt modules, ops booking context/agent/proposals dropped server-side via getPlatformMode(), Copilot/TripAIInsights/AIAssistantButton copy gated or directory-safe, /api/ai/* reviewed (ai-40..50); d3.mjs on all ai files: 0 hits
+- npx tsc --noEmit: clean
+status: done

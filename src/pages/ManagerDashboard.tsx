@@ -13,6 +13,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
@@ -43,6 +44,9 @@ export default function ManagerDashboard() {
   const userIsAdmin = Boolean(!isShadowing && (actualUser || user) && (isAdmin(actualUser || user) || isMarketing(actualUser || user)));
   const [approvingHotelId, setApprovingHotelId] = useState<string | null>(null);
   const [icalModalHotel, setIcalModalHotel] = useState<Hotel | null>(null);
+  // Directory mode (D3): no bookings, revenue, iCal or chat presence here;
+  // the dashboard is for keeping listings accurate. Booking data is untouched.
+  const { bookingsEnabled } = usePlatformMode();
 
   const handleApproveListing = async (hotel: Hotel) => {
     if (!hotel.id) return;
@@ -234,17 +238,6 @@ export default function ManagerDashboard() {
           getDocs(query(collection(db, 'room_types'), where('hotelId', 'in', batch)))
         ));
         setRooms(roomResults.flatMap(roomSnap => roomSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType))));
-        // Bookings are private: the rules authorise a manager per property, which
-        // needs one equality query per hotel rather than an 'in' query.
-        const bookingResults = await Promise.all(ids.map(hid =>
-          getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
-            .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
-            .catch(err => {
-              console.warn(`Bookings for ${hid} unavailable:`, err?.message ?? err);
-              return [] as Booking[];
-            })
-        ));
-        setBookings(bookingResults.flat());
       }
     } catch (error) {
       console.error("Error fetching hotels:", error);
@@ -262,6 +255,30 @@ export default function ManagerDashboard() {
     }
     fetchMyHotels();
   }, [user, authLoading]);
+
+  // Pending requests per card. Read only while the booking platform is on (D3).
+  const hotelIdsKey = hotels.map(h => h.id).filter(Boolean).join(',');
+  useEffect(() => {
+    const ids = hotelIdsKey ? hotelIdsKey.split(',') : [];
+    if (!bookingsEnabled || ids.length === 0) {
+      setBookings([]);
+      return;
+    }
+    let cancelled = false;
+    // Bookings are private: the rules authorise a manager per property, which
+    // needs one equality query per hotel rather than an 'in' query.
+    Promise.all(ids.map(hid =>
+      getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
+        .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
+        .catch(err => {
+          console.warn(`Bookings for ${hid} unavailable:`, err?.message ?? err);
+          return [] as Booking[];
+        })
+    )).then(results => {
+      if (!cancelled) setBookings(results.flat());
+    });
+    return () => { cancelled = true; };
+  }, [bookingsEnabled, hotelIdsKey]);
 
   const handleActivateHost = async () => {
     setActivating(true);
@@ -305,9 +322,10 @@ export default function ManagerDashboard() {
   const syncedPropertiesCount = hotels.filter(
     h => (h.icalSyncUrls?.length || 0) > 0 || rooms.some(r => r.hotelId === h.id && (r.icalSyncUrls?.length || 0) > 0)
   ).length;
-  const liveCount = hotels.filter(h => (!h.status || h.status === 'approved') && h.isOnline !== false).length;
+  const isLive = (h: Hotel) => (!h.status || h.status === 'approved') && (!bookingsEnabled || h.isOnline !== false);
+  const liveCount = hotels.filter(isLive).length;
   const pendingApprovalCount = hotels.filter(h => h.status === 'pending').length;
-  const offlineCount = hotels.filter(h => h.isOnline === false).length;
+  const offlineCount = bookingsEnabled ? hotels.filter(h => h.isOnline === false).length : 0;
   const needsAttentionCount = hotels.filter(h => {
     const s = summaryByHotel.get(h.id!);
     return (s?.pending ?? 0) > 0 || (s?.rooms ?? 0) === 0 || h.status === 'pending';
@@ -316,7 +334,7 @@ export default function ManagerDashboard() {
   const filteredHotels = useMemo(() => {
     let list = [...hotels];
     if (statusFilter === 'live') {
-      list = list.filter(h => (!h.status || h.status === 'approved') && h.isOnline !== false);
+      list = list.filter(isLive);
     } else if (statusFilter === 'pending') {
       list = list.filter(h => h.status === 'pending');
     } else if (statusFilter === 'offline') {
@@ -337,7 +355,7 @@ export default function ManagerDashboard() {
     }
 
     return list;
-  }, [hotels, statusFilter, sortBy, summaryByHotel]);
+  }, [hotels, statusFilter, sortBy, summaryByHotel, bookingsEnabled]);
 
   if (authLoading) {
     return (
@@ -365,11 +383,11 @@ export default function ManagerDashboard() {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-stone-500 shrink-0" />
-                <span>Reply to booking requests</span>
+                <span>{bookingsEnabled ? 'Reply to booking requests' : 'Keep your contact details current'}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-stone-500 shrink-0" />
-                <span>No commission on direct stays</span>
+                <span>{bookingsEnabled ? 'No commission on direct stays' : 'Travellers contact you directly'}</span>
               </li>
             </ul>
 
@@ -405,7 +423,7 @@ export default function ManagerDashboard() {
             </p>
             <h1 className="tm-h1">Turn on host tools</h1>
             <p className="tm-lead mt-2 mx-auto">
-              Your account is a guest account. Turn on host tools (free) to list and manage properties. Your bookings and favourites stay as they are.
+              Your account is a guest account. Turn on host tools (free) to list and manage properties. {bookingsEnabled ? 'Your bookings and favourites stay as they are.' : 'Your saved places stay as they are.'}
             </p>
 
             <div className="mt-6 tm-actions justify-center">
@@ -453,7 +471,7 @@ export default function ManagerDashboard() {
           <p className="tm-muted mt-1">
             {totalPending > 0
               ? `${totalPending} booking request${totalPending === 1 ? '' : 's'} waiting for your reply.`
-              : 'Your listings, rooms and booking requests.'}
+              : bookingsEnabled ? 'Your listings, rooms and booking requests.' : 'Your listings and rooms. Keep them accurate; travellers contact you directly.'}
           </p>
         </div>
         <div className="tm-actions shrink-0">
@@ -466,7 +484,7 @@ export default function ManagerDashboard() {
 
       {/* Summary row */}
       {hotels.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className={`grid grid-cols-2 ${bookingsEnabled ? 'lg:grid-cols-4' : ''} gap-3 mb-5`}>
           <button
             type="button"
             onClick={() => {
@@ -497,10 +515,11 @@ export default function ManagerDashboard() {
             <p className="tm-stat-value">{totalRoomUnits}</p>
             <p className="mt-0.5 text-xs text-stone-500 truncate">
               {rooms.length} {rooms.length === 1 ? 'type' : 'types'}
-              {syncedPropertiesCount > 0 ? ` · ${syncedPropertiesCount} calendar synced` : ''}
+              {bookingsEnabled && syncedPropertiesCount > 0 ? ` · ${syncedPropertiesCount} calendar synced` : ''}
             </p>
           </button>
 
+          {bookingsEnabled && (<>
           <button
             type="button"
             onClick={() => {
@@ -528,6 +547,7 @@ export default function ManagerDashboard() {
               + ${revenueUSD.toLocaleString()} · no commission
             </p>
           </div>
+          </>)}
         </div>
       )}
 
@@ -610,7 +630,7 @@ export default function ManagerDashboard() {
                 <div className="absolute top-full left-0 right-0 mt-1.5 p-1 bg-white border border-stone-200 rounded-lg shadow-sm z-20 flex flex-col gap-0.5">
                   {[
                     { value: 'default', label: 'Default' },
-                    { value: 'pending', label: 'Most pending' },
+                    ...(bookingsEnabled ? [{ value: 'pending', label: 'Most pending' }] : []),
                     { value: 'rooms', label: 'Most rooms' },
                     { value: 'name', label: 'Name (A–Z)' },
                   ].map(opt => (
@@ -704,7 +724,8 @@ export default function ManagerDashboard() {
                     </span>
                   )}
 
-                  {/* Online/Offline Toggle */}
+                  {/* Online/Offline Toggle (chat presence: booking mode only) */}
+                  {bookingsEnabled && (
                   <button
                     type="button"
                     onClick={(e) => handleToggleHotelOnline(e, hotel)}
@@ -719,6 +740,7 @@ export default function ManagerDashboard() {
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-300'}`} />
                     <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
                   </button>
+                  )}
                 </div>
 
                 {/* Card Body */}
@@ -742,7 +764,7 @@ export default function ManagerDashboard() {
                         {pendingCount} awaiting reply
                       </span>
                     )}
-                    {(() => {
+                    {bookingsEnabled && (() => {
                       const syncedFeedsCount = (hotel.icalSyncUrls?.length || 0) +
                         rooms.filter(r => r.hotelId === hotel.id).reduce((sum, r) => sum + (r.icalSyncUrls?.length || 0), 0);
                       if (syncedFeedsCount === 0) {
@@ -782,7 +804,7 @@ export default function ManagerDashboard() {
 
                   {roomsCount === 0 && (
                     <p className="mb-3 text-xs text-amber-800">
-                      Add a room to accept bookings.
+                      {bookingsEnabled ? 'Add a room to accept bookings.' : 'Add a room so travellers can see what you offer.'}
                     </p>
                   )}
 
@@ -818,6 +840,7 @@ export default function ManagerDashboard() {
                       <span className="truncate">Manage</span>
                       <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                     </Link>
+                    {bookingsEnabled && (
                     <Link
                       to={`/dashboard/hotel/${hotel.id}?tab=bookings`}
                       className="tm-btn tm-btn-secondary tm-btn-sm shrink-0"
@@ -828,6 +851,7 @@ export default function ManagerDashboard() {
                         <span className="w-2 h-2 rounded-full bg-amber-500" />
                       )}
                     </Link>
+                    )}
 
                     <div className="relative shrink-0 text-left">
                       <button
@@ -913,6 +937,7 @@ export default function ManagerDashboard() {
                               <span>Edit rates in bulk</span>
                             </button>
 
+                            {bookingsEnabled && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -926,6 +951,7 @@ export default function ManagerDashboard() {
                               <CalendarSync className="w-3.5 h-3.5 text-stone-400" />
                               <span>Calendar sync</span>
                             </button>
+                            )}
 
                             <a
                               href={`/hotel/${hotel.id}`}
@@ -938,6 +964,7 @@ export default function ManagerDashboard() {
                               <span>Preview listing</span>
                             </a>
 
+                            {bookingsEnabled && (<>
                             <div className="my-1 border-t border-stone-100" />
 
                             <button
@@ -953,6 +980,7 @@ export default function ManagerDashboard() {
                                 <span>{hotel.isOnline !== false ? 'Set offline' : 'Set online'}</span>
                               </span>
                             </button>
+                            </>)}
 
                             <div className="my-1 border-t border-stone-100" />
 
@@ -1008,13 +1036,13 @@ export default function ManagerDashboard() {
 
       {/* 2-Way Calendar Synchronization Modal */}
       <Modal
-        open={Boolean(icalModalHotel)}
+        open={bookingsEnabled && Boolean(icalModalHotel)}
         onClose={() => setIcalModalHotel(null)}
         title={`Calendar Sync — ${icalModalHotel?.name || 'Property'}`}
         description="2-way calendar sync with RoomRaccoon, Airbnb, Booking.com, NightsBridge, and other PMS systems."
         size="3xl"
       >
-        {icalModalHotel && (
+        {bookingsEnabled && icalModalHotel && (
           <IcalSyncManager
             hotel={icalModalHotel}
             onHotelUpdated={(updated) => {

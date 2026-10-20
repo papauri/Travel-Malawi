@@ -6,13 +6,14 @@ import { Broadcast } from '../types';
 import { Megaphone, Trash2, CheckCircle2, Clock, Plus, Loader2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import toast from 'react-hot-toast';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface BroadcastManagerProps {
   hotelId: string;
   managerId: string;
 }
 
-export default function BroadcastManager({ hotelId, managerId }: BroadcastManagerProps) {
+function BroadcastManagerBody({ hotelId, managerId }: BroadcastManagerProps) {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -218,4 +219,19 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
       />
     </div>
   );
+}
+
+/**
+ * Announcements reach guests through their upcoming bookings.
+ * Gated in a wrapper so none of the body's hooks (Firestore listeners, writes)
+ * run while the platform is a directory (D3).
+ */
+export default function BroadcastManager(props: BroadcastManagerProps) {
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled) return (
+    <p className="text-sm text-stone-600">
+      Announcements to booked guests are switched off while Travel Malawi runs as a directory.
+    </p>
+  );
+  return <BroadcastManagerBody {...props} />;
 }

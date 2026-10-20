@@ -823,12 +823,12 @@ ROOMS & RATES:
                 </div>
               </div>
 
-              {/* Front Desk / Booking Contacts & Check-in Schedule */}
+              {/* Direct contacts & check-in schedule */}
               <div className="space-y-3 pt-3 border-t border-stone-100">
                 <h4 className="text-sm font-semibold text-stone-900">Contacts and check-in times</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className={labelClass}>Booking / Front Desk Phone</label>
+                    <label className={labelClass}>Contact phone</label>
                     <input
                       type="text"
                       value={draftData.contactPhone || ''}
@@ -838,7 +838,7 @@ ROOMS & RATES:
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>WhatsApp Number</label>
+                    <label className={labelClass}>WhatsApp number</label>
                     <input
                       type="text"
                       value={draftData.contactWhatsapp || ''}
@@ -848,12 +848,12 @@ ROOMS & RATES:
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Booking Email</label>
+                    <label className={labelClass}>Contact email</label>
                     <input
                       type="email"
                       value={draftData.contactEmail || ''}
                       onChange={(e) => updateField('contactEmail', e.target.value)}
-                      placeholder="bookings@example.com"
+                      placeholder="hello@example.com"
                       className={inputClass}
                     />
                   </div>

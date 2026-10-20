@@ -2,15 +2,15 @@
 
 | Lead | Status | Fixed | Logged | Pending handoffs |
 |---|---|---|---|---|
-| platform | done | 20 | 5 | - |
-| booking | done | 52 | 4 | - |
-| property | done | 65 | 1 | - |
-| onboarding | done | 39 | 2 | - |
-| ai | done | 38 | 1 | - |
-| messaging | done | 38 | 0 | - |
-| settings | done | 42 | 3 | - |
-| ui | done | 28 | 5 | - |
-| ux | done | 33 | 1 | - |
+| platform | done | 25 | 6 | - |
+| booking | done | 63 | 6 | - |
+| property | done | 74 | 1 | - |
+| onboarding | done | 47 | 4 | - |
+| ai | done | 48 | 1 | - |
+| messaging | done | 48 | 0 | - |
+| settings | done | 48 | 3 | - |
+| ui | done | 41 | 5 | - |
+| ux | done | 38 | 1 | - |
 | cleanup | done | 2 | 3 | - |
 
 **Next:** Verify: npm run lint && npm run build && npm run check:validation, then commit + push

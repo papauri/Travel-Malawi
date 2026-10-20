@@ -2,8 +2,9 @@
 
 ## 1. Project Overview & Identity
 - **Project Name**: Travel Malawi
-- **Tagline**: The Warm Heart of Africa — Direct Booking & Hospitality Platform
-- **Mission**: Connect domestic and international travelers directly with verified independent lodges, boutique hotels, B&Bs, lakeside cottages, guest houses, and safari camps across Malawi.
+- **Tagline**: The Warm Heart of Africa — a travel directory of Malawi's places to stay
+- **Mission**: Help domestic and international travellers discover independent lodges, boutique hotels, B&Bs, lakeside cottages, guest houses and safari camps across Malawi, and contact them directly.
+- **Purpose guardrail (Tourism Act, 2025 — owner directive)**: by default Travel Malawi is an **information directory**. It publishes listing information and the property's own contact details; it does not take bookings, payments, deposits, commissions or listing fees, and it does not carry guest↔host chat or calls. The booking platform still exists in code but is switched off by `system/settings.platformMode` (`'directory'` default, `'booking'` on), toggled by an admin with one switch in the Admin Dashboard and enforced in the UI (`usePlatformMode()`), on the server (`server/platformMode.ts`) and in `firestore.rules`. Every new feature, copy change, doc, email, SEO tag and Ulendo prompt must work and read correctly in directory mode first; anything booking- or chat-related must be gated, never shown by default. Docs use `<!-- booking-only -->` / `<!-- directory-only -->` blocks. Never claim a property is licensed or "Ministry verified". Detail: `agents/directives/D3-directory-mode.md`; gate: `node agents/checks/d3.mjs`.
 - **Only onboarded properties exist**: every property name, photo, price, review or recommendation shown anywhere (UI, SEO meta/JSON-LD, sitemap, Ulendo, emails, scripts) comes from approved listings in Firestore. Never hard-code, seed or recommend a real lodge/hotel that was not onboarded (e.g. no Kaya Mawa images in `index.html`). Place names (towns, parks, the lake) are fine. Detail: `agents/directives/D1-no-hardcoded-properties.md`.
 - **Architecture**: Full-stack TypeScript application with React 19 + Vite frontend and Express 5 backend running on port 3000, backed by Firebase Firestore.
 

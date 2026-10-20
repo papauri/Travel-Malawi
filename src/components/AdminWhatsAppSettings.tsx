@@ -4,6 +4,7 @@ import {
   AlertCircle, Eye, EyeOff, Save, Globe, Phone, X, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface WhatsAppConfigState {
   enabled: boolean;
@@ -21,6 +22,7 @@ interface WhatsAppConfigState {
 }
 
 export default function AdminWhatsAppSettings() {
+  const { bookingsEnabled } = usePlatformMode();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -196,7 +198,7 @@ export default function AdminWhatsAppSettings() {
         <div>
           <h2 className="tm-h1">WhatsApp messaging</h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-            Configure automated arrival PINs, 3-day welcome notes, and instant booking reminders.
+            {bookingsEnabled ? 'Configure automated arrival PINs, 3-day welcome notes, and instant booking reminders.' : 'Configure the WhatsApp sender used for Travel Malawi notices and host contact links.'}
           </p>
         </div>
 
@@ -231,8 +233,8 @@ export default function AdminWhatsAppSettings() {
             </div>
             <p className="text-xs text-stone-500 pt-0.5 max-w-2xl">
               {form.enabled 
-                ? 'WhatsApp messaging options, reminder templates, and guest contact buttons are active platform-wide.'
-                : 'All WhatsApp buttons, numbers, and reminder templates are suppressed across bookings and property pages.'}
+                ? (bookingsEnabled ? 'WhatsApp messaging options, reminder templates, and guest contact buttons are active platform-wide.' : 'WhatsApp contact links and notices are active platform-wide.')
+                : (bookingsEnabled ? 'All WhatsApp buttons, numbers, and reminder templates are suppressed across bookings and property pages.' : 'All WhatsApp contact links and numbers are suppressed across property pages.')}
             </p>
           </div>
 
@@ -321,7 +323,7 @@ export default function AdminWhatsAppSettings() {
                   <div>
                     <span className="text-xs font-semibold text-stone-900 block">Meta WhatsApp Cloud API</span>
                     <span className="text-[11px] text-stone-500 leading-tight block mt-0.5">
-                      Direct cloud dispatch without personal WhatsApp app. Sends automated scheduled reminders.
+                      {bookingsEnabled ? 'Direct cloud dispatch without personal WhatsApp app. Sends automated scheduled reminders.' : 'Direct cloud dispatch without a personal WhatsApp app.'}
                     </span>
                   </div>
                 </label>
@@ -462,7 +464,7 @@ export default function AdminWhatsAppSettings() {
                   />
                 </div>
                 <p className="text-[10px] text-stone-400 mt-1">
-                  Display number shown to guests in reservation vouchers.
+                  {bookingsEnabled ? 'Display number shown to guests in reservation vouchers.' : 'Display number for Travel Malawi WhatsApp notices.'}
                 </p>
               </div>
             </div>
@@ -564,12 +566,14 @@ export default function AdminWhatsAppSettings() {
             )}
           </div>
 
+          {bookingsEnabled && (
           <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-500 space-y-1">
             <h4 className="font-semibold text-stone-800 text-xs">Direct wa.me Fallback</h4>
             <p className="leading-relaxed">
               If Meta Cloud API is unconfigured, property managers can still send WhatsApp reminders via Direct Click-to-Chat with pre-formatted templates.
             </p>
           </div>
+          )}
         </div>
       </div>
     </div>

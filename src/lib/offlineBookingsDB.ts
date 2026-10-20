@@ -9,7 +9,7 @@
 
 import { doc, getDoc } from 'firebase/firestore';
 import { db as firestoreDb } from './firebase';
-import { createBookingWithSlot } from './bookingWrites';
+import { bookingsEnabledNow, createBookingWithSlot } from './bookingWrites';
 import { logSystemEvent } from './logger';
 
 export interface OfflineBookingRecord {
@@ -231,6 +231,12 @@ export async function syncOfflineBookings(): Promise<SyncResult> {
   }
 
   if (isSyncInProgress) {
+    return { total: 0, synced: 0, failed: 0, records: [] };
+  }
+
+  // Directory mode: keep the queue untouched (not failed) so it replays if
+  // bookings are switched back on.
+  if (!(await bookingsEnabledNow())) {
     return { total: 0, synced: 0, failed: 0, records: [] };
   }
 

@@ -6,11 +6,26 @@ import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import SEOHead from '../components/SEOHead';
 import { downloadDocHtml } from '../lib/downloadDoc';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 const STEPS = [
   { title: 'Send four photos on WhatsApp', details: 'Your bed, the view, the bathroom and the dining table.' },
   { title: 'Share your room names and nightly rates', details: 'Rates can be in MWK or USD. A calendar export link is optional.' },
   { title: 'Go live and welcome guests', details: 'We check your profile, test calendar sync and route guest messages to you.' },
+];
+
+// Directory mode (default): no booking page, deposits, chat or calendar sync.
+const DIRECTORY_STEPS = [
+  STEPS[0],
+  { title: 'Share your room names and "from" rates', details: 'Rates can be in MWK or USD. Travellers see them as a guide and agree the final price with you.' },
+  { title: 'Go live and hear from travellers', details: 'We check your listing, then travellers contact you directly on the phone, WhatsApp or email you add.' },
+];
+
+const DIRECTORY_BENEFITS = [
+  'Your own listing page with rooms, indicative rates in MWK and USD, menu and gate directions.',
+  'Travellers contact you directly on your phone, WhatsApp or email.',
+  'You agree dates, prices and payment with the guest yourself. Travel Malawi takes no part in it.',
+  'No commission and no listing fee.',
 ];
 
 const BENEFITS = [
@@ -21,10 +36,15 @@ const BENEFITS = [
 ];
 
 export default function StayOwnerLeaflet() {
+  const { bookingsEnabled } = usePlatformMode();
+  const steps = bookingsEnabled ? STEPS : DIRECTORY_STEPS;
+  const benefits = bookingsEnabled ? BENEFITS : DIRECTORY_BENEFITS;
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'stay-owner-leaflet',
     'Keep what you earn. Welcome guests directly.',
-    'List your stay on Travel Malawi: 0% commission at launch, local payouts, and direct chat with guests.'
+    bookingsEnabled
+      ? 'List your stay on Travel Malawi: 0% commission at launch, local payouts, and direct chat with guests.'
+      : 'List your stay on Travel Malawi: no commission, no listing fee, and travellers contact you directly.'
   );
 
   const [copied, setCopied] = useState(false);
@@ -50,7 +70,7 @@ export default function StayOwnerLeaflet() {
     <div className="min-h-screen bg-white text-stone-700">
       <SEOHead
         title="Stay Owner Leaflet & Partnership Overview — Travel Malawi"
-        description="Why Malawian lodge, cottage, and camp owners choose Travel Malawi: 0% commissions, direct WhatsApp bookings, and mobile money payouts (Airtel Money, TNM Mpamba)."
+        description="Why Malawian lodge, cottage, and camp owners choose Travel Malawi: a free listing with no commission, and travellers who contact them directly by phone, WhatsApp or email."
         keywords="Malawi lodge owners, cottage hosting Malawi, stay owner leaflet, Travel Malawi partner overview"
         url="https://ulendomalawi.com/stay-owner-leaflet"
       />
@@ -89,7 +109,7 @@ export default function StayOwnerLeaflet() {
         <section>
           <h2 className="tm-h2">How to get listed</h2>
           <ol className="mt-4 space-y-3">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <li key={step.title} className="flex gap-3">
                 <span className="tm-tag shrink-0 self-start">{i + 1}</span>
                 <details className="min-w-0 flex-1">
@@ -104,14 +124,16 @@ export default function StayOwnerLeaflet() {
         <section className="tm-divider mt-8 pt-8">
           <h2 className="tm-h2">What you get</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm sm:text-base">
-            {BENEFITS.map((b) => (
+            {benefits.map((b) => (
               <li key={b}>{b}</li>
             ))}
           </ul>
         </section>
 
         <section className="tm-divider mt-8 pt-8">
-          <h2 className="tm-h2">Founding hosts: 0% commission for 90 days</h2>
+          <h2 className="tm-h2">
+            {bookingsEnabled ? 'Founding hosts: 0% commission for 90 days' : 'Founding hosts: free listing and setup'}
+          </h2>
           <p className="tm-lead mt-2">We accept 10 stays per district, with free setup.</p>
           <div className="tm-actions mt-4 print:hidden">
             <a

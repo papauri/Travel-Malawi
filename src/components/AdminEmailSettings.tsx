@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface EmailConfigState {
   smtpHost: string;
@@ -23,6 +24,7 @@ interface EmailConfigState {
 }
 
 export default function AdminEmailSettings() {
+  const { bookingsEnabled } = usePlatformMode();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -229,7 +231,7 @@ export default function AdminEmailSettings() {
         <div>
           <h2 className="tm-h1">Email &amp; SMTP Settings</h2>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-            Configure outgoing SMTP parameters to dispatch booking confirmations, 24h arrival PINs, and reminders.
+            {bookingsEnabled ? 'Configure outgoing SMTP parameters to dispatch booking confirmations, 24h arrival PINs, and reminders.' : 'Configure outgoing SMTP parameters for host onboarding, listing status and other Travel Malawi emails.'}
           </p>
         </div>
 
@@ -263,7 +265,7 @@ export default function AdminEmailSettings() {
               <span>{form.fromEmail || 'Default sender address'}</span>
             </div>
             <p className="text-xs text-stone-500 pt-0.5 max-w-2xl">
-              Handles all transactional notifications, host arrival PIN templates, and manager reminders securely through Node nodemailer proxy.
+              {bookingsEnabled ? 'Handles all transactional notifications, host arrival PIN templates, and manager reminders securely through Node nodemailer proxy.' : 'Handles host onboarding, listing status and other Travel Malawi emails securely through the server.'}
             </p>
           </div>
 

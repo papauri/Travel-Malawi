@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { Booking } from '../types';
 import { Save } from 'lucide-react';
 import { todayStr } from '../lib/dates';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   booking: Booking | null;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function EditBookingModal({ booking, isOpen, onClose, onSave }: Props) {
+  const { bookingsEnabled } = usePlatformMode();
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
@@ -36,7 +38,7 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
     }
   }, [booking, isOpen]);
 
-  if (!isOpen || !booking) return null;
+  if (!bookingsEnabled || !isOpen || !booking) return null;
 
   const handleSave = async () => {
     setError(null);

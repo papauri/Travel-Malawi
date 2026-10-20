@@ -263,6 +263,13 @@ export interface WelcomeEmailParams {
   createdNew: boolean;
 }
 
+/**
+ * Built without the platform mode, so it always uses directory wording (D3):
+ * no bookings, payments or in-app messages are promised to the host.
+ */
+const DIRECTORY_NOTE_TEXT =
+  'Travel Malawi does not take bookings or payments. Travellers contact you directly using the phone, WhatsApp or email on your listing, so keep them up to date.';
+
 /** Pure builder for the welcome email: no I/O, never includes a password. */
 export function buildWelcomeEmail(params: WelcomeEmailParams): { subject: string; text: string; html: string } {
   const {
@@ -290,15 +297,17 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): { subject: string
 
 Takulandirani! Thank you for onboarding ${propertyName} on Ulendo Travel Malawi — The Warm Heart of Africa.
 
-Your property listing has been received and is currently in Pending Verification status (standard verification completes within 24 hours).
-IMPORTANT: Even while your listing is Pending Verification, you can view your live property preview and manage all rooms, rates, and photos immediately!
+Your property listing has been received and is waiting for review (our team usually reviews listings within 24 hours).
+Even while your listing is waiting for review, you can view your property preview and manage your rooms, rates and photos.
+
+${DIRECTORY_NOTE_TEXT}
 
 Property Summary:
 - Property Name: ${propertyName}
 - Location: ${location}
 - Listing ID: #${hotelId}
 - Assigned Role: ${roleLabel}
-- Current Status: Pending Review (Accessible Now in Preview & Management Hub)
+- Current Status: Waiting for review (preview and dashboard available now)
 
 Your Account Access:
 ${accessPlainTextSection}
@@ -345,7 +354,7 @@ ${baseUrl}
           Ulendo Travel Malawi
         </h1>
         <p style="margin: 0; font-size: 13px; color: #d6d3d1;">
-          Direct Booking &amp; Hospitality Operations Platform
+          Discover places to stay across Malawi
         </p>
       </div>
 
@@ -355,7 +364,11 @@ ${baseUrl}
           Takulandirani, ${escapeHtml(recipientName)}!
         </h2>
         <p style="margin: 0 0 18px; font-size: 14px; line-height: 1.6; color: #44403c;">
-          Your property listing for <strong>${escapeHtml(propertyName)}</strong> has been onboarded on <strong>Ulendo Travel Malawi</strong>. Even while our team completes standard verification, <strong>you can view your live listing preview and manage your property right now</strong>.
+          Your property listing for <strong>${escapeHtml(propertyName)}</strong> has been received on <strong>Ulendo Travel Malawi</strong>. While our team reviews it, <strong>you can view your listing preview and manage your property right now</strong>.
+        </p>
+
+        <p style="margin: 0 0 18px; font-size: 13px; line-height: 1.6; color: #57534e;">
+          ${escapeHtml(DIRECTORY_NOTE_TEXT)}
         </p>
 
         <!-- Property Summary Card -->
@@ -384,7 +397,7 @@ ${baseUrl}
               <td style="padding: 6px 0; color: #78716c;">Listing Status:</td>
               <td style="padding: 6px 0;">
                 <span style="display: inline-block; padding: 3px 10px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; border-radius: 9999px;">
-                  Pending Verification &bull; Live Preview Ready
+                  Waiting for review &bull; Preview ready
                 </span>
               </td>
             </tr>
@@ -397,7 +410,7 @@ ${baseUrl}
             Your Account &amp; Instant Access
           </h3>
           <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: #57534e;">
-            Sign in to view your pending listing and manage rooms, rates, and bookings:
+            Sign in to view your pending listing and manage your rooms, rates and listing details:
           </p>
 
           ${accessHtmlBlock}
@@ -418,9 +431,9 @@ ${baseUrl}
             Account Management &amp; Password Recovery
           </h4>
           <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #57534e; line-height: 1.6;">
-            <li><strong>View Listing Anytime:</strong> Your preview link (<a href="${escapeHtml(previewUrl)}" style="color: #047857; text-decoration: underline;">${escapeHtml(previewUrl.slice(baseUrl.length))}</a>) works immediately even while pending verification.</li>
+            <li><strong>View Listing Anytime:</strong> Your preview link (<a href="${escapeHtml(previewUrl)}" style="color: #047857; text-decoration: underline;">${escapeHtml(previewUrl.slice(baseUrl.length))}</a>) works now, even while your listing is waiting for review.</li>
             <li><strong>Forgot Password:</strong> Need a password reset link at any time? Use <a href="${escapeHtml(forgotUrl)}" style="color: #b45309; text-decoration: underline;">Forgot Password</a> on the login window for an instant email reset.</li>
-            <li><strong>Profile &amp; Security Settings:</strong> Update your password, phone, WhatsApp alerts, and preferred currency in <a href="${escapeHtml(profileUrl)}" style="color: #1c1917; text-decoration: underline;">Account Profile</a>.</li>
+            <li><strong>Profile &amp; Security Settings:</strong> Update your password, phone and preferred currency in <a href="${escapeHtml(profileUrl)}" style="color: #1c1917; text-decoration: underline;">Account Profile</a>.</li>
           </ul>
         </div>
       </div>
@@ -428,7 +441,7 @@ ${baseUrl}
       <!-- Footer -->
       <div style="background: #fafaf9; border-top: 1px solid #e7e5e4; padding: 20px 24px; text-align: center; font-size: 11px; color: #78716c; line-height: 1.5;">
         <p style="margin: 0 0 4px; font-weight: 600; color: #44403c;">
-          Ulendo Travel Malawi &bull; Connecting Travelers Directly with Malawi's Finest Hospitality
+          Ulendo Travel Malawi &bull; Discover places to stay in the Warm Heart of Africa
         </p>
         <p style="margin: 0;">
           Need help? Contact support at <a href="mailto:${escapeHtml(DEFAULT_PLATFORM_EMAIL)}" style="color: #b45309; text-decoration: none;">${escapeHtml(DEFAULT_PLATFORM_EMAIL)}</a> &bull; <a href="${escapeHtml(baseUrl)}" style="color: #78716c; text-decoration: none;">${escapeHtml(domain)}</a>

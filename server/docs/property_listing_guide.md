@@ -11,7 +11,13 @@ Travellers looking at places to stay in Malawi usually have three questions:
 2. Can my car get there, or is the road difficult?
 3. Will there be hot water after a long drive from Lilongwe?
 
+<!-- booking-only -->
 Answering these three questions clearly in your listing makes travellers much more likely to book.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+Answering these three questions clearly in your listing makes travellers much more likely to contact you.
+<!-- /directory-only -->
 
 ## 2. Room names
 
@@ -45,6 +51,7 @@ Write directions in four parts:
 3. **Arrival landmark:** "Look for the carved wooden boat sign on your right at the beach gate."
 4. **Gate GPS coordinates:** A pin at the front gate, so travellers can navigate offline with maps saved in Travel Malawi.
 
+<!-- booking-only -->
 ## 5. Direct Guest Inquiries & Ulendo Concierge AI Assistance
 
 1. **Direct Guest-to-Host Chat:** Travellers can message your manager directly from the listing page and booking confirmation via in-app real-time messaging and direct WhatsApp. They coordinate boat transfers from Monkey Bay/Likoma Island, custom Lake Chambo meals, and road directions with zero call center delays.
@@ -67,4 +74,20 @@ You never have to configure your listing alone:
 * **Live Shadow Support:** If you need assistance linking your PMS calendar feeds, setting up room categories, adjusting seasonal rates, or writing meal descriptions, our verified concierge support staff can securely shadow your host dashboard view live.
 * **100% Secure & Private:** You never share your password. Staff shadow sessions are strictly authenticated, audit-logged, and clearly marked with a golden session banner on screen.
 * **One-Click Moderation & Launch:** Once your photos and details are verified, your listing can be approved and published immediately.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+## 5. Direct Contact & Ulendo Concierge AI Assistance
+
+1. **Direct contact from your listing:** Travellers see your phone, WhatsApp, email and social links under "Contact the property" and reach you directly. They can ask about boat transfers from Monkey Bay/Likoma Island, custom Lake Chambo meals, and road directions with zero call centre delays. Keep these details current in your Host Dashboard.
+2. **Ulendo Concierge AI Copilot:** Inside your Host Dashboard, ask Ulendo, our resident Malawian hospitality AI concierge, for help crafting inviting room descriptions, proposing MWK and USD "from" rates, updating daily restaurant specials, and improving amenities with 1 click.
+
+## 6. Concierge Onboarding & Support Shadow Assistance
+
+You never have to configure your listing alone:
+
+* **Live Shadow Support:** If you need assistance setting up room categories, adjusting seasonal rates, uploading photos or writing meal descriptions, our verified concierge support staff can securely shadow your host dashboard view live.
+* **100% Secure & Private:** You never share your password. Staff shadow sessions are strictly authenticated, audit-logged, and clearly marked with a golden session banner on screen.
+* **One-Click Moderation & Launch:** Once your photos, details and at least one direct contact (phone, WhatsApp or email) are verified, your listing can be approved and published immediately.
+<!-- /directory-only -->
 

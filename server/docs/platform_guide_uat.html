@@ -47,6 +47,7 @@
     <p class="subtitle">Quality checks, test checklists and acceptance criteria for Travel Malawi</p>
     <hr class="rule">
   </header>
+  <!-- booking-only -->
   <h2>1. Purpose and audience</h2>
   <p>This guide sets out the test checklists, standards and acceptance criteria for Travel Malawi. It is for the operations team, field inspectors, marketing and partner onboarding staff.</p>
   <h2>2. Platform principles</h2>
@@ -89,6 +90,47 @@
   </ul>
   <h2>4. Reporting issues</h2>
   <p>Report test results, bugs or incorrect property details through the form at <code>/uat</code>, or contact the Travel Malawi operations team.</p>
+  <!-- /booking-only -->
+  <!-- directory-only -->
+  <h2>1. Purpose and audience</h2>
+  <p>This guide sets out the test checklists, standards and acceptance criteria for Travel Malawi. It is for the operations team, field inspectors, marketing and partner onboarding staff.</p>
+  <h2>2. Platform principles</h2>
+  <ul>
+  <li><strong>Built for Malawi:</strong> Prices in Kwacha and US dollars, and offline maps for areas with poor connectivity.</li>
+  <li><strong>Direct contact:</strong> Travellers contact the property directly by phone, WhatsApp or email. Travel Malawi is an information directory only. Arrangements are made directly with the property.</li>
+  <li><strong>Two currencies:</strong> Malawian Kwacha (MWK) rounded to the nearest 1,000; US dollars (USD) in whole dollars or rounded to the nearest $5.</li>
+  <li><strong>Ulendo AI trip planner:</strong> Answers traveller and host questions at any hour, using local knowledge of Malawi.</li>
+  </ul>
+  <h2>3. User acceptance tests</h2>
+  <h3>Suite A: Search and listings</h3>
+  <ul>
+  <li><strong>A1 Destination search:</strong> Typing filters results immediately for Lilongwe, Blantyre, Cape Maclear, Mangochi, Nkhata Bay, Nyika, Liwonde, Majete and Mulanje.</li>
+  <li><strong>A2 View modes:</strong> Switching between photo grid, compact list and map works without errors.</li>
+  <li><strong>A3 Currency switch:</strong> Switching between MWK and USD updates all prices correctly, with no layout shift.</li>
+  </ul>
+  <h3>Suite B: Contact and directions</h3>
+  <ul>
+  <li><strong>B1 Direct contact:</strong> Phone, WhatsApp and email under &quot;Contact the property&quot; open the right app with the property's own details.</li>
+  <li><strong>B2 Offline directions:</strong> GPS coordinates open the phone's own navigation app (Google Maps or OsmAnd) and work without mobile data when maps have been saved.</li>
+  <li><strong>B3 Information only:</strong> Listings show indicative &quot;from&quot; rates only. No checkout, payment instructions or in-app messaging appear anywhere.</li>
+  <li><strong>B4 Switched-off pages:</strong> Opening an old trip-voucher or message link shows a short notice and a link home, never a blank page.</li>
+  </ul>
+  <h3>Suite C: Property manager tools</h3>
+  <ul>
+  <li><strong>C1 Property page:</strong> Photos, amenities, rooms with indicative &quot;from&quot; rates and policies display clearly.</li>
+  <li><strong>C2 Bulk rate changes:</strong> Seasonal increases or discounts apply correctly across several rooms.</li>
+  <li><strong>C3 Ulendo Concierge AI copilot:</strong> Managers can ask Ulendo inside the Host Dashboard for rate wording, daily blackboard specials (lake fish of the day) and listing text.</li>
+  <li><strong>C4 Staff &amp; Support Shadow Mode:</strong> Admin and Marketing staff can click &quot;Shadow a Manager&quot; from the top navigation menu, search and select any property, verify the amber banner (&quot;Shadowing [Property Name] as Host&quot;), perform operations checks, and exit cleanly.</li>
+  <li><strong>C5 Listing moderation &amp; direct contact:</strong> Pending listings can be approved or rejected from the host dashboard banner or preview cards, and approval requires at least one direct contact (phone, WhatsApp or email).</li>
+  </ul>
+  <h3>Suite D: Partner documents</h3>
+  <ul>
+  <li><strong>D1 Sharing:</strong> WhatsApp sharing, copy link and print or save as PDF work on all partner documents.</li>
+  <li><strong>D2 Partner submissions:</strong> Survey responses, listing requests and field notes arrive in the Admin Documentation Hub.</li>
+  </ul>
+  <h2>4. Reporting issues</h2>
+  <p>Report test results, bugs or incorrect property details through the form at <code>/uat</code>, or contact the Travel Malawi operations team.</p>
+  <!-- /directory-only -->
   <footer>
     <span>Travel Malawi</span>
     <span>Updated October 2026</span>

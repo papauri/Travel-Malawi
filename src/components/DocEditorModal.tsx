@@ -44,7 +44,7 @@ export default function DocEditorModal({
       try {
         setLoading(true);
         setDocMeta(null);
-        const res = await fetch(`/api/admin/docs/${docId}?format=md`);
+        const res = await fetch(`/api/admin/docs/${docId}?format=md&edit=1`);
         if (res.ok) {
           const data = await res.json();
           setDocMeta(data.doc);

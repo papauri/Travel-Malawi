@@ -15,6 +15,7 @@ import {
 import { useOfflineBookings } from '../hooks/useOfflineBookings';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import PriceDisplay from './PriceDisplay';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface OfflineBookingsQueueProps {
   className?: string;
@@ -24,8 +25,9 @@ interface OfflineBookingsQueueProps {
 export default function OfflineBookingsQueue({ className = '', compact = false }: OfflineBookingsQueueProps) {
   const { allBookings, pendingCount, syncedCount, isSyncing, syncNow, removeBooking, clearCompleted } = useOfflineBookings();
   const { isOnline } = useNetworkStatus();
+  const { bookingsEnabled } = usePlatformMode();
 
-  if (allBookings.length === 0) {
+  if (!bookingsEnabled || allBookings.length === 0) {
     return null;
   }
 

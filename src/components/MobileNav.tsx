@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -21,7 +22,10 @@ export default function MobileNav() {
   useBodyScrollLock(isOpen);
   const isManager = isHotelManager(user);
   const unreadBroadcasts = useUnreadBroadcasts();
-  const { unreadCount, isVibrating } = useUnreadMessages();
+  const { unreadCount: chatUnread, isVibrating } = useUnreadMessages();
+  // Directory mode: no bookings and no in-app chat, so no trips link or message badges.
+  const { bookingsEnabled } = usePlatformMode();
+  const unreadCount = bookingsEnabled ? chatUnread : 0;
   const { isOnline } = useNetworkStatus();
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
 
@@ -42,7 +46,7 @@ export default function MobileNav() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
 
-  // Hide bottom nav on hotel details pages on mobile to make room for the sticky "Book" bar
+  // Hide bottom nav on hotel details pages on mobile to make room for the sticky action bar
   if (pathname.includes('/hotel/')) return null;
 
   // If user is a manager or admin, they have the Concierge Assistant on bottom-right and full nav in the top Navbar avatar
@@ -182,6 +186,7 @@ export default function MobileNav() {
                         <Heart className="w-5 h-5" />
                         <span>Saved</span>
                       </Link>
+                      {bookingsEnabled && (
                       <Link
                         to="/my-bookings"
                         className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition ${pathname === '/my-bookings' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
@@ -201,6 +206,7 @@ export default function MobileNav() {
                           </span>
                         ) : null}
                       </Link>
+                      )}
                     </>
                   )}
                 </div>

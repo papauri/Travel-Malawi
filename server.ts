@@ -28,6 +28,7 @@ import {
   executeTripConciergeChat
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
+import { requireBookingMode, getPlatformMode, bookingsEnabled, invalidatePlatformMode } from './server/platformMode';
 import { sendOnboardingWelcomeEmail, sendSmtpPasswordResetEmail } from './server/onboardingEmail';
 import {
   generateAutoReminders,
@@ -287,7 +288,7 @@ async function startServer() {
   // ---------------------------------------------------------------------------
 
   // Public iCal Feed Export for Room (RoomRaccoon, Airbnb, Booking.com, Google Cal subscribe here)
-  app.get('/api/calendar/room/:roomId.ics', async (req, res) => {
+  app.get('/api/calendar/room/:roomId.ics', requireBookingMode, async (req, res) => {
     try {
       const { roomId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
@@ -309,7 +310,7 @@ async function startServer() {
   });
 
   // Public iCal Feed Export for Hotel / Entire Place
-  app.get('/api/calendar/hotel/:hotelId.ics', async (req, res) => {
+  app.get('/api/calendar/hotel/:hotelId.ics', requireBookingMode, async (req, res) => {
     try {
       const { hotelId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
@@ -333,7 +334,7 @@ async function startServer() {
   // Test an external iCal URL before saving (e.g. from RoomRaccoon or Airbnb)
   // The server fetches the URL on the caller's behalf, so it is rate limited.
   const icalFetchLimiter = rateLimit({ name: 'ical-fetch', windowMs: 60_000, max: 10 });
-  app.post('/api/calendar/test-feed', requireAuth, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/test-feed', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
     try {
       const { url } = req.body || {};
       if (!url || typeof url !== 'string') {
@@ -348,7 +349,7 @@ async function startServer() {
   });
 
   // Trigger manual sync for a room's feeds
-  app.post('/api/calendar/sync-room', requireAuth, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/sync-room', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
     try {
       const { roomId, hotelId } = req.body || {};
       if (!isSafeId(roomId) || !isSafeId(hotelId)) {
@@ -369,7 +370,7 @@ async function startServer() {
   });
 
   // Trigger manual sync for a whole hotel's feeds
-  app.post('/api/calendar/sync-hotel', requireAuth, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/sync-hotel', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
     try {
       const { hotelId } = req.body || {};
       if (!isSafeId(hotelId)) {
@@ -390,7 +391,7 @@ async function startServer() {
   });
 
   // Admin & Marketing global sync trigger
-  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin', 'marketing'), async (req, res) => {
+  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin', 'marketing'), requireBookingMode, async (req, res) => {
     try {
       const result = await syncAllActiveFeeds();
       res.json({ success: true, ...result });
@@ -544,9 +545,11 @@ async function startServer() {
    *   and a signed-in caller must be that guest or the hotel's manager;
    * - with `hotelId` (or nothing): only that hotel's contact addresses, which is
    *   how signed-out guests notify a property about a new booking request.
+   * Every caller is a booking or chat notice, so the route is off in directory mode.
    */
   app.post(
     '/api/notify',
+    requireBookingMode,
     optionalAuth,
     (req, res, next) => (req.authUser ? notifyUserLimiter : notifyAnonLimiter)(req, res, next),
     async (req, res) => {
@@ -1018,7 +1021,7 @@ async function startServer() {
   };
 
   // Generate auto-reminders when a booking is confirmed (hotel manager or admin)
-  app.post('/api/reminders/auto-generate', requireAuth, async (req, res) => {
+  app.post('/api/reminders/auto-generate', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const body = req.body || {};
       const loaded = await loadManagedBooking(req, res, body.bookingId || body.id, body.hotelId);
@@ -1094,7 +1097,7 @@ async function startServer() {
   });
 
   // Get all scheduled and sent reminders for a property (hotel manager or admin)
-  app.get('/api/reminders/hotel/:hotelId', requireAuth, async (req, res) => {
+  app.get('/api/reminders/hotel/:hotelId', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const hotelId = String(req.params.hotelId);
       if (!(await canManageHotel(req.authUser, hotelId))) {
@@ -1128,7 +1131,7 @@ async function startServer() {
   });
 
   // Get reminders for a specific booking (its guest, its manager, or admin)
-  app.get('/api/reminders/:bookingId', requireAuth, async (req, res) => {
+  app.get('/api/reminders/:bookingId', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const bookingId = String(req.params.bookingId);
       const user = req.authUser!;
@@ -1151,7 +1154,7 @@ async function startServer() {
   });
 
   // Create a manual reminder (hotel manager or admin)
-  app.post('/api/reminders', requireAuth, async (req, res) => {
+  app.post('/api/reminders', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const body = req.body || {};
       const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
@@ -1204,7 +1207,7 @@ async function startServer() {
   });
 
   // Send an email reminder to the booking's guest now (hotel manager or admin)
-  app.post('/api/reminders/send-email', requireAuth, async (req, res) => {
+  app.post('/api/reminders/send-email', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const body = req.body || {};
       const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
@@ -1242,7 +1245,7 @@ async function startServer() {
   });
 
   // Send a test template email to the signed-in manager's own inbox
-  app.post('/api/reminders/test-template', requireRole('hotel_manager', 'admin', 'marketing'), async (req, res) => {
+  app.post('/api/reminders/test-template', requireRole('hotel_manager', 'admin', 'marketing'), requireBookingMode, async (req, res) => {
     try {
       const { toEmail, hotelName, bookingRef, templateTitle, subject, message } = req.body || {};
       const user = req.authUser!;
@@ -1610,8 +1613,9 @@ async function startServer() {
     }
   });
 
-  // Send a WhatsApp reminder to the booking's guest now (hotel manager or admin)
-  app.post('/api/reminders/send-whatsapp', requireAuth, async (req, res) => {
+  // Send a WhatsApp reminder to the booking's guest now (hotel manager or admin).
+  // A booking message, so it is off in directory mode (D3).
+  app.post('/api/reminders/send-whatsapp', requireAuth, requireBookingMode, async (req, res) => {
     try {
       const body = req.body || {};
       const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
@@ -1729,9 +1733,13 @@ async function startServer() {
 
       const isDownload = req.query.download === '1' || req.query.download === 'true';
       const isRawView = req.query.raw === '1' || req.query.raw === 'true';
-      const docResult = getAdminDocContent(String(req.params.id), format);
+      // Editors (staff, ?edit=1) get the raw source with the booking-only / directory-only markers;
+      // everyone else gets the version for the current platform mode (D3).
+      const viewer = await docViewer(req);
+      const rawForEdit = (req.query.edit === '1' || req.query.edit === 'true') && viewer.isStaff;
+      const docResult = getAdminDocContent(String(req.params.id), format, rawForEdit ? undefined : await getPlatformMode());
 
-      if (!docResult || !docVisibleTo(docResult.doc, await docViewer(req))) {
+      if (!docResult || !docVisibleTo(docResult.doc, viewer)) {
         return res.status(404).json({ error: 'Document not found' });
       }
 
@@ -1767,7 +1775,7 @@ async function startServer() {
       if (rawFormat === 'html') format = 'html';
       else if (rawFormat === 'md' || rawFormat === 'markdown') format = 'md';
 
-      const docResult = getAdminDocContent(String(req.params.id), format);
+      const docResult = getAdminDocContent(String(req.params.id), format, await getPlatformMode());
       if (!docResult || !docVisibleTo(docResult.doc, await docViewer(req))) {
         return res.status(404).json({ error: 'Document not found' });
       }

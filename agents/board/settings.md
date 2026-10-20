@@ -54,3 +54,13 @@ status: in-progress
 - [settings-44] P2 FIXED AdminEmailSettings, AdminWhatsAppSettings, Profile, ReviewModal, DocEditorModal — save buttons 'Save changes' (Profile password 'Save new password'), sentence-case/plain labels, … instead of ..., Profile secondary button on tm-btn-secondary (D2)
 - [settings-45] P2 LOGGED all /admin?tab= links in src/server (ManageHotel properties, opsPrompt properties/users) still valid after the merge; legacy values mapped in AdminDashboard readTabParams
 status: done
+status: in-progress
+- [settings-46] P1 FIXED server/docUtils.ts + server.ts /api/docs/:id, /api/admin/docs/:id — filterDocForMode() drops the non-matching booking-only / directory-only block and strips markers (md, text, html source); served routes pass getPlatformMode(); staff editors get raw markers via ?edit=1 (DocEditorModal sends it); stale 'Direct booking' subtitle on marketing deck meta -> neutral (D3)
+- [settings-47] P1 FIXED src/pages/AdminDashboard.tsx — platformMode switch (admin-only canSwitchMode, ConfirmDialog, setDoc merge, logSystemEvent, plain On/Off display), bookings fetched only in booking mode, Bookings tab/stat/charts/iCal/chat toggles/premium plans toggle hidden in directory mode, iCal sub-tab hidden with fallback sub, ?tab=bookings falls back to overview (D3)
+- [settings-48] P2 FIXED src/pages/Profile.tsx, src/components/ReviewModal.tsx — booking wording/notification toggle/'Book a Stay' CTA gated on bookingsEnabled; directory wording otherwise (D3)
+- [settings-49] P2 FIXED src/components/AdminWhatsAppSettings.tsx, AdminEmailSettings.tsx — booking/reminder/voucher descriptions and wa.me reminder fallback card gated by usePlatformMode (clears d3 chat-ui hit; wa.me there is an external link, not in-app chat) (D3)
+- [settings-50] P1 FIXED src/pages/AdminDashboard.tsx:handleUpdateStatus — approval allowed with no direct contact → refused with toast unless contactPhone/contactWhatsapp/contactEmail present (all approve paths incl. ReviewListingModal) (D3)
+- [settings-51] P1 FIXED src/pages/AdminDashboard.tsx:handleConfirmDeleteHotel — directory mode loads no bookings so the active-booking delete guard saw none → queries that hotel's bookings on demand (D3)
+- [H-orch-D3] DONE switch verified (admin-only, confirm, merge write, system_logs, plain mode text); booking tabs/stats/premium/iCal hidden; ReviewModal/Profile gated
+- [H-onboarding-58] DONE approve requires >=1 direct contact
+status: done

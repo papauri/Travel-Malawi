@@ -1,6 +1,7 @@
 import Modal from './Modal';
 import { formatMoney } from '../lib/currency';
 import { PendingMismatch } from '../hooks/useConfirmBooking';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   mismatch: PendingMismatch | null;
@@ -14,7 +15,8 @@ interface Props {
  * stay. The manager must choose explicitly to honour the stored price.
  */
 export default function PriceMismatchNotice({ mismatch, busy, onConfirmAnyway, onDismiss }: Props) {
-  if (!mismatch) return null;
+  const { bookingsEnabled } = usePlatformMode();
+  if (!bookingsEnabled || !mismatch) return null;
   const { check, booking } = mismatch;
   return (
     <Modal

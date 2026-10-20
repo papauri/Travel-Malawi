@@ -232,7 +232,7 @@ export default function ConferenceManager({ hotelId }: Props) {
             <div className="md:col-span-2">
               <label className="block">
                 <span className="tm-label">Guidelines and offers (one per line)</span>
-                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n') })} className="tm-input" placeholder="Breakfast and Coffee/Tea packages available on request\n50% deposit required to secure booking" />
+                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n') })} className="tm-input" placeholder="Breakfast and Coffee/Tea packages available on request\nProjector and PA system included" />
               </label>
             </div>
           </div>

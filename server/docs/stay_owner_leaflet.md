@@ -1,12 +1,25 @@
 # What You Get as a Partner Property
 *A one-page summary for lodge, cottage and hotel owners*
 
+<!-- booking-only -->
 ## Keep more of what you earn
 
 Tired of paying 15% to 25% of every booking to foreign travel websites that do not know Malawi?
 
 **Travel Malawi** is a direct booking platform for independent properties in Malawi. It was designed with Malawian lodge managers, safari operators and cottage owners, and connects you directly with domestic travellers, international visitors, NGO staff and business travellers.
+<!-- /booking-only -->
 
+<!-- directory-only -->
+## Be found by travellers
+
+Tired of travellers who cannot find your phone number, photos or directions online?
+
+**Travel Malawi** is a free directory of independent properties in Malawi. It was designed with Malawian lodge managers, safari operators and cottage owners, and helps domestic travellers, international visitors, NGO staff and business travellers discover and plan their stay.
+
+Travel Malawi is an information directory only. Arrangements are made directly with the property.
+<!-- /directory-only -->
+
+<!-- booking-only -->
 ## Five things you get from day one
 
 ### 1. Your own booking page
@@ -41,18 +54,66 @@ Tired of paying 15% to 25% of every booking to foreign travel websites that do n
 * **Show your reviews:** Display TripAdvisor and Google reviews directly on your listing.
 * **Direct two-way guest chat:** Real-time messaging and WhatsApp so returning travellers come straight back to you.
 * **Dedicated concierge shadow support:** Our verified team can securely shadow your manager view in real-time to assist with setup, PMS links, or rate tuning without requiring your passwords.
+<!-- /booking-only -->
 
+<!-- directory-only -->
+## Four things you get from day one
+
+### 1. Your own listing page
+
+* A fast, mobile-friendly page showing your rooms, indicative "from" rates in Kwacha and USD, amenities, menu and activities.
+* A photo gallery of your rooms.
+* Accurate GPS location and directions, so travellers can find you on unpaved roads.
+
+### 2. Your own contact details on the page
+
+* Your phone number, WhatsApp, email and social links appear under "Contact the property".
+* Travellers reach you directly, so returning visitors come straight back to you.
+* You may add your Tourism licence number. It is shown as provided by you.
+
+### 3. Ulendo, the AI trip planner
+
+* Ulendo (Chichewa for "journey") helps travellers plan routes and choose where to stay, at any time of day.
+* It answers general questions about areas, parks and the lake, and points travellers to your listing and contact details.
+* It replies in English, and in Chichewa when a traveller writes in Chichewa.
+
+### 4. Reviews and listing tools
+
+* **Show your reviews:** Display TripAdvisor and Google reviews directly on your listing.
+* **Bulk Room & Rate Editor:** Keep your "from" rates up to date and apply seasonal specials across multiple rooms in seconds.
+* **Dedicated concierge shadow support:** Our verified team can securely shadow your manager view in real-time to assist with setup, PMS links, or rate tuning without requiring your passwords.
+<!-- /directory-only -->
+
+<!-- booking-only -->
 ## How to join (about 10 minutes)
 
 1. **Send your details.** Send four photos (bed, view, bathroom, dining), your room names and rates in MWK or USD, and your WhatsApp number.
 2. **We build and test your page.** Our team sets up your listing, links your calendar, and runs connection diagnostics at no cost.
 3. **Receive guests directly.** Guests find you and pay you directly, and you keep 100% of the room rate during the launch period.
+<!-- /booking-only -->
 
+<!-- directory-only -->
+## How to join (about 10 minutes)
+
+1. **Send your details.** Send four photos (bed, view, bathroom, dining), your room names and rates in MWK or USD, and your phone, WhatsApp or email.
+2. **We build your page.** Our team sets up your listing at no cost.
+3. **Get found.** Travellers find your listing and contact you directly.
+<!-- /directory-only -->
+
+<!-- booking-only -->
 ## Founding partner offer
 
 * **0% commission** for your first 90 days.
 * **Free listing setup**, including your menu.
 * **Featured placement** on the Travel Malawi homepage.
+<!-- /booking-only -->
+
+<!-- directory-only -->
+## Founding partner offer
+
+* **Free listing setup**, including your menu.
+* **Help with photos** and room descriptions from our team.
+<!-- /directory-only -->
 
 Places are limited to 10 founding properties per area, across Lake Malawi, Lilongwe, Blantyre and the national parks.
 

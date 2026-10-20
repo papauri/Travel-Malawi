@@ -3,3 +3,4 @@
 - [H-orch-D1] DONE P1 → platform | scripts/repair_images.mjs, scripts/repair-data.mjs | apply directive agents/directives/D1-no-hardcoded-properties.md to these files | contract: none
 - [H-ui-4] DONE P1 → platform | vite.config.ts:14, scripts/repair_images.mjs:42-43 | PWA includeAssets 'hotels/*.jpg' and repair script map reference public/hotels lodge photos (being deleted) → remove | contract: none (D1)
 - [H-orch-D2] P2 → platform | src/components/AuthDialog.tsx only: calm, short sign-in/up copy, kit buttons/inputs | apply agents/directives/D2-minimal-human-ui.md | contract: none
+- [H-orch-D3] P1 → platform | your owned files | apply directive agents/directives/D3-directory-mode.md (directory mode switch: gate bookings + in-app chat, directory wording) | contract: system/settings.platformMode, usePlatformMode(), server/platformMode.ts, doc booking-only/directory-only blocks

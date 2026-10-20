@@ -12,6 +12,7 @@ import { CurrencyCode } from '../types';
 import { useWishlist } from '../hooks/useWishlist';
 import { useCompare } from '../contexts/CompareContext';
 import PriceDisplay from './PriceDisplay';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import MaskedPlaceName from './MaskedPlaceName';
 import { formatLocationName } from '../lib/geo';
 
@@ -52,6 +53,8 @@ export default function HotelCard({
 
   const { savedHotelIds, toggleSave } = useWishlist();
   const { selectedHotels, toggleHotel } = useCompare();
+  // Directory mode: dates and guests are not carried into the listing, and rates read as indicative "from" prices.
+  const { bookingsEnabled } = usePlatformMode();
 
   const isSaved = hotel.id ? savedHotelIds.includes(hotel.id) : false;
   const isComparing = hotel.id ? selectedHotels.some(h => h.hotel.id === hotel.id) : false;
@@ -120,9 +123,9 @@ export default function HotelCard({
 
   const searchQuery = new URLSearchParams(
     Object.entries({
-      checkIn: searchParams.checkIn || '',
-      checkOut: searchParams.checkOut || '',
-      guests: searchParams.guests ? String(searchParams.guests) : '',
+      checkIn: bookingsEnabled ? searchParams.checkIn || '' : '',
+      checkOut: bookingsEnabled ? searchParams.checkOut || '' : '',
+      guests: bookingsEnabled && searchParams.guests ? String(searchParams.guests) : '',
     }).filter(([, value]) => value !== '')
   ).toString();
 
@@ -356,6 +359,7 @@ export default function HotelCard({
                   ) : (
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-baseline gap-1 flex-wrap">
+                        {!bookingsEnabled && <span className="text-stone-400 text-xs">from</span>}
                         <PriceDisplay className="text-stone-900 font-bold text-sm sm:text-base tracking-tight" amount={priceFrom} currency={priceCurrency} />
                         {secondaryPriceFrom && secondaryCurrency && (
                           <span className="text-stone-400 text-[11px] sm:text-xs font-normal">

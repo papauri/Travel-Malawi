@@ -3,12 +3,12 @@
  *
  * What used to happen: every host entry point pointed at `/dashboard`, which
  * redirects anyone without the `hotel_manager` role straight back to the home
- * page. A signed-out visitor, and a signed-in one who had joined to book a
+ * page. A signed-out visitor, and a signed-in one who had joined to plan a
  * stay, both clicked "List your property" and simply landed back where they
  * started with nothing said. Anyone who did get through met a four-field form
  * that wrote a listing with no category, no gallery and no hours, and then
  * dropped them on a dashboard that did not mention the rooms a listing needs
- * before it can take a booking.
+ * before it can go live.
  *
  * This page owns the whole path instead: sign in or create an account, add the
  * host role to an existing account, fill in the listing over five reviewable
@@ -43,7 +43,7 @@ import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import { db, auth } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
   MALAWI_LOCATIONS, NAME_MAX, PROPERTY_CATEGORIES, PropertyCategory, createListing,
@@ -56,6 +56,15 @@ import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { DEFAULT_PLATFORM_EMAIL } from '../lib/contact';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
+
+/**
+ * The wizard's draft. `tourismLicenceNumber` is optional and kept beside the
+ * shared listing draft; it is written onto the hotel right after it is created.
+ */
+type WizardDraft = ListingDraft & { tourismLicenceNumber?: string };
+
+const LICENCE_MAX = 60;
 
 // Shared with the document importer so both round kwacha to MK 1,000.
 import { roomPriceFields } from '../lib/localPropertyParser';
@@ -209,7 +218,7 @@ export function getSteps(stayType?: string) {
       time: '~1 min',
     },
     { title: 'Host and contacts', blurb: 'Who guests and our team can reach.', time: '~30 secs' },
-    { title: 'Listing plan', blurb: 'Listing is free, with no commission.', time: '~15 secs' },
+    { title: 'Listing plan', blurb: 'Listing on Travel Malawi is free.', time: '~15 secs' },
     { title: 'Review and submit', blurb: 'Check everything, then send it for review.', time: '~15 secs' },
   ];
 }
@@ -220,7 +229,7 @@ const STEPS = getSteps();
 const FIELD_STEPS = [0, 1, 2, 3, 4];
 
 /** Survives the round trip through a Google sign-in popup or page refresh, scoped to user. */
-function readDraftForUser(uid?: string | null): ListingDraft {
+function readDraftForUser(uid?: string | null): WizardDraft {
   try {
     const key = getDraftStorageKey(uid);
     const stored = localStorage.getItem(key);
@@ -244,12 +253,14 @@ const labelClass = 'tm-label';
 
 export default function ListProperty() {
   const { whatsappEnabled } = useWhatsAppSettings();
+  // Directory mode (the default): no bookings, payments or in-app chat are promised to hosts.
+  const { bookingsEnabled } = usePlatformMode();
   const { user, loading: authLoading, becomeHost } = useAuth();
   const { openAuth } = useAuthDialog();
   const navigate = useNavigate();
 
   const prevUserUidRef = useRef<string | undefined>(user?.uid);
-  const [draft, setDraft] = useState<ListingDraft>(() => readDraftForUser(user?.uid));
+  const [draft, setDraft] = useState<WizardDraft>(() => readDraftForUser(user?.uid));
   const [step, setStep] = useState(0);
   const [showWelcomeWalkthrough, setShowWelcomeWalkthrough] = useState<boolean>(() => {
     // If user has already typed a draft with name, location, or description, jump directly to the form
@@ -538,9 +549,10 @@ export default function ListProperty() {
       checkInTime: p.checkInTime || '14:00',
       checkOutTime: p.checkOutTime || '10:00',
       suggestedRooms: p.suggestedRooms || (targetCategory ? synthesizeRoomsForCategory(targetCategory) : []),
-      contactPhone: p.contactPhone || '+265 991 234 567',
-      contactEmail: p.contactEmail || user?.email || 'reservations@property.mw',
-      contactWhatsapp: p.contactWhatsapp || p.contactPhone || '+265 991 234 567',
+      // Never invent contacts: they are the only way travellers reach the property.
+      contactPhone: p.contactPhone || '',
+      contactEmail: p.contactEmail || user?.email || '',
+      contactWhatsapp: p.contactWhatsapp || p.contactPhone || '',
     };
 
     setAiPropertySuggestion(suggestionObj);
@@ -762,9 +774,9 @@ export default function ListProperty() {
           checkInTime: aiData.checkInTime || '14:00',
           checkOutTime: aiData.checkOutTime || '10:00',
           suggestedRooms: rooms,
-          contactPhone: aiData.contactPhone || '+265 991 234 567',
-          contactEmail: aiData.contactEmail || user?.email || 'reservations@property.mw',
-          contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
+          contactPhone: aiData.contactPhone || '',
+          contactEmail: aiData.contactEmail || user?.email || '',
+          contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '',
         };
         setAiPropertySuggestion(suggestion);
 
@@ -827,9 +839,9 @@ export default function ListProperty() {
           checkInTime: '14:00',
           checkOutTime: '10:00',
           suggestedRooms: rooms,
-          contactPhone: '+265 991 234 567',
-          contactEmail: user?.email || 'reservations@property.mw',
-          contactWhatsapp: '+265 991 234 567',
+          contactPhone: '',
+          contactEmail: user?.email || '',
+          contactWhatsapp: '',
         };
         setAiPropertySuggestion(suggestion);
         if (isUrl) {
@@ -935,7 +947,7 @@ export default function ListProperty() {
     setAiPropertySuggestion(null);
   };
 
-  const set = useCallback(<K extends keyof ListingDraft>(key: K, value: ListingDraft[K]) => {
+  const set = useCallback(<K extends keyof WizardDraft>(key: K, value: WizardDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }));
   }, []);
 
@@ -1443,6 +1455,18 @@ export default function ListProperty() {
 
       const id = await createListing(draft, user.uid);
 
+      // Optional licence number: the shared draft→hotel mapping does not carry
+      // it, so it is added once the listing exists (manager may edit while pending).
+      const licence = (draft.tourismLicenceNumber ?? '').trim().slice(0, LICENCE_MAX);
+      if (licence) {
+        try {
+          await updateDoc(doc(db, 'hotels', id), { tourismLicenceNumber: licence });
+        } catch (licenceErr) {
+          console.warn('[Onboarding] Could not save tourism licence number:', licenceErr);
+          toast.error('Your listing was sent, but the licence number was not saved. Add it from your property page.');
+        }
+      }
+
       // Immediately dispatch onboarding welcome & login instructions email to property owner
       try {
         const token = await auth.currentUser?.getIdToken();
@@ -1492,7 +1516,7 @@ export default function ListProperty() {
         toast.success('Property and rooms submitted for review! Opening your management hub.', { duration: 6000 });
         navigate(`/dashboard/hotel/${id}`);
       } else {
-        toast.success('Submitted for review. Add individual rooms now so guests can book.', { duration: 6000 });
+        toast.success('Submitted for review. Add your rooms now so travellers can see them.', { duration: 6000 });
         navigate(`/dashboard/hotel/${id}?tab=rooms`);
       }
     } catch (error: any) {
@@ -1540,7 +1564,7 @@ export default function ListProperty() {
     <div className="bg-stone-50">
       <SEOHead
         title="List Your Property — Join Travel Malawi Hospitality Platform"
-        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Connect directly with domestic and international travelers with zero listing fees and payouts in MWK or USD."
+        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Free to list, and travellers contact you directly to plan their stay."
         keywords="list property Malawi, host lodge Malawi, lodge onboarding Malawi, hotel management Malawi, Travel Malawi partner"
         url="https://ulendomalawi.com/list-your-property"
       />
@@ -1611,7 +1635,7 @@ export default function ListProperty() {
                 Turn on hosting for this account
               </h3>
               <p className="text-xs text-stone-600 leading-relaxed break-words">
-                Signed in as <strong>{user.displayName || user.email}</strong>. You need hosting on to take bookings.
+                Signed in as <strong>{user.displayName || user.email}</strong>. You need hosting on to list a property.
               </p>
             </div>
             <button
@@ -1949,7 +1973,7 @@ export default function ListProperty() {
               {/* Stay Type: Room-by-Room vs Whole House / Entire Place */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={labelClass}>How do guests book?</span>
+                  <span className={labelClass}>How do guests stay?</span>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1973,7 +1997,7 @@ export default function ListProperty() {
                       )}
                     </div>
                     <span className="mt-1.5 block text-xs leading-relaxed text-stone-500">
-                      Guests book a room, chalet or tent. For hotels, lodges and B&amp;Bs.
+                      Guests stay in a room, chalet or tent. For hotels, lodges and B&amp;Bs.
                     </span>
                   </button>
 
@@ -3367,7 +3391,7 @@ export default function ListProperty() {
                       <ImageUpload
                         label="Room cover photo"
                         hint="A bright, wide shot of the bed and room."
-                        tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
+                        tooltip="Guest View: This image appears as the primary thumbnail for this room type in the room list on your property page."
                         value={room.imageUrl || ''}
                         onChange={url => {
                           const updated = [...(draft.rooms || [])];
@@ -3417,7 +3441,7 @@ export default function ListProperty() {
 
           {step === 4 && (
             <div className="space-y-6">
-              {/* Host & Booking Contacts */}
+              {/* Host & direct contacts */}
               <div className="space-y-6">
 
                 <div>
@@ -3441,7 +3465,7 @@ export default function ListProperty() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelClass} htmlFor="listing-email">
-                      Booking email <span className="text-red-500">*</span>
+                      Contact email <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3451,7 +3475,7 @@ export default function ListProperty() {
                         autoComplete="email"
                         value={draft.contactEmail}
                         onChange={e => set('contactEmail', e.target.value)}
-                        placeholder="reservations@yourproperty.mw"
+                        placeholder="hello@yourproperty.mw"
                         className={`${fieldClass} pl-11`}
                       />
                     </div>
@@ -3460,7 +3484,7 @@ export default function ListProperty() {
 
                   <div>
                     <label className={labelClass} htmlFor="listing-phone">
-                      Booking phone <span className="text-red-500">*</span>
+                      Contact phone <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3480,7 +3504,8 @@ export default function ListProperty() {
 
                 {/* WhatsApp & Alt Phone */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {whatsappEnabled && (
+                  {/* The property's own WhatsApp is a direct contact travellers use in directory mode. */}
+                  {(whatsappEnabled || !bookingsEnabled) && (
                     <div>
                       <label className={labelClass} htmlFor="listing-whatsapp">
                         WhatsApp number <span className="font-normal text-stone-400">(optional)</span>
@@ -3492,7 +3517,7 @@ export default function ListProperty() {
                           type="tel"
                           value={draft.contactWhatsapp}
                           onChange={e => set('contactWhatsapp', e.target.value)}
-                          placeholder="Same as booking phone"
+                          placeholder="Same as contact phone"
                           className={`${fieldClass} pl-11`}
                         />
                       </div>
@@ -3651,14 +3676,14 @@ export default function ListProperty() {
                 <div className="flex justify-center p-12">
                   <Loader2 className="h-8 w-8 animate-spin text-stone-300" />
                 </div>
-              ) : premiumEnabled ? (
+              ) : premiumEnabled && bookingsEnabled ? (
                 <div className="text-center">
                   <h3 className="tm-h2 mb-1">Choose a plan</h3>
                   <p className="tm-muted mb-6">You can change it later.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-stone-200 border-y border-stone-200 text-left">
                     <div className="py-5 md:pr-6 border-l-2 border-amber-700 pl-4">
                       <h4 className="font-semibold text-stone-900">Basic</h4>
-                      <p className="text-sm text-stone-500 mt-1 mb-4">Everything you need to take bookings.</p>
+                      <p className="text-sm text-stone-500 mt-1 mb-4">Everything you need to list your property.</p>
                       <p className="text-2xl font-semibold text-stone-900 mb-6">Free</p>
                       <span className="tm-tag tm-tag-good">
                         <Check className="h-3.5 w-3.5" /> Selected
@@ -3681,9 +3706,11 @@ export default function ListProperty() {
               ) : (
                 <div className="py-6 text-center">
                   <BadgeCheck className="mx-auto h-8 w-8 text-stone-700 mb-3" />
-                  <h3 className="tm-h2 mb-2">Free listing, no commission</h3>
+                  <h3 className="tm-h2 mb-2">{bookingsEnabled ? 'Free listing, no commission' : 'Free listing'}</h3>
                   <p className="tm-lead mx-auto">
-                    Listing on Travel Malawi is free. Guests pay you directly.
+                    {bookingsEnabled
+                      ? 'Listing on Travel Malawi is free. Guests pay you directly.'
+                      : 'Listing on Travel Malawi is free. Travellers contact you directly to arrange their stay.'}
                   </p>
                 </div>
               )}
@@ -3735,11 +3762,11 @@ export default function ListProperty() {
 
                   <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-3">
                     <div className="min-w-0">
-                      <dt className="font-semibold text-stone-400">Booking email</dt>
+                      <dt className="font-semibold text-stone-400">Contact email</dt>
                       <dd className="truncate text-stone-900">{draft.contactEmail}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-stone-400">Booking phone</dt>
+                      <dt className="font-semibold text-stone-400">Contact phone</dt>
                       <dd className="text-stone-900">{draft.contactPhone}</dd>
                     </div>
                     <div>
@@ -3963,6 +3990,23 @@ export default function ListProperty() {
                     </div>
                   </div>
                 </div>
+                <div className="mt-4">
+                  <label className={labelClass} htmlFor="listing-tourism-licence">
+                    Tourism licence number <span className="font-normal text-stone-400">(optional)</span>
+                  </label>
+                  <input
+                    id="listing-tourism-licence"
+                    type="text"
+                    maxLength={LICENCE_MAX}
+                    value={draft.tourismLicenceNumber ?? ''}
+                    onChange={e => set('tourismLicenceNumber', e.target.value)}
+                    placeholder="As shown on your licence"
+                    className={fieldClass}
+                  />
+                  <p className="mt-1 text-xs text-stone-500">
+                    Shown on your listing as provided by the property. Travel Malawi does not verify it.
+                  </p>
+                </div>
               </div>
 
               <div className="border-t border-stone-100 pt-6">
@@ -3972,7 +4016,11 @@ export default function ListProperty() {
                 <ol className="mt-2.5 space-y-1.5 text-xs sm:text-sm text-stone-600">
                   <li>1. Our team checks your listing, usually within a day.</li>
                   <li>2. You will hear from us when it is live.</li>
-                  <li>3. Booking requests arrive in your dashboard.</li>
+                  <li>
+                    {bookingsEnabled
+                      ? '3. Booking requests arrive in your dashboard.'
+                      : '3. Travellers find your listing and contact you directly.'}
+                  </li>
                 </ol>
               </div>
 
@@ -4102,7 +4150,7 @@ function OnboardingWelcomeWalkthrough({
     <div className="min-h-screen bg-stone-50 text-stone-700 font-sans">
       <SEOHead
         title="List Your Property — Join Travel Malawi Hospitality Platform"
-        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Connect directly with domestic and international travelers with zero listing fees and payouts in MWK or USD."
+        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Free to list, and travellers contact you directly to plan their stay."
         keywords="list property Malawi, host lodge Malawi, lodge onboarding Malawi, hotel management Malawi, Travel Malawi partner"
         url="https://ulendomalawi.com/list-your-property"
       />
@@ -4145,7 +4193,7 @@ function OnboardingWelcomeWalkthrough({
               List your stay in about 3 minutes
             </h1>
             <p className="tm-lead">
-              Listing is free and guests book with you directly. Your draft saves as you type.
+              Listing is free and travellers contact you directly. Your draft saves as you type.
             </p>
           </div>
 

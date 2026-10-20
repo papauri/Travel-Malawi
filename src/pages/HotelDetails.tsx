@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import SEOHead from '../components/SEOHead';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { useManagerPresence, PresenceStatus } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
@@ -234,9 +235,12 @@ export default function HotelDetails() {
   const { user } = useAuth();
   const { openAuth } = useAuthDialog();
   const { openInquiryChat, activeChat } = useChatModal();
+  // Directory mode (the default) switches off every booking flow and in-app
+  // chat: the page becomes a listing with the property's own contact details.
+  const { bookingsEnabled } = usePlatformMode();
 
   const handleOpenChat = () => {
-    if (!hotel) return;
+    if (!hotel || !bookingsEnabled) return;
     if (!user) {
       openAuth();
       return;
@@ -246,13 +250,13 @@ export default function HotelDetails() {
 
   const { isOnline } = useNetworkStatus();
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
-  const managerPresence = useManagerPresence(hotel?.managerId);
+  const managerPresence = useManagerPresence(bookingsEnabled ? hotel?.managerId : undefined);
   // The host's own "Show as online" switch wins over activity: set to away, they read as away.
   const hostStatus: PresenceStatus = !managerPresence
     ? 'offline'
     : managerPresence.status === 'online' && hotel?.isOnline === false ? 'away' : managerPresence.status;
   // Chat is offered whether or not the host is online; offline hosts get the message by email.
-  const canChat = Boolean(hotel && hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId);
+  const canChat = Boolean(bookingsEnabled && hotel && hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [conferenceRooms, setConferenceRooms] = useState<ConferenceRoom[]>([]);
   const [activeSpaceTab, setActiveSpaceTab] = useState<'rooms' | 'conferences'>('rooms');
@@ -398,13 +402,13 @@ export default function HotelDetails() {
   // to the manager's stated inventory, and the final pre-write check catches a
   // clash.
   useEffect(() => {
-    if (!id) return;
+    if (!id || !bookingsEnabled) return;
     // Public inventory mirror: bookings themselves are private to the guest,
     // the manager and admins.
     loadHotelSlots(id)
       .then(slots => setBookings(slots))
       .catch(err => console.warn('Live availability unavailable:', err?.message ?? err));
-  }, [id]);
+  }, [id, bookingsEnabled]);
 
   // Guest-written reviews live in their own collection so each one can be tied
   // to a completed stay. A failure here must not take the page down.
@@ -433,6 +437,11 @@ export default function HotelDetails() {
       setHasStayBooking(true);
       return;
     }
+    // No booking listener in directory mode; property notices reach the manager only.
+    if (!bookingsEnabled) {
+      setHasStayBooking(false);
+      return;
+    }
 
     const q = query(
       collection(db, 'bookings'),
@@ -451,7 +460,7 @@ export default function HotelDetails() {
     });
 
     return () => unsub();
-  }, [user, id, hotel?.managerId]);
+  }, [user, id, hotel?.managerId, bookingsEnabled]);
 
   // Only subscribe to broadcasts if user is logged in AND has an active booking with this stay
   useEffect(() => {
@@ -792,6 +801,7 @@ export default function HotelDetails() {
   }
 
   const initiateBooking = (room: RoomType) => {
+    if (!bookingsEnabled) return;
     // Signed-out visitors book as guests; a signed-in account needs the
     // traveller role, which a hotel manager can hold at the same time.
     if (user && !isTraveller(user)) {
@@ -826,7 +836,7 @@ export default function HotelDetails() {
 
   const handleManualBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRoom || saving) return;
+    if (!selectedRoom || saving || !bookingsEnabled) return;
 
     // One validator, so the field hints and the submit check cannot disagree.
     const problems = validateBooking(
@@ -1296,8 +1306,10 @@ export default function HotelDetails() {
     <div className="min-h-screen bg-white pb-24">
       <SEOHead
         title={`${hotel.name} — ${hotel.category || 'Luxury'} Lodge in ${hotel.location || 'Lake Malawi'}`}
-        description={`${((hotel.description || '').trim()).substring(0, 150)}... Book direct in MWK and USD with zero booking commissions on Travel Malawi.`}
-        keywords={`Malawi lodge, ${hotel.name}, ${hotel.location || 'Lake Malawi'}, ${hotel.category || 'Lodge'}, book ${hotel.name}, Lake Malawi accommodation, safari stay`}
+        description={bookingsEnabled
+          ? `${((hotel.description || '').trim()).substring(0, 150)}... Book direct in MWK and USD with zero booking commissions on Travel Malawi.`
+          : `${((hotel.description || '').trim()).substring(0, 150)}... Rooms, rates, photos, directions and the property's own contact details on Travel Malawi.`}
+        keywords={`Malawi lodge, ${hotel.name}, ${hotel.location || 'Lake Malawi'}, ${hotel.category || 'Lodge'}, ${bookingsEnabled ? `book ${hotel.name}` : `${hotel.name} contact`}, Lake Malawi accommodation, safari stay`}
         image={hotel.imageUrl || hotelImages[0]}
         url={`https://ulendomalawi.com/hotel/${hotel.id}`}
         type="hotel"
@@ -1482,6 +1494,7 @@ export default function HotelDetails() {
                   <Info className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                   <span>About</span>
                 </a>
+                {bookingsEnabled && (
                 <a
                   href="#stay-dates-selector"
                   onClick={(e) => {
@@ -1495,6 +1508,7 @@ export default function HotelDetails() {
                     <span>Dates and prices</span>
                   </span>
                 </a>
+                )}
                 <a
                   href="#rooms-section"
                   onClick={(e) => {
@@ -1549,9 +1563,9 @@ export default function HotelDetails() {
                   >
                     <span className="flex items-center gap-2.5">
                       <PhoneCall className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                      <span>Contact host</span>
+                      <span>{bookingsEnabled ? 'Contact host' : 'Contact the property'}</span>
                     </span>
-                    <span className={`w-2 h-2 rounded-full ${hostStatus === 'online' ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                    {bookingsEnabled && <span className={`w-2 h-2 rounded-full ${hostStatus === 'online' ? 'bg-emerald-500' : 'bg-stone-300'}`} />}
                   </a>
                 )}
                 <a
@@ -1653,15 +1667,15 @@ export default function HotelDetails() {
             {/* Divider between navigational actions and primary CTA */}
             <div className="h-5 w-px bg-stone-200/80 mx-0.5 sm:mx-1" aria-hidden="true" />
 
-            {/* Book Now CTA */}
+            {/* Primary CTA: book in booking mode, contact details in directory mode */}
             <button
               type="button"
               onClick={() => {
-                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                document.getElementById(bookingsEnabled ? 'rooms-section' : 'contact-host-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               className="tm-btn tm-btn-primary tm-btn-sm shrink-0 whitespace-nowrap"
             >
-              {hotel.stayType === 'entire_place' ? 'Book the space' : 'Book'}
+              {bookingsEnabled ? (hotel.stayType === 'entire_place' ? 'Book the space' : 'Book') : 'Contact'}
             </button>
           </div>
         </div>
@@ -1898,7 +1912,7 @@ export default function HotelDetails() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-700" />
                 <div>
-                  <p className="font-semibold">This property is not taking bookings yet</p>
+                  <p className="font-semibold">{bookingsEnabled ? 'This property is not taking bookings yet' : 'This listing is not published yet'}</p>
                   <p className="text-sm text-amber-800 mt-0.5">
                     {hotel.status === 'rejected'
                       ? 'This listing is not published.'
@@ -1971,8 +1985,14 @@ export default function HotelDetails() {
               collapseLabel="Show less"
               fadeGradientClass="from-transparent to-white"
               buttonClassName="text-stone-900 font-semibold text-xs sm:text-sm underline decoration-stone-300 hover:decoration-stone-800"
-              className="text-stone-600 text-sm sm:text-base leading-relaxed mb-8 lg:mb-10"
+              className={`text-stone-600 text-sm sm:text-base leading-relaxed ${hotel.tourismLicenceNumber?.trim() ? 'mb-3' : 'mb-8 lg:mb-10'}`}
             />
+            {/* Stated by the property; Travel Malawi has not verified it, so no badge. */}
+            {hotel.tourismLicenceNumber?.trim() && (
+              <p className="text-xs text-stone-500 mb-8 lg:mb-10">
+                Tourism licence no. {hotel.tourismLicenceNumber.trim()} (provided by the property)
+              </p>
+            )}
           </div>
 
           {/* Spaces Section */}
@@ -2047,10 +2067,10 @@ export default function HotelDetails() {
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
                   <div>
                     <h2 className="tm-h1">
-                      {hotel.stayType === 'entire_place' ? 'Book the whole place' : 'Rooms'}
+                      {hotel.stayType === 'entire_place' ? (bookingsEnabled ? 'Book the whole place' : 'The whole place') : 'Rooms'}
                     </h2>
                     {hotel.stayType === 'entire_place' && (
-                      <p className="tm-muted mt-1">You book the whole property, just for your group.</p>
+                      <p className="tm-muted mt-1">{bookingsEnabled ? 'You book the whole property, just for your group.' : 'The whole property is let to one group at a time.'}</p>
                     )}
                   </div>
                   {hotel.stayType === 'entire_place' && hotel.entirePlaceDetails && (
@@ -2067,8 +2087,8 @@ export default function HotelDetails() {
             
             {activeSpaceTab === 'rooms' ? (
               <>
-              {/* Top Inline Hybrid Date Bar */}
-              {(() => {
+              {/* Top Inline Hybrid Date Bar (booking mode only: no dates or availability in the directory) */}
+              {bookingsEnabled && (() => {
                 const isEntirePlace = hotel.stayType === 'entire_place';
                 const entireRoom = isEntirePlace && effectiveRooms.length > 0 ? effectiveRooms[0] : null;
                 const entireRoomAvailable = entireRoom ? (roomAvailability[entireRoom.id || '']?.available ?? false) : false;
@@ -2613,7 +2633,7 @@ export default function HotelDetails() {
             })()}
 
             {effectiveRooms.length === 0 ? (
-              <p className="tm-muted">No rooms listed yet. Message the property to ask.</p>
+              <p className="tm-muted">No rooms listed yet. {bookingsEnabled ? 'Message the property to ask.' : 'Contact the property to ask.'}</p>
             ) : (
               <div id="available-rooms-list" className="flex flex-col gap-4 mb-8 sm:mb-10 pb-2 scroll-mt-28 sm:scroll-mt-32">
                 {effectiveRooms.map((room, index) => {
@@ -2670,7 +2690,7 @@ export default function HotelDetails() {
                         />
                         
                         <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                          {isSoldOut ? (
+                          {!bookingsEnabled ? null : isSoldOut ? (
                             <span className="tm-tag tm-tag-bad">
                               <Info className="h-3.5 w-3.5" />
                               <span>{hasDates ? 'Full on your dates' : 'Not available'}</span>
@@ -2681,7 +2701,7 @@ export default function HotelDetails() {
                               <span>{status?.remaining != null ? status.remaining : room.quantity} available</span>
                             </span>
                           )}
-                          {isOverCapacity && !isSoldOut && (
+                          {bookingsEnabled && isOverCapacity && !isSoldOut && (
                             <span className="tm-tag tm-tag-warn">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                               <span>Fits {room.maxGuests}, you have {guestsCount}</span>
@@ -2743,6 +2763,7 @@ export default function HotelDetails() {
                             </div>
                           )}
                         </div>
+                        {bookingsEnabled && (
                         <button
                           type="button"
                           onClick={() => initiateBooking(room)}
@@ -2751,6 +2772,7 @@ export default function HotelDetails() {
                         >
                           {isSoldOut ? 'Unavailable' : isOverCapacity ? `Fits ${room.maxGuests}` : (hotel.stayType === 'entire_place' ? 'Book the whole place' : 'Book this room')}
                         </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -2759,8 +2781,9 @@ export default function HotelDetails() {
               </div>
             )}
 
-            {/* Reach the property directly */}
-            {(hasAnyContact(hotel) || canChat || hasSocialLinks(hotel)) && (
+            {/* Reach the property directly. In directory mode this is the only way
+                to reach a property, so it always shows (with a note when empty). */}
+            {(!bookingsEnabled || hasAnyContact(hotel) || canChat || hasSocialLinks(hotel)) && (
               <div id="contact-host-section" className="tm-panel scroll-mt-28 sm:scroll-mt-32 mt-6 sm:mt-8 min-w-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                   <div>
@@ -2768,6 +2791,7 @@ export default function HotelDetails() {
                       <h3 className="tm-h2 flex items-center gap-2">
                         <PhoneCall className="h-4 w-4 text-stone-500" /> Contact the property
                       </h3>
+                      {bookingsEnabled && (
                       <div className="flex items-center gap-1.5">
                         <span className="relative flex h-2.5 w-2.5">
                           {hostStatus === 'online' && (
@@ -2779,10 +2803,24 @@ export default function HotelDetails() {
                           {hostStatus === 'online' ? 'Online' : hostStatus === 'away' ? 'Away' : 'Offline'}
                         </span>
                       </div>
+                      )}
                     </div>
-                    <p className="tm-muted">
-                      Ask about activities, special requests or your arrival.
-                    </p>
+                    {bookingsEnabled ? (
+                      <p className="tm-muted">
+                        Ask about activities, special requests or your arrival.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="tm-muted">
+                          {hasAnyContact(hotel)
+                            ? 'Ask the property about rooms, rates, dates and your arrival.'
+                            : 'This property has not listed contact details yet.'}
+                        </p>
+                        <p className="text-xs text-stone-500 mt-1">
+                          Travel Malawi does not take bookings or payments. Arrangements are made directly with the property.
+                        </p>
+                      </>
+                    )}
                     <SocialLinks
                       facebook={hotel.socialFacebook}
                       instagram={hotel.socialInstagram}
@@ -2820,7 +2858,7 @@ export default function HotelDetails() {
                         <PhoneCall className="h-4 w-4" /> {hotel.contactPhone}
                       </a>
                     )}
-                    {whatsappEnabled && whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`) && (
+                    {(whatsappEnabled || !bookingsEnabled) && whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`) && (
                       <a
                         href={whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`)!}
                         target="_blank"
@@ -2847,8 +2885,8 @@ export default function HotelDetails() {
               <div className="space-y-4 sm:space-y-6">
                 <div className="tm-panel flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="tm-h2 mb-0.5">Book a meeting room</h3>
-                    <p className="tm-muted">Contact the property to reserve a room or ask about event packages.</p>
+                    <h3 className="tm-h2 mb-0.5">{bookingsEnabled ? 'Book a meeting room' : 'Meeting rooms'}</h3>
+                    <p className="tm-muted">{bookingsEnabled ? 'Contact the property to reserve a room or ask about event packages.' : 'Ask the property directly about meeting rooms and event packages.'}</p>
                   </div>
                   <div className="tm-actions shrink-0">
                     {canChat && (
@@ -3017,18 +3055,23 @@ export default function HotelDetails() {
                   <dd className="font-medium text-stone-900 break-words">Until {formatTime(hotel.checkOutTime ?? '11:00')}</dd>
                 </div>
               </>)}
+              {/* Directory mode: only the property's own stated cancellation terms, no payment row */}
+              {(bookingsEnabled || (activeSpaceTab === 'rooms' ? hotel.cancellationPolicy : hotel.conferenceCancellationPolicy)) && (
               <div className="min-w-0">
                 <dt className="tm-muted flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Cancellation</dt>
                 <dd className="font-medium text-stone-900 break-words">
                   {activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}
                 </dd>
               </div>
+              )}
+              {bookingsEnabled && (
               <div className="min-w-0">
                 <dt className="tm-muted flex items-center gap-1"><CreditCard className="w-3.5 h-3.5 shrink-0" /> Payment</dt>
                 <dd className="font-medium text-stone-900 break-words">
                   {activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}
                 </dd>
               </div>
+              )}
               {activeSpaceTab === 'rooms' && hotel.childPolicy?.enabled && (
                 <div className="min-w-0">
                   <dt className="tm-muted flex items-center gap-1"><Users className="w-3.5 h-3.5 shrink-0" /> Children</dt>
@@ -3081,8 +3124,8 @@ export default function HotelDetails() {
               </div>
             )}
 
-            {/* Deposit & payment instructions */}
-            {hotel.depositInfo?.instructions && (
+            {/* Deposit & payment instructions (booking mode only) */}
+            {bookingsEnabled && hotel.depositInfo?.instructions && (
               <div className="tm-divider mt-4 pt-4">
                 <p className="text-sm font-semibold text-stone-900 mb-1 flex items-center gap-1.5">
                   <CreditCard className="w-4 h-4 text-stone-500 shrink-0" /> How to pay a deposit
@@ -3101,7 +3144,7 @@ export default function HotelDetails() {
               </div>
             )}
 
-            <p className="tm-muted mt-4">Need a special request or a different arrival time? Ask the host.</p>
+            <p className="tm-muted mt-4">Need a special request or a different arrival time? {bookingsEnabled ? 'Ask the host.' : 'Ask the property directly.'}</p>
           </div>
           )}
 
@@ -3330,7 +3373,7 @@ export default function HotelDetails() {
       </div>
       
       {/* Booking request */}
-      {selectedRoom && (() => {
+      {bookingsEnabled && selectedRoom && (() => {
         const activePromo = roomPromotionFor(selectedRoom, checkIn);
         const pricing = computeBookingPricing(
           selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo,

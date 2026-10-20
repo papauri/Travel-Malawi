@@ -10,8 +10,31 @@
  * same batch or transaction.
  */
 
-import { collection, doc, writeBatch, serverTimestamp, Transaction, DocumentReference } from 'firebase/firestore';
+import { collection, doc, getDoc, writeBatch, serverTimestamp, Transaction, DocumentReference } from 'firebase/firestore';
 import { db } from './firebase';
+import { parsePlatformMode } from '../contexts/PlatformModeContext';
+
+/**
+ * Reads `system/settings.platformMode` once, for code outside React (offline
+ * replay, booking writes). Fails closed: unreadable means directory mode.
+ */
+export async function bookingsEnabledNow(): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, 'system', 'settings'));
+    return parsePlatformMode(snap.exists() ? snap.data()?.platformMode : undefined) === 'booking';
+  } catch {
+    return false;
+  }
+}
+
+/** Thrown when a booking is attempted while the platform is a directory. */
+export class DirectoryModeError extends Error {
+  readonly code = 'directory_mode';
+  constructor() {
+    super('Bookings are switched off. Contact the property directly from its listing.');
+    this.name = 'DirectoryModeError';
+  }
+}
 
 export const SLOT_FIELDS = ['hotelId', 'roomTypeId', 'checkIn', 'checkOut', 'quantity', 'status'] as const;
 
@@ -58,6 +81,8 @@ export function slotRef(bookingId: string): DocumentReference {
  * retry after a lost acknowledgement cannot create a second booking.
  */
 export async function createBookingWithSlot(data: BookingShape, bookingId?: string): Promise<string> {
+  // Rules enforce this too; checking first gives a clear message instead of permission-denied.
+  if (!(await bookingsEnabledNow())) throw new DirectoryModeError();
   const ref = bookingId ? doc(db, 'bookings', bookingId) : doc(collection(db, 'bookings'));
   // `quantity` must be explicit so the slot and the booking agree exactly.
   const full = { ...data, quantity: typeof data.quantity === 'number' ? data.quantity : 1 };

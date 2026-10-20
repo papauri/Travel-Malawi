@@ -42,3 +42,12 @@ status: in-progress
 - [platform-25] P2 FIXED src/components/AuthDialog.tsx — restyled with tm-btn/tm-input/tm-label/tm-link/tm-divider; dropped field icons, dark selected tiles and the feature-breakdown box; shorter calm copy and error messages; auth logic unchanged (D2)
 - [H-orch-D2] DONE AuthDialog restyled with the tm-* kit, d2 check 0 hits, tsc clean for the file
 status: done
+status: in-progress
+- [platform-26] P1 FIXED firestore.rules:236 — added bookingMode() (system/settings.platformMode, missing = directory) and required it on create of bookings, booking_slots, bookings/*/messages, bookings/*/calls (+candidates), hotel_chats, hotel_chats/*/messages, hotel_chats/*/calls (+candidates); updates/deletes unchanged for wind-down (D3)
+- [platform-27] P1 FIXED firestore.rules:262 — system/settings: only admins may change platformMode (marketing keeps other fields, must leave platformMode as is), value limited to directory|booking, delete admin-only (D3)
+- [platform-28] P1 FIXED server.ts:548 — /api/notify (booking/chat email notices only) now behind requireBookingMode; one shared import of the server/platformMode helpers added at server.ts:31 for other leads to reuse (D3)
+- [platform-29] P2 FIXED src/components/AuthDialog.tsx:190 — sign-up/sign-in copy ("manage bookings", "message hosts", "Looking to book") only in booking mode; directory wording otherwise via usePlatformMode (D3)
+- [platform-30] P2 FIXED vite.config.ts:19 — static PWA manifest now uses directory wording: description, "My Bookings" shortcut replaced by "Saved Stays" (/saved), host shortcut no longer promises guest arrivals (D3)
+- [platform-31] P3 LOGGED server/platformMode.ts:47 — invalidatePlatformMode() does not cancel an in-flight read, so a fetch started before the flip can cache the old mode for up to 30 s; harmless today (no caller, admin flips client-side), API kept stable. PlatformModeContext.tsx reviewed: no defects (fails closed, bookingsEnabled false while loading). Hotel.tourismLicenceNumber already present in src/types.ts.
+- [H-orch-D3] DONE rules gate creates on bookingMode() + admin-only platformMode, /api/notify behind requireBookingMode, AuthDialog + PWA manifest directory wording; d3 check 0 hits, tsc clean for owned files
+status: done

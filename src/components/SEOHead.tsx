@@ -15,7 +15,7 @@ export interface SEOHeadProps {
 
 const DEFAULT_TITLE = 'Travel Malawi';
 const DEFAULT_DESCRIPTION =
-  'Direct booking platform connecting travelers with verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi.';
+  'Travel Malawi is a directory of verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi. Contact each property directly.';
 const DEFAULT_IMAGE = 'https://ulendomalawi.com/icons/icon-512.png';
 const BASE_ORIGIN = 'https://ulendomalawi.com';
 const INDEXABLE = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';

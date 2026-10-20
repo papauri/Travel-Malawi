@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { Booking, Broadcast } from '../types';
 import { playChime } from '../lib/notificationSound';
 import toast from 'react-hot-toast';
@@ -21,6 +22,9 @@ function readSeenBroadcastIds(): string[] {
 
 export function useUnreadBroadcasts() {
   const { user } = useAuth();
+  // Lodge announcements reach guests through their upcoming bookings, so in
+  // directory mode (D3) neither the bookings nor the broadcasts listener opens.
+  const { bookingsEnabled } = usePlatformMode();
   const [unreadCount, setUnreadCount] = useState(0);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
 
@@ -28,7 +32,7 @@ export function useUnreadBroadcasts() {
   const knownBroadcastIds = useState<{ current: Set<string> }>({ current: new Set<string>() })[0];
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !bookingsEnabled) {
       setBroadcasts([]);
       isInitialLoad.current = true;
       knownBroadcastIds.current.clear();
@@ -113,7 +117,7 @@ export function useUnreadBroadcasts() {
       unsubBookings();
       unsubBroadcasts();
     };
-  }, [user]);
+  }, [user, bookingsEnabled]);
 
   // Recalculate unread count when broadcasts change or when seen event occurs
   useEffect(() => {

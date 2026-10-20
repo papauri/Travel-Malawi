@@ -43,3 +43,19 @@ status: in-progress
 - [H-orch-D2] DONE guides cut to short numbered steps with collapsed Details (doc edit/download hooks kept); MarketingDeck, legal pages, shared components restyled with tm-* kit; d2 hits 219 -> 7 (all legitimate mono); tsc clean in ui files
 - [ui-30] P2 FIXED src/components/Footer.tsx — dark footer used emerald logo/QA badge/green status dot (AI look) → amber logo, plain link, no dot (D2; orchestrator, from ai report)
 status: done
+status: in-progress
+- [ui-31] P1 FIXED server/docs/*.md (7 docs) — booking/chat/payment/iCal content wrapped in booking-only blocks, directory-only replacements added (direct contact, indicative rates, no commission/fees); booking text unchanged; d3 gate 81 -> 0 (D3)
+- [ui-32] P1 FIXED server/docs/*.html (7 docs) — original body wrapped in booking-only, rendered directory-only body added (survey form keeps same ids/payload; sections B/C and legend swapped); directory view has 0 booking/commission/payment words (D3)
+- [ui-33] P1 FIXED src/components/{Navbar,MobileNav,Footer,HotelCard,CompactHotelCard}.tsx — usePlatformMode: My Bookings/ActiveChats/booking listener/unread chat badges, Booking explainer + Refunds links, sold-out dimming and date params hidden in directory mode; cards show 'from' rates (D3)
+- [ui-34] P1 FIXED index.html — meta/og/twitter/JSON-LD in directory wording (no booking/verified/payment; TravelAgency->Organization, paymentAccepted removed) (D3)
+- [ui-35] P1 FIXED src/pages/HowHostingWorks.tsx — usePlatformMode: directory steps for travellers and hosts (no calendar sync, chat, booking/payment wording; contact-the-property step), SEO/lead/notice/CTA/form label in directory wording; booking text kept for booking mode (D3)
+- [ui-36] P1 FIXED src/pages/PlatformGuideUat.tsx — usePlatformMode: chat/voucher/iCal tests hidden in directory mode, B1 becomes 'Contact the property directly', payment-rail line and booking-modal example gated (D3)
+- [ui-37] P1 FIXED src/pages/PlatformGuideUat.tsx:73 — unescaped apostrophe in the B1 directory 'expected' string broke the build (19 tsc errors); 'Open any verified stay' → 'Open any stay' (D3)
+- [ui-38] P1 FIXED src/pages/{Terms,Privacy}.tsx — usePlatformMode: booking enquiry/voucher/booking-history/messaging-channel/commission lines and SEO meta in directory wording, booking text kept for booking mode (D3)
+- [ui-39] P1 FIXED src/pages/StayOwnerLeaflet.tsx — directory steps/benefits (listing page, direct contact, no commission or listing fee; no deposits/chat/calendar sync), default subtitle + founding-host heading by mode, SEO meta in directory wording (D3)
+- [ui-40] P1 FIXED src/pages/MarketingDeck.tsx — sections 1-3 have a directory version (who is looking for your stay, comparison without payouts/voucher/iCal, keep your other channels); default title/subtitle by mode; form placeholder 'group stays' (D3)
+- [ui-41] P1 FIXED src/pages/{OperationsStarterPack,PropertyListingGuide}.tsx — directory step lists (no booking-site/deposit/chat/iCal pitch; contact-details step; approval checklist needs ≥1 direct contact and never claims Ministry verification) (D3)
+- [ui-42] P1 FIXED src/pages/{HostStarterPack,ConceptValidationSurvey}.tsx — HostStarterPack: five directory steps (calendar sync + get paid hidden, contact details + no fees), email summary, SEO and 'How is it let?'; survey: directory feature list (same field, new ids listing_page/direct_contact), pilot note and heading by mode (D3)
+- [ui-43] P2 FIXED src/pages/Refunds.tsx — page already disclaims fund handling; booking-coordination/booking-voucher/booking-agreement wording and SEO meta made mode-neutral (route reachable directly; footer link already booking-only) (D3)
+- [H-orch-D3] DONE ui-31..43; d3.mjs 0 hits in ui files (geo.ts hits are ux-owned 'Reserve' place names, ux-42); tsc clean
+status: done

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAIAssistant, describeAIError } from '../hooks/useAIAssistant';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { Hotel } from '../types';
 import { distanceKm, estimateTravelTime, isValidLatLng, isCrossingLakeMalawi, LatLng } from '../lib/geo';
 
@@ -399,7 +400,7 @@ export function buildLocalTripInsights(
 
   const summary =
     hotels.length === 1
-      ? `A ${totalNights}-night stay at ${hotels[0].name} in ${hotels[0].location || 'Malawi'}. Good for: ${styleObj.desc.toLowerCase()}. Book directly with your host, with no platform commission.`
+      ? `A ${totalNights}-night stay at ${hotels[0].name} in ${hotels[0].location || 'Malawi'}. Good for: ${styleObj.desc.toLowerCase()}. Arrange your stay directly with the property.`
       : `${hotels.length} stays over ${totalNights} nights (about ${totalRoadKm} km, ${totalHoursStr}): ${hotels.map(h => h.name).join(' → ')}. Each leg is planned for daytime driving.`;
 
   const hasSafari = categoriesSet.has('safari');
@@ -460,6 +461,8 @@ export function buildLocalTripInsights(
 
 export default function TripAIInsights({ hotels, nightsByHotel, onOpenListing }: Props) {
   const { status: aiStatus } = useAIAssistant();
+  // Directory mode (D3): copied plans never mention booking or fees.
+  const { bookingsEnabled } = usePlatformMode();
   const isAIAvailable = Boolean(aiStatus.enabled && aiStatus.available);
 
   const [selectedStyle, setSelectedStyle] = useState('balanced');
@@ -642,7 +645,9 @@ ${insights.insiderSecrets.map(s => `- ${s}`).join('\n')}
 • Cash & Cards: ${insights.logisticsAdvice.currencyAndCash}
 • Mobile & SIM: ${insights.logisticsAdvice.simAndConnectivity}
 
-Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.studio/`;
+${bookingsEnabled
+  ? 'Plan and book direct with 0% fees on Travel Malawi'
+  : 'Plan your trip on Travel Malawi and contact each property directly'}: https://travel-malawi.ai.studio/`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);

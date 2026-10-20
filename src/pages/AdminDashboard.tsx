@@ -34,6 +34,7 @@ import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleF
 import { formatMoney } from '../lib/booking';
 import { updateBookingWithSlot, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -163,6 +164,9 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState('');
   
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
+  const { mode: platformMode, bookingsEnabled, loading: modeLoading } = usePlatformMode();
+  const [modeConfirmOpen, setModeConfirmOpen] = useState(false);
+  const [savingMode, setSavingMode] = useState(false);
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [togglingPremium, setTogglingPremium] = useState(false);
   const [customDestinations, setCustomDestinations] = useState<string[]>([]);
@@ -261,10 +265,9 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [hotelsSnapshot, usersSnapshot, bookingsSnapshot, settingsSnapshot, roomsSnapshot] = await Promise.all([
+      const [hotelsSnapshot, usersSnapshot, settingsSnapshot, roomsSnapshot] = await Promise.all([
         getDocs(collection(db, 'hotels')),
         getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'bookings')),
         getDoc(doc(db, 'system', 'settings')),
         getDocs(collection(db, 'room_types'))
       ]);
@@ -293,15 +296,7 @@ export default function AdminDashboard() {
         ...doc.data()
       })) as User[];
       setUsers(usersData);
-      
-      const bookingsData = bookingsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Booking[];
-      // Sort bookings by creation date descending
-      bookingsData.sort((a, b) => b.createdAt - a.createdAt);
-      setBookings(bookingsData);
-      
+
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error('Failed to load dashboard data');
@@ -321,7 +316,56 @@ export default function AdminDashboard() {
     }
   }, [user, actualUser, authLoading, navigate]);
 
+  // Bookings are read only while the booking platform is switched on (directory mode reads none).
+  useEffect(() => {
+    if (authLoading || modeLoading) return;
+    if (!bookingsEnabled) {
+      setBookings([]);
+      return;
+    }
+    let cancelled = false;
+    getDocs(collection(db, 'bookings'))
+      .then(snap => {
+        if (cancelled) return;
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Booking[];
+        data.sort((a, b) => b.createdAt - a.createdAt);
+        setBookings(data);
+      })
+      .catch(error => {
+        console.error('Error fetching bookings:', error);
+        toast.error('Failed to load bookings');
+      });
+    return () => { cancelled = true; };
+  }, [authLoading, modeLoading, bookingsEnabled]);
+
+  // The bookings tab reached through the URL falls back to the overview in directory mode.
+  useEffect(() => {
+    if (!modeLoading && !bookingsEnabled && activeTab === 'bookings') setActiveTab('overview');
+  }, [modeLoading, bookingsEnabled, activeTab]);
+
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Only a full admin can flip the platform mode (marketing cannot); Firestore rules enforce the same.
+  const canSwitchMode = isAdmin(actualUser || user);
+  const handleSetPlatformMode = async () => {
+    if (savingMode || !canSwitchMode) return;
+    const next = bookingsEnabled ? 'directory' : 'booking';
+    setSavingMode(true);
+    try {
+      await setDoc(doc(db, 'system', 'settings'), { platformMode: next }, { merge: true });
+      toast.success(next === 'booking' ? 'Bookings and in-app chat are on' : 'Bookings and in-app chat are off');
+      await logSystemEvent('action', `Admin switched bookings and in-app chat ${next === 'booking' ? 'on' : 'off'} (platform mode: ${next})`, {
+        previousMode: platformMode,
+        platformMode: next,
+      }, actualUser || user, 'admin');
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not change the setting. Try again.');
+    } finally {
+      setSavingMode(false);
+      setModeConfirmOpen(false);
+    }
+  };
 
   const handleTogglePremium = async () => {
     if (togglingPremium) return;
@@ -431,8 +475,13 @@ export default function AdminDashboard() {
 
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending', reason?: string) => {
     if (updatingId) return;
-    setUpdatingId(hotelId);
     const targetHotel = hotels.find(h => h.id === hotelId);
+    // Travellers reach a property only through its own contact details, so approval needs at least one.
+    if (newStatus === 'approved' && !(targetHotel?.contactPhone?.trim() || targetHotel?.contactWhatsapp?.trim() || targetHotel?.contactEmail?.trim())) {
+      toast.error('Add a phone, WhatsApp or email to the listing before approving it.');
+      return;
+    }
+    setUpdatingId(hotelId);
     try {
       const hotelRef = doc(db, 'hotels', hotelId);
       const updatePayload: Record<string, any> = { status: newStatus };
@@ -482,9 +531,22 @@ export default function AdminDashboard() {
     if (!hotelToDelete?.id || isDeletingHotel) return;
     const targetHotel = hotelToDelete;
 
-    // Check if property has active upcoming bookings that would become orphans
+    // Check if property has active upcoming bookings that would become orphans.
+    // Directory mode loads no bookings, so read this property's bookings on demand.
     const today = todayStr();
-    const upcoming = bookings.filter(b =>
+    let hotelBookings = bookings;
+    if (!bookingsEnabled) {
+      try {
+        const snap = await getDocs(query(collection(db, 'bookings'), where('hotelId', '==', targetHotel.id)));
+        hotelBookings = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Booking[];
+      } catch (error) {
+        console.error('Error checking bookings:', error);
+        toast.error('Could not check this property for bookings. Try again.');
+        setHotelToDelete(null);
+        return;
+      }
+    }
+    const upcoming = hotelBookings.filter(b =>
       b.hotelId === targetHotel.id &&
       (b.status === 'confirmed' || b.status === 'pending') &&
       (b.checkOut ?? '') >= today
@@ -1018,7 +1080,7 @@ export default function AdminDashboard() {
     return [
       { id: 'overview' as Tab, label: 'Overview' },
       { id: 'properties' as Tab, label: 'Properties' },
-      { id: 'bookings' as Tab, label: 'Bookings' },
+      { id: 'bookings' as Tab, label: 'Bookings', visible: bookingsEnabled },
       { id: 'users' as Tab, label: 'Users', visible: isAdmin(user) || isMarketing(user) },
       { id: 'analytics' as Tab, label: 'Analytics' },
       { id: 'reviews' as Tab, label: 'Reviews' },
@@ -1026,7 +1088,7 @@ export default function AdminDashboard() {
       { id: 'content' as Tab, label: 'Content' },
       { id: 'settings' as Tab, label: 'Settings', visible: isGlobalAdmin(user) },
     ].filter(t => t.visible !== false);
-  }, [user]);
+  }, [user, bookingsEnabled]);
 
   // A tab hidden from this role must not render even when reached through ?tab=
   const canViewTab = (id: Tab) => adminTabs.some(t => t.id === id);
@@ -1041,12 +1103,13 @@ export default function AdminDashboard() {
     { id: 'docs' as ContentSub, label: 'Partner docs' },
   ];
   const settingsSubs = [
-    { id: 'channels' as SettingsSub, label: 'iCal and channels' },
+    { id: 'channels' as SettingsSub, label: 'iCal and channels', visible: bookingsEnabled },
     { id: 'whatsapp' as SettingsSub, label: 'WhatsApp' },
     { id: 'email' as SettingsSub, label: 'Email' },
     { id: 'ai' as SettingsSub, label: 'AI providers' },
     { id: 'logs' as SettingsSub, label: 'Audit logs' },
-  ];
+  ].filter(t => t.visible !== false);
+  const shownSettingsSub: SettingsSub = settingsSubs.some(t => t.id === settingsSubTab) ? settingsSubTab : settingsSubs[0].id;
   const shownAnalyticsSub: AnalyticsSub = analyticsSubs.some(t => t.id === analyticsSub) ? analyticsSub : 'stats';
 
   const renderSubTabs = <T extends string>(items: { id: T; label: string }[], current: T, kind: 'analytics' | 'content' | 'settings') => (
@@ -1143,11 +1206,13 @@ export default function AdminDashboard() {
                 <p className="tm-muted truncate">{stats.managersCount} hosts</p>
               </button>
 
-              <button onClick={() => setActiveTab('bookings')} className="tm-stat text-left hover:border-stone-300 transition cursor-pointer">
-                <p className="tm-stat-label">Bookings</p>
-                <p className="tm-stat-value">{stats.totalBookings}</p>
-                <p className="tm-muted truncate">Recorded reservations</p>
-              </button>
+              {bookingsEnabled && (
+                <button onClick={() => setActiveTab('bookings')} className="tm-stat text-left hover:border-stone-300 transition cursor-pointer">
+                  <p className="tm-stat-label">Bookings</p>
+                  <p className="tm-stat-value">{stats.totalBookings}</p>
+                  <p className="tm-muted truncate">Recorded reservations</p>
+                </button>
+              )}
 
               <button
                 onClick={() => {
@@ -1220,7 +1285,38 @@ export default function AdminDashboard() {
               </ul>
             </div>
 
-            {isGlobalAdmin(user) && (
+            {canSwitchMode && (
+              <div className="tm-panel min-w-0 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-medium text-stone-900">Bookings and in-app chat</h4>
+                  <p className="tm-muted mt-0.5">
+                    {modeLoading
+                      ? 'Checking the current setting…'
+                      : bookingsEnabled
+                        ? 'On. Travellers can book stays and message hosts in the app.'
+                        : 'Off. Travel Malawi is an information directory. Travellers contact properties directly from their listing.'}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs font-medium text-stone-700">{modeLoading ? '' : bookingsEnabled ? 'On' : 'Off'}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={bookingsEnabled}
+                    aria-label="Bookings and in-app chat"
+                    onClick={() => setModeConfirmOpen(true)}
+                    disabled={modeLoading || savingMode}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 cursor-pointer disabled:opacity-50 ${bookingsEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${bookingsEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isGlobalAdmin(user) && bookingsEnabled && (
               <div className="tm-panel min-w-0 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <h4 className="text-sm font-medium text-stone-900">Premium listing plans</h4>
@@ -1251,21 +1347,25 @@ export default function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
               <h2 className="tm-h1">Analytics</h2>
-              <p className="tm-muted mt-0.5">Bookings, growth and featured stays.</p>
+              <p className="tm-muted mt-0.5">{bookingsEnabled ? 'Bookings, growth and featured stays.' : 'Growth and featured stays.'}</p>
             </div>
 
             {/* Summary numbers */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${bookingsEnabled ? 'lg:grid-cols-4' : ''}`}>
+              {bookingsEnabled && (
               <div className="tm-stat">
                 <p className="tm-stat-label">Confirmed volume</p>
                 <p className="tm-stat-value">MK {stats.revenueMWK.toLocaleString()}</p>
                 <p className="tm-muted truncate">+ USD ${stats.revenueUSD.toLocaleString()} · no platform fee</p>
               </div>
+              )}
+              {bookingsEnabled && (
               <div className="tm-stat">
                 <p className="tm-stat-label">Confirmed reservations</p>
                 <p className="tm-stat-value">{stats.confirmedBookingsCount}</p>
                 <p className="tm-muted truncate">{stats.conversionRate}% of {stats.totalBookings} · {stats.pendingBookingsCount} pending</p>
               </div>
+              )}
               <div className="tm-stat">
                 <p className="tm-stat-label">Room units</p>
                 <p className="tm-stat-value">{stats.totalRoomUnits}</p>
@@ -1274,12 +1374,13 @@ export default function AdminDashboard() {
               <div className="tm-stat">
                 <p className="tm-stat-label">Hosts</p>
                 <p className="tm-stat-value">{stats.managersCount}</p>
-                <p className="tm-muted truncate">{stats.syncedPropertiesCount} synced by iCal</p>
+                {bookingsEnabled && <p className="tm-muted truncate">{stats.syncedPropertiesCount} synced by iCal</p>}
               </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {/* Bookings Trend Chart */}
+              {bookingsEnabled && (
               <div className="tm-panel min-w-0 flex flex-col h-full">
                 <h3 className="tm-h2 mb-0.5">Booking volume</h3>
                 <p className="text-xs text-stone-500 mb-4">Confirmed bookings over the last 6 months.</p>
@@ -1304,6 +1405,7 @@ export default function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
+              )}
 
               {/* Users Growth Chart */}
               <div className="tm-panel min-w-0 flex flex-col h-full">
@@ -1399,7 +1501,7 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="py-2.5 px-4">Property</th>
                       <th className="py-2.5 px-4">Location</th>
-                      <th className="py-2.5 px-4">Bookings</th>
+                      {bookingsEnabled && <th className="py-2.5 px-4">Bookings</th>}
                       <th className="py-2.5 px-4 text-right">Featured</th>
                     </tr>
                   </thead>
@@ -1417,9 +1519,11 @@ export default function AdminDashboard() {
                         <td className="py-2.5 px-4 text-stone-500">
                           {hotel.location}
                         </td>
-                        <td className="py-2.5 px-4 tabular-nums text-stone-800">
-                          {bookings}
-                        </td>
+                        {bookingsEnabled && (
+                          <td className="py-2.5 px-4 tabular-nums text-stone-800">
+                            {bookings}
+                          </td>
+                        )}
                         <td className="py-2.5 px-4 text-right">
                           <button
                             onClick={() => handleToggleFeatured(hotel)}
@@ -1476,6 +1580,7 @@ export default function AdminDashboard() {
               </div>
               
               <div className="tm-actions">
+                {bookingsEnabled && (
                 <button
                   type="button"
                   onClick={handleRunGlobalIcalSync}
@@ -1486,6 +1591,7 @@ export default function AdminDashboard() {
                   <RefreshCw className={`w-3.5 h-3.5 text-stone-500 ${syncingAllFeeds ? 'animate-spin' : ''}`} />
                   <span>{syncingAllFeeds ? 'Syncing iCal…' : `Sync iCal (${totalIcalFeedsCount})`}</span>
                 </button>
+                )}
 
                 {badPinCount > 0 && (
                   <button
@@ -1726,6 +1832,7 @@ export default function AdminDashboard() {
                             {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                           </button>
 
+                          {bookingsEnabled && (
                           <button
                             type="button"
                             onClick={async () => {
@@ -1748,6 +1855,7 @@ export default function AdminDashboard() {
                             </span>
                             {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                           </button>
+                          )}
 
                           <a
                             href={`/hotel/${hotel.id}`}
@@ -1926,7 +2034,7 @@ export default function AdminDashboard() {
                                             <span>Map pin verified</span>
                                           </a>
                                         )}
-                                        {syncCount > 0 && (
+                                        {bookingsEnabled && syncCount > 0 && (
                                           <span className="text-emerald-700 inline-flex items-center gap-1 whitespace-nowrap">
                                             <span>·</span>
                                             <CalendarSync className="w-3 h-3 shrink-0" />
@@ -2161,7 +2269,7 @@ export default function AdminDashboard() {
                                     <span>Pin OK</span>
                                   </a>
                                 )}
-                                {syncCount > 0 && (
+                                {bookingsEnabled && syncCount > 0 && (
                                   <span className="text-emerald-700 inline-flex items-center gap-1">
                                     <span>·</span>
                                     <CalendarSync className="w-3 h-3 shrink-0" />
@@ -2653,7 +2761,7 @@ export default function AdminDashboard() {
           </div>
         )}
         {/* ===================== BOOKINGS TAB ===================== */}
-        {activeTab === 'bookings' && (
+        {activeTab === 'bookings' && bookingsEnabled && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
               <h2 className="tm-h1">Bookings</h2>
@@ -2922,7 +3030,7 @@ export default function AdminDashboard() {
               <div className="tm-panel min-w-0 flex flex-col h-full max-h-[600px]">
                 <h3 className="tm-h2 mb-1">Suggestions</h3>
                 <p className="tm-muted mb-4">
-                  Ranked from live listings and bookings. Add any to your list.
+                  {bookingsEnabled ? 'Ranked from live listings and bookings. Add any to your list.' : 'Ranked from live listings. Add any to your list.'}
                 </p>
                 
                 <div className="overflow-y-auto pr-2 space-y-2 flex-1 scrollbar-slim">
@@ -2932,7 +3040,7 @@ export default function AdminDashboard() {
                         <p className="font-medium text-stone-900 truncate">{stat.location}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">
                           <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {stat.listings}</span>
-                          <span className="flex items-center gap-1"><CalendarRange className="w-3 h-3" /> {stat.bookings}</span>
+                          {bookingsEnabled && <span className="flex items-center gap-1"><CalendarRange className="w-3 h-3" /> {stat.bookings}</span>}
                         </div>
                       </div>
                       <button
@@ -3093,9 +3201,9 @@ export default function AdminDashboard() {
         {/* ===================== SETTINGS TAB (GLOBAL ADMIN ONLY) ===================== */}
         {activeTab === 'settings' && canViewTab('settings') && (
           <div className="space-y-6">
-            {renderSubTabs(settingsSubs, settingsSubTab, 'settings')}
+            {renderSubTabs(settingsSubs, shownSettingsSub, 'settings')}
 
-            {settingsSubTab === 'channels' && (
+            {shownSettingsSub === 'channels' && (
               <AdminIcalMonitor
                 hotels={hotels}
                 rooms={rooms}
@@ -3103,10 +3211,10 @@ export default function AdminDashboard() {
                 onRoomsUpdated={setRooms}
               />
             )}
-            {settingsSubTab === 'whatsapp' && <AdminWhatsAppSettings />}
-            {settingsSubTab === 'email' && <AdminEmailSettings />}
-            {settingsSubTab === 'ai' && <AdminAISettings />}
-            {settingsSubTab === 'logs' && <AdminLogs />}
+            {shownSettingsSub === 'whatsapp' && <AdminWhatsAppSettings />}
+            {shownSettingsSub === 'email' && <AdminEmailSettings />}
+            {shownSettingsSub === 'ai' && <AdminAISettings />}
+            {shownSettingsSub === 'logs' && <AdminLogs />}
           </div>
         )}
 
@@ -3121,6 +3229,19 @@ export default function AdminDashboard() {
             }} 
           />
         )}
+
+        <ConfirmDialog
+          isOpen={modeConfirmOpen}
+          title={bookingsEnabled ? 'Turn off bookings and in-app chat?' : 'Turn on bookings and in-app chat?'}
+          message={bookingsEnabled
+            ? 'Travel Malawi becomes an information directory. Booking, payment and reservation screens, guest-host chat and calls, booking reminders and booking emails are switched off everywhere, and travellers contact each property directly using the details on its listing. Existing bookings and chats are kept. Servers apply the change within about 30 seconds.'
+            : 'Bookings and in-app chat come back on every screen: guests can book stays, hosts manage reservations and calendars, and guests and hosts can message and call each other in the app. Existing bookings and chats are restored as they were. Servers apply the change within about 30 seconds.'}
+          confirmText={savingMode ? 'Saving…' : bookingsEnabled ? 'Turn off' : 'Turn on'}
+          cancelText="Cancel"
+          isDestructive={bookingsEnabled}
+          onConfirm={handleSetPlatformMode}
+          onCancel={() => { if (!savingMode) setModeConfirmOpen(false); }}
+        />
 
         <ConfirmDialog
           isOpen={!!confirmAction}

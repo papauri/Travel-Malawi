@@ -17,6 +17,7 @@ import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { ActiveChatItem } from '../hooks/useUnreadMessages';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useIsHost } from '../hooks/useIsHost';
@@ -65,6 +66,8 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isManager = useIsHost();
+  // Directory mode (D3): no in-app chat, so the menu is not shown.
+  const { bookingsEnabled } = usePlatformMode();
   const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
 
   // Close dropdown on outside click
@@ -212,6 +215,8 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
   const currentDisplayList = activeTab === 'active' ? activeChats : inactiveChats;
 
   useImperativeHandle(ref, () => ({ openMenu: () => setIsOpen(true) }));
+
+  if (!bookingsEnabled) return null;
 
   return (
     <div className="relative" ref={dropdownRef}>

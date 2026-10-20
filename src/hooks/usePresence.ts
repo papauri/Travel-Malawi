@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useIsHost } from './useIsHost';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
 
@@ -11,13 +12,19 @@ export interface Presence {
   lastActive: number;
 }
 
+// Host online status only matters for in-app chat, so in directory mode (D3)
+// neither hook reads or writes `presence`.
 export function useManagerPresence(managerId?: string) {
+  const { bookingsEnabled } = usePlatformMode();
   const [presenceData, setPresenceData] = useState<Presence | null>(null);
   const [computedStatus, setComputedStatus] = useState<PresenceStatus>('offline');
 
   // Listen to Firestore
   useEffect(() => {
-    if (!managerId) return;
+    if (!managerId || !bookingsEnabled) {
+      setPresenceData(null);
+      return;
+    }
     const unsub = onSnapshot(
       doc(db, "presence", managerId),
       (doc) => {
@@ -33,7 +40,7 @@ export function useManagerPresence(managerId?: string) {
       }
     );
     return unsub;
-  }, [managerId]);
+  }, [managerId, bookingsEnabled]);
 
   // Compute live status every 10 seconds
   useEffect(() => {
@@ -64,13 +71,14 @@ export function useManagerPresence(managerId?: string) {
 export function usePresence() {
   const { user } = useAuth();
   const isHost = useIsHost();
+  const { bookingsEnabled } = usePlatformMode();
   const [presence, setPresence] = useState<Presence | null>(null);
   // A manager's chosen 'away'/'offline' must survive the heartbeat and tab
   // switches; choosing 'online' hands control back to activity tracking.
   const manualStatus = useRef<PresenceStatus | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !bookingsEnabled) {
       setPresence(null);
       return;
     }
@@ -89,11 +97,11 @@ export function usePresence() {
       }
     );
     return unsub;
-  }, [user]);
+  }, [user, bookingsEnabled]);
 
   // Activity tracking for anyone hosting guests (role or own listing)
   useEffect(() => {
-    if (!user || !isHost) return;
+    if (!user || !isHost || !bookingsEnabled) return;
 
     let isActive = true;
 
@@ -150,10 +158,10 @@ export function usePresence() {
       window.removeEventListener('scroll', handleActivity);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, isHost]);
+  }, [user, isHost, bookingsEnabled]);
 
   const setManualStatus = async (status: PresenceStatus) => {
-    if (!user) return;
+    if (!user || !bookingsEnabled) return;
     manualStatus.current = status === 'online' ? null : status;
     try {
       await setDoc(doc(db, 'presence', user.uid), {

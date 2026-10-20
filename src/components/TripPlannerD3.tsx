@@ -26,6 +26,7 @@ import toast from 'react-hot-toast';
 import { getHotelImages } from '../lib/images';
 import { distanceKm, estimateTravelTime, isValidLatLng, isCrossingLakeMalawi, LatLng } from '../lib/geo';
 import TripAIInsights from './TripAIInsights';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface Props {
   hotels: Hotel[];
@@ -240,6 +241,7 @@ function writeStoredPlannerState(state: StoredPlannerState) {
 }
 
 export default function TripPlannerD3({ hotels }: Props) {
+  const { bookingsEnabled } = usePlatformMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const navigate = useNavigate();
@@ -610,7 +612,7 @@ export default function TripPlannerD3({ hotels }: Props) {
               <span>${d.location || 'Malawi'} · ${d.nights} ${d.nights === 1 ? 'night' : 'nights'}</span>
             </div>
             <div class="mt-2 pt-2 border-t border-stone-800 flex items-center justify-between gap-3 text-[11px]">
-              <span class="text-stone-400">Direct booking • 0% Commission</span>
+              <span class="text-stone-400">${bookingsEnabled ? 'Direct booking • 0% Commission' : 'Contact details on the listing'}</span>
               <span class="text-amber-400 font-semibold">Open stay &rarr;</span>
             </div>
           `
@@ -741,7 +743,7 @@ export default function TripPlannerD3({ hotels }: Props) {
       simulation.stop();
       tooltip.remove();
     };
-  }, [orderedHotels, nightsByHotelId, navigate]);
+  }, [orderedHotels, nightsByHotelId, navigate, bookingsEnabled]);
 
   // Share / Copy Itinerary Summary (clean text, 0 emojis)
   const copyItinerarySummary = () => {
@@ -764,7 +766,7 @@ Total Drive: ${totalDistanceKm} km (~${formatTotalMinutes(totalDriveMinutes)})
 Route Sequence:
 ${legsText}
 
-Plan and book direct at: https://ulendomalawi.com/`;
+${bookingsEnabled ? 'Plan and book direct at' : 'Plan your trip at'}: https://ulendomalawi.com/`;
 
     navigator.clipboard.writeText(text).then(
       () => {
@@ -1037,7 +1039,7 @@ Plan and book direct at: https://ulendomalawi.com/`;
                         </h4>
 
                         <p className="text-xs text-stone-500 mt-0.5">
-                          Direct Host Booking • 0% Platform Commission
+                          {bookingsEnabled ? 'Direct Host Booking • 0% Platform Commission' : 'Contact the property directly from its listing'}
                         </p>
 
                         <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -1179,10 +1181,12 @@ Plan and book direct at: https://ulendomalawi.com/`;
           <div className="p-4 bg-white rounded-2xl border border-stone-200/60 space-y-1.5">
             <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
               <Wallet className="w-4 h-4 text-stone-700 shrink-0" />
-              <span>Direct Payments &amp; Settlement</span>
+              <span>{bookingsEnabled ? 'Direct Payments & Settlement' : 'Arranging your stay'}</span>
             </h4>
             <p className="leading-relaxed">
-              All lodges on Travel Malawi support 0% commission direct reservations with deposit options via Airtel Money, TNM Mpamba, bank transfer, or card.
+              {bookingsEnabled
+                ? 'All lodges on Travel Malawi support 0% commission direct reservations with deposit options via Airtel Money, TNM Mpamba, bank transfer, or card.'
+                : 'Travel Malawi does not take bookings or payments. Use the phone, WhatsApp or email on each listing to arrange rooms and rates directly with the property.'}
             </p>
           </div>
         </div>

@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Modal from './Modal';
 import FieldError from './FieldError';
@@ -33,6 +34,7 @@ interface Props {
 
 export default function AuthDialog({ open, intent, initialEmail, onClose, onAuthenticated }: Props) {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { bookingsEnabled } = usePlatformMode();
 
   const [mode, setMode] = useState<AuthMode>('signin');
   const [roles, setRoles] = useState<Role[]>(['traveller']);
@@ -192,9 +194,15 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
       ? "We'll email you a link to choose a new password."
       : mode === 'signup'
         ? hosting
-          ? 'List your property and manage bookings directly.'
-          : 'Save stays, message hosts and manage your bookings.'
-        : 'Welcome back. Sign in to see your bookings.';
+          ? bookingsEnabled
+            ? 'List your property and manage bookings directly.'
+            : 'List your property so travellers can find and contact you.'
+          : bookingsEnabled
+            ? 'Save stays, message hosts and manage your bookings.'
+            : 'Save stays, compare them and plan your trip.'
+        : bookingsEnabled
+          ? 'Welcome back. Sign in to see your bookings.'
+          : 'Welcome back.';
 
   const optionClass = (active: boolean) =>
     `tm-btn tm-btn-secondary h-auto flex-col items-start gap-0.5 py-2.5 text-left ${
@@ -339,7 +347,7 @@ export default function AuthDialog({ open, intent, initialEmail, onClose, onAuth
                 className={optionClass(!hosting)}
               >
                 <span className="font-medium">Guest</span>
-                <span className="text-xs font-normal text-stone-500">Looking to book</span>
+                <span className="text-xs font-normal text-stone-500">{bookingsEnabled ? 'Looking to book' : 'Planning a trip'}</span>
               </button>
               <button
                 type="button"

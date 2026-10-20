@@ -6,6 +6,7 @@ import { useOfflineBookings } from '../hooks/useOfflineBookings';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import OfflineBookingsQueue from './OfflineBookingsQueue';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 import toast from 'react-hot-toast';
 
 const BANNER_CLASS =
@@ -13,7 +14,10 @@ const BANNER_CLASS =
 
 export default function OfflineIndicator() {
   const { isOnline, isChecking, justReconnected, checkConnection } = useNetworkStatus();
-  const { pendingCount, isSyncing, syncNow } = useOfflineBookings();
+  const { bookingsEnabled } = usePlatformMode();
+  const { pendingCount: queuedCount, isSyncing, syncNow } = useOfflineBookings();
+  // Directory mode has no booking queue: nothing to report or send.
+  const pendingCount = bookingsEnabled ? queuedCount : 0;
   const [isDismissed, setIsDismissed] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
@@ -68,7 +72,7 @@ export default function OfflineIndicator() {
                 <p className="tm-muted truncate">
                   {pendingCount > 0
                     ? `Sending ${pendingCount} saved booking request${pendingCount === 1 ? '' : 's'}.`
-                    : 'Rates and availability are up to date.'}
+                    : (bookingsEnabled ? 'Rates and availability are up to date.' : 'Listings are up to date.')}
                 </p>
               </div>
             </motion.div>
@@ -238,15 +242,19 @@ export default function OfflineIndicator() {
                 <li>
                   <strong className="text-stone-900">Saved maps.</strong> Areas you saved offline keep their map and coordinates.
                 </li>
-                <li>
-                  <strong className="text-stone-900">Your bookings.</strong> References and host contacts are kept on this device.
-                </li>
-                <li>
-                  <strong className="text-stone-900">New requests.</strong> They are saved here and sent when you reconnect.
-                </li>
+                {bookingsEnabled && (
+                  <>
+                    <li>
+                      <strong className="text-stone-900">Your bookings.</strong> References and host contacts are kept on this device.
+                    </li>
+                    <li>
+                      <strong className="text-stone-900">New requests.</strong> They are saved here and sent when you reconnect.
+                    </li>
+                  </>
+                )}
               </ul>
 
-              <OfflineBookingsQueue className="mt-4" />
+              {bookingsEnabled && <OfflineBookingsQueue className="mt-4" />}
 
               <div className="tm-divider mt-5 pt-4 tm-actions justify-between">
                 <button

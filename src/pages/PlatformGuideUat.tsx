@@ -9,6 +9,7 @@ import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useDocContent } from '../hooks/useDocContent';
+import { usePlatformMode } from '../contexts/PlatformModeContext';
 
 interface TestCase {
   id: string;
@@ -16,9 +17,13 @@ interface TestCase {
   title: string;
   steps: string[];
   expected: string;
+  /** Hidden while the platform is in directory mode (bookings and in-app chat off). */
+  bookingOnly?: boolean;
+  /** Replaces steps/expected/title in directory mode. */
+  directory?: { title: string; steps: string[]; expected: string };
 }
 
-const UAT_TESTS: TestCase[] = [
+const ALL_UAT_TESTS: TestCase[] = [
   {
     id: 'A1',
     suite: 'Discovery & Search',
@@ -55,10 +60,18 @@ const UAT_TESTS: TestCase[] = [
     suite: 'Direct Inquiries & Host Tools',
     title: 'Pre-filled WhatsApp Direct Inquiry',
     steps: [
-      'Open any verified stay detail page',
+      'Open any stay detail page',
       'Select dates and tap "Inquire via WhatsApp"'
     ],
-    expected: 'Launches WhatsApp with pre-filled check-in, check-out, room category, and booking reference.'
+    expected: 'Launches WhatsApp with pre-filled check-in, check-out, room category, and booking reference.',
+    directory: {
+      title: 'Contact the Property Directly',
+      steps: [
+        'Open any stay detail page',
+        'Find "Contact the property" and tap the WhatsApp, phone or email button'
+      ],
+      expected: 'Opens WhatsApp, the dialler or the email app with the property\'s own contact details. The page says Travel Malawi does not take bookings or payments.'
+    }
   },
   {
     id: 'B2',
@@ -73,6 +86,7 @@ const UAT_TESTS: TestCase[] = [
   {
     id: 'B3',
     suite: 'Direct Inquiries & Host Tools',
+    bookingOnly: true,
     title: 'Two-Way Direct Guest-to-Manager In-App Chat',
     steps: [
       'Click "Chat with Host" on property detail page or active booking',
@@ -84,6 +98,7 @@ const UAT_TESTS: TestCase[] = [
   {
     id: 'C1',
     suite: 'Host Operations',
+    bookingOnly: true,
     title: '0% Commission Direct Booking & Vouchers',
     steps: [
       'Review booking confirmation voucher',
@@ -98,13 +113,14 @@ const UAT_TESTS: TestCase[] = [
     steps: [
       'Open Host Dashboard and launch Ulendo Concierge chat',
       'Request seasonal rate recommendation (e.g. Easter / Lake of Stars)',
-      'Ask Ulendo to update daily restaurant blackboard special or draft guest confirmation'
+      'Ask Ulendo to update daily restaurant blackboard special or update a room description'
     ],
     expected: 'Ulendo provides instant Malawian hospitality copilot assistance with 1-click action proposals.'
   },
   {
     id: 'C3',
     suite: 'Calendar & Channel Integration',
+    bookingOnly: true,
     title: '2-Way iCal (.ics) Calendar Synchronization',
     steps: [
       'In Host Dashboard under Rooms & Rates, click "Sync iCal"',
@@ -116,6 +132,7 @@ const UAT_TESTS: TestCase[] = [
   {
     id: 'C4',
     suite: 'Calendar & Channel Integration',
+    bookingOnly: true,
     title: 'iCal Connection Diagnostics & Latency Ping',
     steps: [
       'Click "Test Connection" button on any room card with an active iCal link',
@@ -160,6 +177,14 @@ export default function PlatformGuideUat() {
     'platform-guide-uat',
     'Platform test guide',
     'Check the main flows before each release, tick them off, and report anything that breaks.'
+  );
+
+  const { bookingsEnabled } = usePlatformMode();
+  const UAT_TESTS = React.useMemo(
+    () => bookingsEnabled
+      ? ALL_UAT_TESTS
+      : ALL_UAT_TESTS.filter(t => !t.bookingOnly).map(t => (t.directory ? { ...t, ...t.directory } : t)),
+    [bookingsEnabled]
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -377,7 +402,7 @@ export default function PlatformGuideUat() {
             <details className="mt-4">
               <summary className="cursor-pointer font-medium text-stone-900">Details</summary>
               <p className="tm-muted mt-1">
-                Use iOS Safari and Android Chrome. Prices show in MWK (rounded to 1,000) or USD. Payment rails are Airtel Money, TNM Mpamba and bank transfer.
+                Use iOS Safari and Android Chrome. Prices show in MWK (rounded to 1,000) or USD.{bookingsEnabled ? ' Payment rails are Airtel Money, TNM Mpamba and bank transfer.' : ''}
               </p>
             </details>
           </section>
@@ -456,7 +481,7 @@ export default function PlatformGuideUat() {
                   id="qa-desc"
                   rows={3}
                   required
-                  placeholder="e.g. Switched to MWK on mobile Safari; the booking modal still showed a USD symbol."
+                  placeholder="e.g. Switched to MWK on mobile Safari; the property page still showed a USD symbol."
                   value={formData.defectSummary}
                   onChange={e => setFormData({ ...formData, defectSummary: e.target.value })}
                   className="tm-input"
