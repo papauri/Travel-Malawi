@@ -168,10 +168,10 @@ export default function Privacy() {
 
           <footer className="pt-6 border-t border-stone-200 text-xs text-stone-400 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
-              Travel Malawi Platform Operations · Lilongwe, Malawi
+              Travel Malawi Digital Directory · ulendomalawi.com
             </div>
             <div className="text-xs text-stone-500">
-              Last Updated: 2026 · 0% Commission
+              0% Booking Commission · Direct Connection
             </div>
           </footer>
         </article>

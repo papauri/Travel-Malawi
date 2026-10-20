@@ -103,7 +103,7 @@ export default function Terms() {
                     <span>Platform Role: Information &amp; Direct Connection</span>
                   </h2>
                   <p>
-                    Travel Malawi operates strictly as an independent directory, discovery engine, and direct messaging channel connecting travelers directly with verified independent Malawian lodges, whole cottages, private villas, B&amp;Bs, and safari camps.
+                    Travel Malawi operates strictly as an independent informational directory, discovery engine, and direct messaging channel connecting travelers directly with independent Malawian lodges, whole cottages, private villas, B&amp;Bs, and safari camps. We are not a travel agency, tour operator, or booking broker, and we do not provide tourism services or operate tourism enterprises.
                   </p>
                   <p>
                     <strong>We do not own, operate, manage, furnish, inspect, or staff any of the properties listed on this site.</strong> All lodging accommodations, physical premises, hygiene, hospitality services, meals, and safety measures are under the exclusive control of the independent property owners or their designated managers.
@@ -168,16 +168,30 @@ export default function Terms() {
                 <section className="space-y-3 pt-4 border-t border-stone-100">
                   <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-900 text-xs font-semibold flex items-center justify-center shrink-0">5</span>
-                    <span>Host Obligations</span>
+                    <span>Host Obligations, Licensing &amp; Statutory Compliance</span>
                   </h2>
                   <p>
-                    Independent property hosts who list their accommodations on Travel Malawi represent and warrant that:
+                    Independent property hosts and accommodation managers who list their properties on Travel Malawi represent, warrant, and certify that:
                   </p>
-                  <ul className="list-disc pl-5 space-y-1.5 text-stone-600">
-                    <li>They have legal authority to operate and offer the accommodation.</li>
-                    <li>They provide accurate, transparent pricing in MWK and USD with no hidden booking platform charges.</li>
-                    <li>They clearly state whether a stay is an entire private house/cottage or individual rooms, and accurately state maximum guest capacities.</li>
-                    <li>They handle all guest deposits, cancellations, and refunds directly and professionally in accordance with their own stated policies.</li>
+                  <ul className="list-disc pl-5 space-y-2 text-stone-600">
+                    <li>
+                      <strong>Statutory Licences &amp; Regulatory Compliance:</strong> The property holds all necessary business registrations, municipal permits, and valid Tourism Operating Licences required under Malawian law, including compliance with Section 27 of the Tourism Act, 2025. The statutory and legal obligation to obtain and maintain an operating licence rests solely and exclusively upon the accommodation owner or operator.
+                    </li>
+                    <li>
+                      <strong>No Regulatory Substitution:</strong> Travel Malawi operates strictly as a digital media directory, discovery index, and technology communication conduit. Travel Malawi is not a tourism operator, accommodation provider, travel agency, or regulatory authority, and does not issue, verify, endorse, or guarantee the statutory licensing, safety standards, or physical premises of listed third-party stays.
+                    </li>
+                    <li>
+                      <strong>Legal Authority:</strong> The person listing the property possesses full legal authority, ownership, or management authorization to offer the accommodation for guest reservations.
+                    </li>
+                    <li>
+                      <strong>Accurate Pricing &amp; Direct Settlements:</strong> All rates entered (in MWK or USD) are genuine, transparent, and settled directly between guest and host without hidden platform markups.
+                    </li>
+                    <li>
+                      <strong>Property Accuracy:</strong> Listings accurately disclose whether the property is an entire private home/cottage or individual guest rooms, along with accurate bed counts and guest capacities.
+                    </li>
+                    <li>
+                      <strong>Guest Deposits &amp; Policies:</strong> Hosts handle all deposits, check-in balances, cancellations, and disputes directly and responsibly according to their own published terms.
+                    </li>
                   </ul>
                 </section>
 

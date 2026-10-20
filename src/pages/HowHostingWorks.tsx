@@ -769,6 +769,18 @@ export default function HowHostingWorks() {
               ))}
             </ol>
 
+            {/* Regulatory Notice Banner for Hosts */}
+            <div className="mt-5 p-3.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
+              <ShieldCheck size={18} className="text-amber-800 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong className="font-semibold block text-amber-900 mb-0.5">Statutory Licensing &amp; Host Obligations:</strong>
+                Under Section 27 of the Tourism Act, 2025, individual accommodation owners and operators are legally responsible for holding their own valid operating licences with the Department of Tourism. Travel Malawi is an open directory and advertising conduit; we do not own, operate, or regulate lodging premises. Review our full{' '}
+                <Link to="/terms" className="underline font-semibold text-amber-950 hover:text-amber-800">
+                  Platform Terms of Service
+                </Link>.
+              </div>
+            </div>
+
             {/* Big Prominent Call to Action Banner to List Directly */}
             <section className="tm-panel mt-8 text-center p-6 sm:p-8 bg-stone-900 text-stone-50 border-stone-800">
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">

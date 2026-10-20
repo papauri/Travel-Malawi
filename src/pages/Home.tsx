@@ -346,7 +346,7 @@ export default function Home() {
     }
 
     setIsLocatingUser(true);
-    const defaultHub = MALAWI_HUBS[0]; // Lilongwe, Malawi
+    const defaultHub = MALAWI_HUBS[0]; // Central hub coordinates
 
     if (!('geolocation' in navigator)) {
       setIsLocatingUser(false);

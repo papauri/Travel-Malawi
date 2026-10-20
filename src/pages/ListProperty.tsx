@@ -3946,6 +3946,25 @@ export default function ListProperty() {
                 </div>
               )}
 
+              {/* Host Declaration & Terms Agreement */}
+              <div className="border-t border-stone-100 pt-6">
+                <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Shield className="w-4 h-4 text-stone-700 shrink-0 mt-0.5" />
+                    <div className="text-xs text-stone-600 leading-relaxed">
+                      <span className="font-semibold text-stone-900 block mb-1">
+                        Host Warranty &amp; Regulatory Compliance
+                      </span>
+                      By submitting this listing, you confirm that you have legal authority to offer this accommodation, that all details and rates are accurate, and that the property complies with all applicable Malawian regulations and operating requirements (including holding a valid tourism operating licence under Section 27 of the Tourism Act, 2025 where required). You agree to the{' '}
+                      <Link to="/terms" target="_blank" className="font-semibold text-stone-900 underline hover:text-stone-700">
+                        Platform Terms of Service
+                      </Link>
+                      .
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="border-t border-stone-100 pt-6">
                 <p className="font-semibold text-stone-900 text-sm">
                   What happens next

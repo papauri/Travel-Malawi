@@ -124,7 +124,7 @@ export default function StayOwnerLeaflet() {
         </section>
 
         <footer className="tm-divider tm-muted mt-10 pt-4">
-          Travel Malawi · Lilongwe, Malawi · info@ulendomalawi.com
+          Travel Malawi · Digital Directory · info@ulendomalawi.com
         </footer>
       </div>
     </div>

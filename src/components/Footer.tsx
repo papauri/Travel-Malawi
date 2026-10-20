@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Palmtree, Mail, Phone, MapPin } from 'lucide-react';
+import { Palmtree, Mail, Phone } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -93,10 +93,6 @@ export default function Footer() {
                 <span>{settings.contactPhone}</span>
               </li>
             )}
-            <li className="flex items-center gap-2.5">
-              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-500 shrink-0" />
-              <span>Lilongwe, Malawi</span>
-            </li>
           </ul>
         </div>
       </div>
