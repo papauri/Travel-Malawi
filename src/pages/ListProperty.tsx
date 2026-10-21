@@ -228,6 +228,9 @@ const STEPS = getSteps();
 /** Every step that carries fields — used to find the first one still wrong. */
 const FIELD_STEPS = [0, 1, 2, 3, 4];
 
+/** The "Listing plan" step, shown only when there is a plan to choose. */
+const PLAN_STEP = 5;
+
 /** Survives the round trip through a Google sign-in popup or page refresh, scoped to user. */
 function readDraftForUser(uid?: string | null): WizardDraft {
   try {
@@ -280,6 +283,10 @@ export default function ListProperty() {
   // Licensing declaration: required before a listing can be sent for review.
   const [licensingAccepted, setLicensingAccepted] = useState(false);
   const [showLicensingError, setShowLicensingError] = useState(false);
+  // Property name of a submit that paused for sign-in, or null.
+  const pendingSubmitRef = useRef<string | null>(null);
+  const handleSubmitRef = useRef<() => void>(() => {});
+  const draftRef = useRef<WizardDraft>(draft);
   const [enabling, setEnabling] = useState(false);
   const [amenityInput, setAmenityInput] = useState('');
   const [premiumEnabled, setPremiumEnabled] = useState(false);
@@ -959,6 +966,15 @@ export default function ListProperty() {
   const allErrors = useMemo(() => validateDraft(draft), [draft]);
   const visible = showErrors ? stepErrors : {};
 
+  // The plan step only asks something when there is a plan to choose; with
+  // nothing to pick (always so in directory mode) it is skipped.
+  const planStepNeeded = premiumEnabled && bookingsEnabled;
+  const shownSteps = useMemo(
+    () => steps.map((_, i) => i).filter(i => i !== PLAN_STEP || planStepNeeded),
+    [steps, planStepNeeded]
+  );
+  const shownPosition = Math.max(0, shownSteps.indexOf(step));
+
   const goNext = () => {
     if (!isStepComplete(draft, step)) {
       setShowErrors(true);
@@ -966,13 +982,13 @@ export default function ListProperty() {
       return;
     }
     setShowErrors(false);
-    setStep(s => Math.min(steps.length - 1, s + 1));
+    setStep(s => shownSteps.find(i => i > s) ?? steps.length - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const goBack = () => {
     setShowErrors(false);
-    setStep(s => Math.max(0, s - 1));
+    setStep(s => [...shownSteps].reverse().find(i => i < s) ?? 0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1416,7 +1432,12 @@ export default function ListProperty() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!user) {
+      // Finished straight after sign-in (see the effect below), so the host
+      // does not have to find the button again.
+      pendingSubmitRef.current = draft.name.trim();
+      toast('Sign in to send your listing. It goes for review as soon as you are in.');
       openAuth('host');
       return;
     }
@@ -1544,6 +1565,22 @@ export default function ListProperty() {
     }
   };
 
+  handleSubmitRef.current = handleSubmit;
+  draftRef.current = draft;
+
+  // A submit that stopped for sign-in carries on once the host is signed in,
+  // after the draft has picked up the account's details. Skipped when the
+  // account brought back a different saved draft: that is not what they sent.
+  useEffect(() => {
+    const pendingName = pendingSubmitRef.current;
+    if (!user || pendingName === null) return;
+    pendingSubmitRef.current = null;
+    const timer = setTimeout(() => {
+      if (draftRef.current.name.trim() === pendingName) handleSubmitRef.current();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [user]);
+
   if (authLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -1668,7 +1705,7 @@ export default function ListProperty() {
         <header className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs font-medium text-stone-500">
-              Step {step + 1} of {steps.length}
+              Step {shownPosition + 1} of {shownSteps.length}
             </span>
             <span className="text-xs text-stone-400">
               Your draft saves as you go
@@ -1676,8 +1713,12 @@ export default function ListProperty() {
           </div>
 
           {/* Interactive Stepper Bar */}
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-3">
-            {steps.map((s, index) => {
+          <div
+            className="grid gap-1.5 sm:gap-2 mb-3"
+            style={{ gridTemplateColumns: `repeat(${shownSteps.length}, minmax(0, 1fr))` }}
+          >
+            {shownSteps.map((index, position) => {
+              const s = steps[index];
               const done = index < step && isStepComplete(draft, index);
               const active = index === step;
               const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
@@ -1688,7 +1729,7 @@ export default function ListProperty() {
                   disabled={!reachable}
                   onClick={() => { if (reachable) { setShowErrors(false); setStep(index); } }}
                   className="group py-1 text-left disabled:cursor-not-allowed cursor-pointer"
-                  title={`Step ${index + 1}: ${s.title}`}
+                  title={`Step ${position + 1}: ${s.title}`}
                 >
                   <div
                     className={`h-1.5 rounded-full transition-all duration-200 ${
@@ -3405,7 +3446,7 @@ export default function ListProperty() {
                           Room photos
                         </span>
                         <span className="text-[11px] text-stone-500">
-                          At least one needed
+                          Optional: your property photos show until you add some
                         </span>
                       </div>
                       <ImageUpload
@@ -3482,10 +3523,13 @@ export default function ListProperty() {
                   <FieldError message={visible.managerName} />
                 </div>
 
+                <p className="-mb-2 text-xs text-stone-500">
+                  How travellers reach you. One is enough: a phone, WhatsApp or email.
+                </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelClass} htmlFor="listing-email">
-                      Contact email <span className="text-red-500">*</span>
+                      Contact email
                     </label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -3504,7 +3548,7 @@ export default function ListProperty() {
 
                   <div>
                     <label className={labelClass} htmlFor="listing-phone">
-                      Contact phone <span className="text-red-500">*</span>
+                      Contact phone
                     </label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -4120,7 +4164,7 @@ export default function ListProperty() {
               className="tm-btn tm-btn-primary"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              <span>{submitting ? 'Sending…' : 'Submit for review'}</span>
+              <span>{submitting ? 'Sending…' : user ? 'Submit for review' : 'Sign in and submit'}</span>
             </button>
           )}
         </div>

@@ -299,15 +299,19 @@ export function validateProperty(
     if (mgrPhoneProblem) errors.managerPhone = mgrPhoneProblem;
   }
 
-  // Travellers reach the property directly, so it has to be reachable.
-  // Required to publish for that reason;
-  // WhatsApp never is, since most properties use one number for both.
-  const email = emailProblem(data.contactEmail ?? '', 'A contact email', strict);
+  // Travellers reach the property directly, so to publish it needs at least
+  // one way in: phone, WhatsApp or email (the same rule an admin approves
+  // against). Requiring all of them only stopped hosts who use just one.
+  const email = emailProblem(data.contactEmail ?? '', 'A contact email', false);
   if (email) errors.contactEmail = email;
-  const phone = phoneProblem(data.contactPhone ?? '', 'A phone number', strict);
+  const phone = phoneProblem(data.contactPhone ?? '', 'A phone number', false);
   if (phone) errors.contactPhone = phone;
   const whatsapp = phoneProblem(data.contactWhatsapp ?? '', 'The WhatsApp number', false);
   if (whatsapp) errors.contactWhatsapp = whatsapp;
+  const hasContact = [data.contactEmail, data.contactPhone, data.contactWhatsapp].some(v => (v ?? '').trim());
+  if (strict && !hasContact) {
+    errors.contactPhone = 'Add at least one way for travellers to reach you: a phone, WhatsApp or email.';
+  }
 
   return errors;
 }
@@ -322,7 +326,7 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
       errors.rooms = 'Set a nightly rate for the entire place in USD or MWK.';
     }
   } else if (!draft.rooms || draft.rooms.length === 0) {
-    errors.rooms = 'Add at least one room type for guests to book.';
+    errors.rooms = 'Add at least one room type, with its nightly rate.';
   } else {
     for (let i = 0; i < draft.rooms.length; i++) {
       const r = draft.rooms[i];
@@ -335,7 +339,10 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
       } else if (Number(r.baseGuests) < 1) {
         r.baseGuests = 1;
       }
-      const rErrors = validateRoom(r);
+      // Room photos are optional when listing: a room without its own shows
+      // the property's photos (getRoomImage), and can get one later from the
+      // dashboard. Requiring one per room type made long listings a chore.
+      const { photos: _photos, ...rErrors } = validateRoom(r);
       if (Object.keys(rErrors).length > 0) {
         const firstErr = Object.values(rErrors)[0];
         errors.rooms = `Room #${i + 1} (${r.name || 'Unnamed'}): ${firstErr}`;

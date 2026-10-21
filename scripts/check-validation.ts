@@ -122,8 +122,11 @@ check('a complete listing publishes', Object.keys(validateProperty(property, 'pu
 check('a thin description blocks publishing', !!validateProperty({ ...property, description: 'Too short' }, 'publish').description, true);
 check('...but does not block editing an older listing', !!validateProperty({ ...property, description: 'Too short' }, 'edit').description, false);
 check('an empty description blocks either way', !!validateProperty({ ...property, description: '' }, 'edit').description, true);
-check('no contact details block publishing', !!validateProperty({ ...property, contactEmail: '', contactPhone: '' }, 'publish').contactEmail, true);
-check('...but do not block editing', !!validateProperty({ ...property, contactEmail: '', contactPhone: '' }, 'edit').contactEmail, false);
+check('no contact details block publishing', !!validateProperty({ ...property, contactEmail: '', contactPhone: '' }, 'publish').contactPhone, true);
+check('...but do not block editing', !!validateProperty({ ...property, contactEmail: '', contactPhone: '' }, 'edit').contactPhone, false);
+check('an email alone is enough to publish', Object.keys(validateProperty({ ...property, contactPhone: '' }, 'publish')).length, 0);
+check('a phone alone is enough to publish', Object.keys(validateProperty({ ...property, contactEmail: '' }, 'publish')).length, 0);
+check('a WhatsApp number alone is enough to publish', Object.keys(validateProperty({ ...property, contactEmail: '', contactPhone: '', contactWhatsapp: '+265991234567' }, 'publish')).length, 0);
 check('a malformed email blocks either way', !!validateProperty({ ...property, contactEmail: 'nope' }, 'edit').contactEmail, true);
 check('no category blocks publishing', !!validateProperty({ ...property, category: '' }, 'publish').category, true);
 check('...but does not block editing', !!validateProperty({ ...property, category: '' }, 'edit').category, false);
