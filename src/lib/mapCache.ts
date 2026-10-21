@@ -141,27 +141,39 @@ export function createCachedSatelliteLayer(): L.TileLayer {
 }
 
 /**
+ * Only listings the public directory may show: approved ones (older listings
+ * predate the status field). The home page paints from this cache before
+ * Firestore answers, and a pending listing an admin or its manager had opened
+ * used to be cached too, so it flashed on the landing page and then vanished.
+ */
+function isPublicListing(hotel: Hotel | null | undefined): boolean {
+  return !!hotel && (hotel.status === 'approved' || !hotel.status);
+}
+
+/**
  * Saves hotels array to offline local cache
  */
 export function saveCachedHotels(hotels: Hotel[]): void {
   try {
-    if (!hotels || hotels.length === 0) return;
-    localStorage.setItem(HOTELS_CACHE_KEY, JSON.stringify(hotels));
-    updateMetadata({ hotelCount: hotels.length });
+    const listed = (hotels || []).filter(isPublicListing);
+    if (listed.length === 0) return;
+    localStorage.setItem(HOTELS_CACHE_KEY, JSON.stringify(listed));
+    updateMetadata({ hotelCount: listed.length });
   } catch (err) {
     console.warn('Failed to cache hotels offline:', err);
   }
 }
 
 /**
- * Retrieves cached hotels from local storage
+ * Retrieves cached hotels from local storage (public listings only, which
+ * also cleans caches written before the filter existed).
  */
 export function getCachedHotels(): Hotel[] {
   try {
     const raw = localStorage.getItem(HOTELS_CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(isPublicListing) : [];
   } catch (err) {
     console.warn('Failed to read cached hotels:', err);
     return [];
@@ -241,6 +253,16 @@ export function saveSingleCachedHotel(hotel: Hotel): void {
     if (!hotel || !hotel.id) return;
     const existing = getCachedHotels();
     const idx = existing.findIndex(h => h.id === hotel.id);
+    if (!isPublicListing(hotel)) {
+      // Pending, rejected or hidden: never cached, and dropped if it was
+      // cached while it was still listed.
+      if (idx >= 0) {
+        existing.splice(idx, 1);
+        localStorage.setItem(HOTELS_CACHE_KEY, JSON.stringify(existing));
+        updateMetadata({ hotelCount: existing.length });
+      }
+      return;
+    }
     if (idx >= 0) {
       existing[idx] = hotel;
     } else {
