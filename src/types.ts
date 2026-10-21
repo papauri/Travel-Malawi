@@ -231,6 +231,11 @@ export interface Hotel {
    * Not verified by Travel Malawi; shown as "provided by the property".
    */
   tourismLicenceNumber?: string;
+  /**
+   * ISO time the lister ticked the licensing declaration in the listing
+   * wizard (licences are the owner's responsibility, not Travel Malawi's).
+   */
+  licensingAcknowledgedAt?: string;
   /** Optional profile links; the listing shows an icon only for the ones filled in. */
   socialFacebook?: string;
   socialInstagram?: string;

@@ -277,6 +277,9 @@ export default function ListProperty() {
   });
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Licensing declaration: required before a listing can be sent for review.
+  const [licensingAccepted, setLicensingAccepted] = useState(false);
+  const [showLicensingError, setShowLicensingError] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [amenityInput, setAmenityInput] = useState('');
   const [premiumEnabled, setPremiumEnabled] = useState(false);
@@ -1438,6 +1441,13 @@ export default function ListProperty() {
       return;
     }
 
+    if (!licensingAccepted) {
+      setShowLicensingError(true);
+      toast.error('Please confirm the licensing declaration before sending.');
+      setTimeout(() => document.getElementById('listing-licensing-declaration')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Guards against a double submit creating two copies of the property,
@@ -1455,14 +1465,18 @@ export default function ListProperty() {
 
       const id = await createListing(draft, user.uid);
 
-      // Optional licence number: the shared draft→hotel mapping does not carry
-      // it, so it is added once the listing exists (manager may edit while pending).
+      // Optional licence number and the licensing declaration: the shared
+      // draft→hotel mapping does not carry them, so they are added once the
+      // listing exists (manager may edit while pending).
       const licence = (draft.tourismLicenceNumber ?? '').trim().slice(0, LICENCE_MAX);
-      if (licence) {
-        try {
-          await updateDoc(doc(db, 'hotels', id), { tourismLicenceNumber: licence });
-        } catch (licenceErr) {
-          console.warn('[Onboarding] Could not save tourism licence number:', licenceErr);
+      try {
+        await updateDoc(doc(db, 'hotels', id), {
+          licensingAcknowledgedAt: new Date().toISOString(),
+          ...(licence ? { tourismLicenceNumber: licence } : {}),
+        });
+      } catch (licenceErr) {
+        console.warn('[Onboarding] Could not save licensing details:', licenceErr);
+        if (licence) {
           toast.error('Your listing was sent, but the licence number was not saved. Add it from your property page.');
         }
       }
@@ -1697,6 +1711,12 @@ export default function ListProperty() {
         <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8">
           {step === 0 && (
             <div className="space-y-8">
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs sm:text-sm text-amber-950 leading-relaxed">
+                <Shield className="w-4 h-4 text-amber-800 shrink-0 mt-0.5" />
+                <p>
+                  <span className="font-semibold">Before you list:</span> your property must hold the licences and permits Malawian law requires, including a tourism operating licence under the Tourism Act, 2025 where it applies. Getting and keeping them is the owner's responsibility; Travel Malawi does not issue or verify licences. You will be asked to confirm this before sending your listing.
+                </p>
+              </div>
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
@@ -3973,22 +3993,56 @@ export default function ListProperty() {
                 </div>
               )}
 
-              {/* Host Declaration & Terms Agreement */}
+              {/* Licensing & the law: required declaration before submitting */}
               <div className="border-t border-stone-100 pt-6">
-                <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 space-y-2.5">
+                <div
+                  id="listing-licensing-declaration"
+                  className={`rounded-xl border p-4 space-y-3 ${
+                    showLicensingError && !licensingAccepted ? 'border-red-300 bg-red-50/40' : 'border-stone-200 bg-stone-50/70'
+                  }`}
+                >
                   <div className="flex items-start gap-2.5">
                     <Shield className="w-4 h-4 text-stone-700 shrink-0 mt-0.5" />
-                    <div className="text-xs text-stone-600 leading-relaxed">
-                      <span className="font-semibold text-stone-900 block mb-1">
-                        Host Warranty &amp; Regulatory Compliance
+                    <div className="text-xs sm:text-sm text-stone-600 leading-relaxed space-y-2">
+                      <span className="font-semibold text-stone-900 block">
+                        Licensing is your responsibility
                       </span>
-                      By submitting this listing, you confirm that you have legal authority to offer this accommodation, that all details and rates are accurate, and that the property complies with all applicable Malawian regulations and operating requirements (including holding a valid tourism operating licence under Section 27 of the Tourism Act, 2025 where required). You agree to the{' '}
-                      <Link to="/terms" target="_blank" className="font-semibold text-stone-900 underline hover:text-stone-700">
-                        Platform Terms of Service
-                      </Link>
-                      .
+                      <p>
+                        Under Malawian law, an accommodation business must hold the licences and permits that apply to it. Depending on your property, this can include:
+                      </p>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>a tourism operating licence from the Department of Tourism under Section 27 of the Tourism Act, 2025;</li>
+                        <li>business and tax registration (Registrar General and the Malawi Revenue Authority);</li>
+                        <li>permits from your city, municipal or district council, and any health or fire safety certificates.</li>
+                      </ul>
+                      <p>
+                        Travel Malawi is an information directory. We do not issue, check or verify licences or permits, and we are not responsible for whether a listed property is licensed or meets legal, health or safety requirements. Being listed here is not an approval or endorsement by Travel Malawi or by the Ministry.
+                      </p>
                     </div>
                   </div>
+                  <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-stone-200 bg-white p-3">
+                    <input
+                      type="checkbox"
+                      checked={licensingAccepted}
+                      onChange={e => {
+                        setLicensingAccepted(e.target.checked);
+                        if (e.target.checked) setShowLicensingError(false);
+                      }}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-stone-900"
+                    />
+                    <span className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+                      I confirm that I have the authority to list this property, that its details are accurate, and that it holds the licences and permits Malawian law requires of it. I understand Travel Malawi does not verify licences and is not responsible for them, and I agree to the{' '}
+                      <Link to="/terms" target="_blank" className="font-semibold text-stone-900 underline hover:text-stone-700">
+                        Terms of Service
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  {showLicensingError && !licensingAccepted && (
+                    <p role="alert" className="text-xs text-red-600">
+                      Tick the box to confirm before sending your listing.
+                    </p>
+                  )}
                 </div>
                 <div className="mt-4">
                   <label className={labelClass} htmlFor="listing-tourism-licence">
