@@ -55,6 +55,28 @@ function release() {
   }
 }
 
+/**
+ * Called on every route change. When no modal holds a lock, clears any
+ * leftover overflow freeze (written by code outside this hook) and restarts
+ * Lenis, so a new page can always scroll.
+ */
+export function releaseStaleScrollLock() {
+  if (activeLocks > 0) return;
+  const root = document.documentElement;
+  const body = document.body;
+  if (root.style.overflow === 'hidden') root.style.overflow = '';
+  if (body.style.overflow === 'hidden') {
+    body.style.overflow = '';
+    body.style.paddingRight = '';
+  }
+  try {
+    const lenis = getLenis();
+    if (lenis?.isStopped) lenis.start();
+  } catch (err) {
+    // Lenis not ready
+  }
+}
+
 export function useBodyScrollLock(lock: boolean) {
   useEffect(() => {
     if (!lock) return;

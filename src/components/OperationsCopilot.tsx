@@ -513,31 +513,6 @@ export default function OperationsCopilot() {
     }
   }, [messages, isOpen, isMinimized]);
 
-  // Prevent body & html scrolling and pause smooth scroller when chat is open and not minimized
-  useEffect(() => {
-    const lenisInstance = (window as any).__lenis;
-    if (isOpen && !isMinimized) {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      if (lenisInstance && typeof lenisInstance.stop === 'function') {
-        lenisInstance.stop();
-      }
-    } else {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-      if (lenisInstance && typeof lenisInstance.start === 'function') {
-        lenisInstance.start();
-      }
-    }
-    return () => {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-      if (lenisInstance && typeof lenisInstance.start === 'function') {
-        lenisInstance.start();
-      }
-    };
-  }, [isOpen, isMinimized]);
-
   // Isolate wheel scrolling inside the chat window so it never bubbles or chains to the page behind
   useEffect(() => {
     const el = chatScrollContainerRef.current;

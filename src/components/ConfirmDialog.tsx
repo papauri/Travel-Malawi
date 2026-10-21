@@ -33,21 +33,16 @@ export default function ConfirmDialog({
   const titleId = useId();
   useBodyScrollLock(isOpen);
 
-  // Escape cancels, and the page behind is frozen — which also stops Lenis,
-  // since it scrolls the window.
+  // Escape cancels. The page behind is frozen by useBodyScrollLock alone: a
+  // second overflow save/restore here ran after the lock's release and put
+  // 'hidden' back, leaving the page unscrollable once the dialog closed.
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCancel();
     };
     document.addEventListener('keydown', onKeyDown);
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
-    root.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      root.style.overflow = previousOverflow;
-    };
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onCancel]);
 
   if (typeof document === 'undefined') return null;

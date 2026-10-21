@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
+import { releaseStaleScrollLock } from './hooks/useBodyScrollLock';
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, useNavigationType, Link, useRouteError, isRouteErrorResponse } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -189,6 +190,9 @@ function ScrollToTop() {
   }, []);
 
   useEffect(() => {
+    // A dialog that closed badly must never leave the next page frozen.
+    releaseStaleScrollLock();
+
     if (hash) {
       const timer = setTimeout(() => {
         const id = decodeURIComponent(hash.replace("#", ""));
@@ -202,6 +206,8 @@ function ScrollToTop() {
 
     const saved = navigationType === 'POP' ? positions.current.get(location.key) : undefined;
     if (!saved) {
+      // Stop any Lenis glide still heading for the old page's position.
+      (window as any).__lenis?.scrollTo?.(0, { immediate: true, force: true });
       window.scrollTo(0, 0);
       return;
     }
