@@ -60,15 +60,21 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  // The live-traffic API answered with something other than JSON (no Travel Malawi
+  // server behind this host): stop polling instead of failing every few seconds.
+  const [apiUnavailable, setApiUnavailable] = useState(false);
 
   const timerRef = useRef<any>(null);
 
   const loadData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
     const result = await fetchLiveTrafficSummary();
-    if (result) {
-      setData(result);
-    } else {
+    if (result.status === 'ok') {
+      setData(result.data);
+      setApiUnavailable(false);
+    } else if (result.status === 'unavailable') {
+      setApiUnavailable(true);
+    } else if (result.status === 'error') {
       // Deduplicated by id so the 5s poll does not stack toasts.
       toast.error('Could not load live traffic. Showing the last data received.', { id: 'traffic-load-failed' });
     }
@@ -77,6 +83,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
   };
 
   useEffect(() => {
+    if (apiUnavailable) return;
     loadData();
 
     if (autoRefreshInterval > 0) {
@@ -88,7 +95,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [autoRefreshInterval]);
+  }, [autoRefreshInterval, apiUnavailable]);
 
   const handleClear = () => {
     setShowClearConfirm(true);
@@ -302,6 +309,20 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
       toast.error('Failed to export JSON');
     }
   };
+
+  if (apiUnavailable && !data) {
+    return (
+      <div className="p-6 text-center bg-white rounded-xl border border-stone-200">
+        <p className="text-sm font-medium text-stone-900">Live traffic is not available here</p>
+        <p className="mt-1 text-xs text-stone-600">
+          This copy of the app is not connected to the Travel Malawi server, so visitor data cannot be loaded.
+        </p>
+        <button type="button" onClick={() => loadData(true)} className="tm-btn tm-btn-secondary tm-btn-sm mt-3">
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

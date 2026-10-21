@@ -287,12 +287,18 @@ export function useTrafficMonitor() {
 }
 
 /**
- * Admin API: Fetch live traffic intelligence
+ * Admin API: Fetch live traffic intelligence.
+ * 'unavailable' means the reply was not the API's JSON (e.g. an HTML page from
+ * a host that does not run the Travel Malawi server), so polling is pointless.
  */
-export async function fetchLiveTrafficSummary(): Promise<LiveTrafficResponse | null> {
+export type LiveTrafficResult =
+  | { status: 'ok'; data: LiveTrafficResponse }
+  | { status: 'signed-out' | 'unavailable' | 'error' };
+
+export async function fetchLiveTrafficSummary(): Promise<LiveTrafficResult> {
   try {
     const token = await auth.currentUser?.getIdToken();
-    if (!token) return null;
+    if (!token) return { status: 'signed-out' };
 
     const res = await fetch('/api/admin/traffic/live', {
       headers: {
@@ -300,11 +306,14 @@ export async function fetchLiveTrafficSummary(): Promise<LiveTrafficResponse | n
       },
     });
 
-    if (!res.ok) return null;
-    return await res.json();
+    if (!(res.headers.get('content-type') || '').includes('application/json')) {
+      return { status: 'unavailable' };
+    }
+    if (!res.ok) return { status: 'error' };
+    return { status: 'ok', data: await res.json() };
   } catch (err) {
-    console.error('Failed to fetch live traffic summary:', err);
-    return null;
+    console.warn('Failed to fetch live traffic summary:', err);
+    return { status: 'error' };
   }
 }
 
@@ -325,7 +334,7 @@ export async function clearTrafficBuffer(): Promise<boolean> {
 
     return res.ok;
   } catch (err) {
-    console.error('Failed to clear traffic buffer:', err);
+    console.warn('Failed to clear traffic buffer:', err);
     return false;
   }
 }
