@@ -52,6 +52,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import Pagination from './Pagination';
 import AdminTrafficMonitor from './AdminTrafficMonitor';
+import { Loading } from './Loading';
 
 type MainViewMode = 'intune_table' | 'session_bundles' | 'live_traffic';
 type DateRangeFilter = 'all' | '24h' | '7d' | '30d';
@@ -450,9 +451,8 @@ export default function AdminLogs() {
 
   if (loading) {
     return (
-      <div className="tm-panel p-8 sm:p-14 text-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-900 border-t-transparent mx-auto mb-3"></div>
-        <p className="text-sm font-medium text-stone-900">Loading logs…</p>
+      <div className="tm-panel">
+        <Loading label="Loading logs" />
       </div>
     );
   }

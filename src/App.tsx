@@ -36,7 +36,7 @@ const ConceptValidationSurvey = lazy(() => import('./pages/ConceptValidationSurv
 const StayOwnerLeaflet = lazy(() => import('./pages/StayOwnerLeaflet'));
 const HowHostingWorks = lazy(() => import('./pages/HowHostingWorks'));
 import GlobalNotificationManager from './components/GlobalNotificationManager';
-import PageLoader from './components/PageLoader';
+import { PageLoading, RouteLoading } from './components/Loading';
 import OfflineIndicator from './components/OfflineIndicator';
 import SEOHead from './components/SEOHead';
 import CompareWidget from './components/CompareWidget';
@@ -68,7 +68,7 @@ function NotFound() {
 function BookingOnlyRoute({ children }: { children: React.ReactNode }) {
   const { bookingsEnabled, loading } = usePlatformMode();
   if (loading) {
-    return <div className="min-h-[60vh] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" role="status" aria-label="Loading" /></div>;
+    return <PageLoading />;
   }
   if (bookingsEnabled) return <>{children}</>;
   return (
@@ -90,7 +90,7 @@ function RestrictedRoute({ audience, children }: { audience: 'staff' | 'host'; c
   const { user, loading } = useAuth();
   const { openAuth } = useAuthDialog();
   if (loading) {
-    return <div className="min-h-[60vh] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" role="status" aria-label="Checking access" /></div>;
+    return <PageLoading />;
   }
   const staff = isAdmin(user) || isMarketing(user);
   if (user && (staff || (audience === 'host' && isHotelManager(user)))) return <>{children}</>;
@@ -252,10 +252,9 @@ function RootContent({ children }: { children?: React.ReactNode }) {
       <CompareWidget />
       {/* Strictly scoped to current authenticated session - unmounted and completely destroyed on logout or user switch */}
       {user && <OperationsCopilot key={`operations-copilot-${user.uid}`} />}
-      <PageLoader />
       <OfflineIndicator />
       <main className="flex-1">
-        <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" role="status" aria-label="Loading page" /></div>}>
+        <Suspense fallback={<RouteLoading />}>
           {children || <Outlet />}
         </Suspense>
       </main>

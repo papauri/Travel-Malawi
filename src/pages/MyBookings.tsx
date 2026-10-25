@@ -32,6 +32,7 @@ import { isCurrencyCode, roomPrice } from '../lib/currency';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import PriceDisplay from '../components/PriceDisplay';
 import OfflineBookingsQueue from '../components/OfflineBookingsQueue';
+import { PageLoading } from '../components/Loading';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 type Filter = 'upcoming' | 'past' | 'cancelled';
@@ -43,9 +44,7 @@ type Filter = 'upcoming' | 'past' | 'cancelled';
 export default function MyBookings() {
   const { bookingsEnabled, loading } = usePlatformMode();
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-300 border-t-stone-700"></div>
-    </div>
+    <PageLoading />
   );
   if (!bookingsEnabled) return (
     <div className="min-h-screen bg-stone-50 pt-16 pb-24">
@@ -534,9 +533,7 @@ function MyBookingsPage() {
   };
 
   if (authLoading || loading || loadingHost) return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-300 border-t-stone-700"></div>
-    </div>
+    <PageLoading />
   );
 
   if (!user) {

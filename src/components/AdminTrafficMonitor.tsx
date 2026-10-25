@@ -40,6 +40,7 @@ import {
   LiveTrafficResponse,
   TrafficSessionData,
 } from '../lib/trafficMonitor';
+import { Loading } from './Loading';
 
 interface AdminTrafficMonitorProps {
   compactMode?: boolean;
@@ -326,9 +327,8 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
 
   if (loading) {
     return (
-      <div className="p-6 text-center bg-white rounded-xl border border-stone-200 ">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-900 border-t-transparent mx-auto mb-2"></div>
-        <p className="text-xs font-medium text-stone-600">Loading active visitors…</p>
+      <div className="bg-white rounded-xl border border-stone-200">
+        <Loading label="Loading active visitors" />
       </div>
     );
   }

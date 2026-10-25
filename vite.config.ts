@@ -23,7 +23,7 @@ export default defineConfig(() => {
           display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
           orientation: 'any',
           theme_color: '#1c1917',
-          background_color: '#1c1917',
+          background_color: '#fafafa',
           lang: 'en',
           categories: ['travel', 'hospitality', 'vacation', 'lodging'],
           icons: [

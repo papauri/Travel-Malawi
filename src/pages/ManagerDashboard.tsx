@@ -26,6 +26,7 @@ import Modal from '../components/Modal';
 import IcalSyncManager from '../components/IcalSyncManager';
 
 import Pagination from '../components/Pagination';
+import { PageLoading } from '../components/Loading';
 
 type StatusFilter = 'all' | 'live' | 'pending' | 'offline' | 'needs_attention';
 type SortOption = 'default' | 'pending' | 'rooms' | 'name';
@@ -359,9 +360,7 @@ export default function ManagerDashboard() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
-      </div>
+      <PageLoading />
     );
   }
 
@@ -447,9 +446,7 @@ export default function ManagerDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
-      </div>
+      <PageLoading />
     );
   }
 

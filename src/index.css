@@ -305,11 +305,74 @@ html, body {
   }
 }
 
+/* Loading: a hairline route with a short segment travelling along it.
+   Same motif as the splash in index.html (src/components/Loading.tsx). */
+.tm-route {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 1px;
+  background: #e7e5e4;
+  overflow: hidden;
+}
+.tm-route::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 32px;
+  background: #1c1917;
+  animation: tm-travel 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.tm-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  z-index: 9999;
+  pointer-events: none;
+}
+.tm-topbar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  background: #1c1917;
+  animation: tm-travel-wide 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+/* Fades in after a beat, so a quick load never flashes a loader. */
+.tm-reveal {
+  animation: tm-reveal 0.3s ease 0.2s both;
+}
+@keyframes tm-travel {
+  from { transform: translateX(-32px); }
+  to { transform: translateX(120px); }
+}
+@keyframes tm-travel-wide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+@keyframes tm-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Respect the OS "reduce motion" setting: stop looping/ambient animation. */
 @media (prefers-reduced-motion: reduce) {
   .animate-bell-ring,
   .animate-bell-vibrate {
     animation: none !important;
+  }
+  .tm-route::after,
+  .tm-topbar::after {
+    animation: none !important;
+    width: 100%;
+    opacity: 0.3;
   }
   html:focus-within {
     scroll-behavior: auto !important;

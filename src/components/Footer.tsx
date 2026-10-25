@@ -9,7 +9,6 @@ import { isAdmin, isMarketing, isHotelManager } from '../lib/roles';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 
-import TypewriterCredit from './TypewriterCredit';
 import SocialLinks from './SocialLinks';
 
 export default function Footer() {
@@ -148,14 +147,8 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Developer credit in small print */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 pt-4 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px] text-stone-500">
-        <div className="flex items-center gap-2">
-          <TypewriterCredit />
-        </div>
-        <div className="text-stone-500/80 text-[10px] tracking-wide">
-          The Warm Heart of Africa &middot; Direct Hospitality Platform
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 pt-4 border-t border-stone-800/60 text-center sm:text-right text-stone-500/80 text-[10px] tracking-wide">
+        The Warm Heart of Africa
       </div>
     </footer>
   );

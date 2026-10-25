@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { BookingLike, buildOccupancyMap, normalizeBlockedDates, allBlockedDatesForRoom } from '../lib/availability';
 import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
 import { usePlatformMode } from '../contexts/PlatformModeContext';
+import { Loading } from './Loading';
 
 interface Props {
   hotelId: string;
@@ -401,9 +402,7 @@ export default function AvailabilityCalendar({
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-7 w-7 animate-spin rounded-full border-4 border-stone-200 border-t-stone-700" />
-        </div>
+        <Loading className="py-16" />
       ) : totalRooms === 0 && !isManagerMode ? (
         <div className="px-6 py-10 text-center">
           <p className="tm-muted">No availability published yet. {bookingsEnabled ? 'Message' : 'Contact'} the property to check dates.</p>

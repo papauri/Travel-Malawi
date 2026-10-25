@@ -41,6 +41,7 @@ import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
+import { PageLoading } from '../components/Loading';
 
 type Tab = 'overview' | 'properties' | 'hosts' | 'bookings' | 'users' | 'analytics' | 'reviews' | 'destinations' | 'content' | 'settings';
 type AnalyticsSub = 'stats' | 'traffic';
@@ -1154,9 +1155,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
-      </div>
+      <PageLoading />
     );
   }
 

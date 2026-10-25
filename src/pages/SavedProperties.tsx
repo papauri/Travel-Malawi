@@ -10,6 +10,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Heart, Compass, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 import TripPlannerD3 from '../components/TripPlannerD3';
+import { PageLoading } from '../components/Loading';
 
 export default function SavedProperties() {
   const { user, loading: authLoading } = useAuth();
@@ -118,9 +119,7 @@ export default function SavedProperties() {
 
   if (authLoading || wishlistLoading || loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-300 border-t-amber-700" />
-      </div>
+      <PageLoading />
     );
   }
 

@@ -56,6 +56,7 @@ import PriceDisplay from '../components/PriceDisplay';
 import RoomGallery from '../components/RoomGallery';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { parseReviewDateToTimestamp, formatReviewDate, sanitizeReviewSourceUrl, getReviewSourceLabel, isBrokenOrFakeReviewUrl } from '../lib/reviewDates';
+import { PageLoading } from '../components/Loading';
 
 interface CompactReviewItem {
   key: string;
@@ -1106,9 +1107,7 @@ export default function HotelDetails() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
-    </div>
+    <PageLoading />
   );
   if (!hotel) return <div className="p-20 text-center text-xl font-serif">Property not found.</div>;
 
