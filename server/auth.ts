@@ -117,11 +117,56 @@ export async function readDoc(
   }
 }
 
+function encodeValue(v: unknown): any {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(encodeValue) } };
+  if (typeof v === 'object') {
+    const fields: Record<string, any> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (val !== undefined) fields[k] = encodeValue(val);
+    }
+    return { mapValue: { fields } };
+  }
+  return { nullValue: null };
+}
+
+/**
+ * Sets the given top-level fields on an existing document, as the caller
+ * (their token), so Firestore rules decide whether the write is allowed.
+ * Throws with the Firestore status when it is refused.
+ */
+export async function updateDocFields(
+  collection: string,
+  id: string,
+  fields: Record<string, unknown>,
+  token: string
+): Promise<void> {
+  if (!isSafeId(id)) throw new Error('Invalid document id.');
+  const keys = Object.keys(fields);
+  if (keys.length === 0) return;
+  const mask = keys.map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  const body: Record<string, any> = {};
+  for (const k of keys) body[k] = encodeValue(fields[k]);
+  const res = await fetch(`${FIRESTORE_BASE}/${collection}/${id}?${mask}&currentDocument.exists=true`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fields: body }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Firestore refused the update of ${collection}/${id} (${res.status}) ${detail.slice(0, 200)}`);
+  }
+}
+
 /** Runs an equality query on a top-level collection. */
 export async function queryDocs(
   collection: string,
   field: string,
-  value: string,
+  value: string | boolean,
   token?: string,
   limit = 5
 ): Promise<Record<string, any>[]> {
@@ -135,7 +180,7 @@ export async function queryDocs(
       body: JSON.stringify({
         structuredQuery: {
           from: [{ collectionId: collection }],
-          where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: value } } },
+          where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: typeof value === 'boolean' ? { booleanValue: value } : { stringValue: value } } },
           limit,
         },
       }),

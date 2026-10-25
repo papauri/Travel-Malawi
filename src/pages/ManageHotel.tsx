@@ -45,7 +45,7 @@ import MenuTemplateView from '../components/MenuTemplates';
 import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
-import { isRoomAvailable } from '../lib/availability';
+import { isRoomAvailable, calendarEnabledFor } from '../lib/availability';
 import { formatMoney, computeBookingPricing, withPropertyBlocks, entirePlaceRoom, entirePlaceRoomId } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek, allDayWeek, isWeekAllDay } from '../lib/hours';
@@ -667,6 +667,9 @@ export default function ManageHotel() {
 
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
+  // Blocked dates and iCal sync: always with bookings on; in directory mode
+  // only once an admin has switched this property's availability calendar on.
+  const calendarOn = calendarEnabledFor(hotel, bookingsEnabled);
   const isPropertyOwner = Boolean(
     user && (
       (hotel?.ownerEmail && user.email && (isShadowing || auth.currentUser?.emailVerified) && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
@@ -919,6 +922,44 @@ export default function ManageHotel() {
       cancelled = true;
     };
   }, [id, user, authLoading, navigate]);
+
+  // Refresh linked calendars (Airbnb, Booking.com...) when the host opens the
+  // dashboard and they were last read over two hours ago. The server's timed
+  // sync needs credentials it may not have, so this keeps the listing's
+  // unavailable nights current. Once per property per visit, silently.
+  const calendarAutoSyncedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!calendarOn || !hotel?.id || loading || calendarAutoSyncedFor.current === hotel.id) return;
+    calendarAutoSyncedFor.current = hotel.id;
+    const stale = (feeds?: { lastSyncedAt?: number }[]) =>
+      Array.isArray(feeds) && feeds.length > 0 && feeds.some(f => !f.lastSyncedAt || Date.now() - f.lastSyncedAt > 2 * 60 * 60_000);
+    const hotelId = hotel.id;
+    const targets: { endpoint: string; body: Record<string, string>; roomId?: string }[] = [];
+    if (stale(hotel.icalSyncUrls)) targets.push({ endpoint: '/api/calendar/sync-hotel', body: { hotelId } });
+    for (const r of rooms) {
+      if (r.id && stale(r.icalSyncUrls)) targets.push({ endpoint: '/api/calendar/sync-room', body: { roomId: r.id, hotelId }, roomId: r.id });
+    }
+    if (targets.length === 0) return;
+    (async () => {
+      const token = await auth.currentUser?.getIdToken().catch(() => undefined);
+      for (const t of targets.slice(0, 8)) {
+        try {
+          const res = await fetch(t.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify(t.body),
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const patch = { icalSyncUrls: data.feeds, icalBlockedDates: data.combinedBlocked };
+          if (t.roomId) setRooms(prev => prev.map(r => (r.id === t.roomId ? { ...r, ...patch } : r)));
+          else setHotel(prev => (prev && prev.id === hotelId ? { ...prev, ...patch } : prev));
+        } catch (err) {
+          console.warn('[iCal] Auto-sync failed:', err);
+        }
+      }
+    })();
+  }, [calendarOn, hotel?.id, loading, rooms.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bookings and guest inquiries are read only while the booking platform is
   // on (D3). Loaded after the property itself, and separately, so a refused
@@ -4647,7 +4688,7 @@ export default function ManageHotel() {
                 </div>
               </div>
               <div className="tm-actions shrink-0">
-                {bookingsEnabled && (
+                {calendarOn && (
                 <button
                   type="button"
                   onClick={() => setShowHotelSyncModal(true)}
@@ -5103,15 +5144,17 @@ export default function ManageHotel() {
                 </div>
                 </SectionCard>
 
-                {/* Manual blocks only matter while bookings are on (D3); the
-                    room's blockedDates are kept as they are either way. */}
-                {bookingsEnabled && (
+                {/* Manual blocks show while bookings are on, or in directory mode
+                    for a property with its availability calendar switched on
+                    (D3); the room's blockedDates are kept as they are either way. */}
+                {calendarOn && (
                 <SectionCard title="Availability and blocked dates">
                 <div id="room-calendar-section">
                   <h4 className="text-sm font-semibold text-stone-800 mb-2">Blocked dates</h4>
                   <p className="text-xs text-stone-500 mb-4">
-                    Take individual nights off sale — maintenance, an owner stay, a private hire.
-                    Blocked nights cannot be booked by guests.
+                    {bookingsEnabled
+                      ? 'Take individual nights off sale — maintenance, an owner stay, a private hire. Blocked nights cannot be booked by guests.'
+                      : 'Mark nights as unavailable — already full, maintenance, an owner stay, a private hire. Travellers see them on your listing calendar.'}
                   </p>
 
                   {editingRoomId === 'new' ? (
@@ -5124,6 +5167,7 @@ export default function ManageHotel() {
                           which accepted anything and showed no context. */}
                       <AvailabilityCalendar
                         hotelId={id!}
+                        enabled={calendarOn}
                         rooms={rooms}
                         selectedRoom={rooms.find(r => r.id === editingRoomId) ?? null}
                         blockedDates={(editRoomData.blockedDates as string[]) ?? []}
@@ -5371,7 +5415,7 @@ export default function ManageHotel() {
 
                         {/* Room Card Actions */}
                         <div className="tm-actions border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 sm:shrink-0 mt-1 sm:mt-0 justify-end">
-                          {bookingsEnabled && (
+                          {calendarOn && (
                           <button 
                             type="button"
                             onClick={() => setSyncingRoom(room)}
@@ -5421,6 +5465,7 @@ export default function ManageHotel() {
                                   }} 
                                 />
                                 <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-sm border border-stone-200 py-1.5 z-40 text-xs animate-in fade-in-50 zoom-in-95">
+                                  {calendarOn && (<>
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -5450,6 +5495,7 @@ export default function ManageHotel() {
                                     <span>Calendar sync (RoomRaccoon, iCal)</span>
                                   </button>
                                   <div className="my-1 border-t border-stone-100" />
+                                  </>)}
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -6414,14 +6460,15 @@ export default function ManageHotel() {
 
       {/* Room iCal / PMS Synchronization Modal */}
       <Modal
-        open={bookingsEnabled && Boolean(syncingRoom)}
+        open={calendarOn && Boolean(syncingRoom)}
         onClose={() => setSyncingRoom(null)}
         title={`Channel Sync — ${syncingRoom?.name || 'Room'}`}
         description="2-way calendar sync with RoomRaccoon, Airbnb, Booking.com, and other PMS systems."
         size="3xl"
       >
-        {bookingsEnabled && syncingRoom && hotel && (
+        {calendarOn && syncingRoom && hotel && (
           <IcalSyncManager
+            enabled={calendarOn}
             room={syncingRoom}
             hotel={hotel}
             onRoomUpdated={(updated) => {
@@ -6435,14 +6482,15 @@ export default function ManageHotel() {
 
       {/* Entire Property iCal / PMS Synchronization Modal */}
       <Modal
-        open={bookingsEnabled && showHotelSyncModal}
+        open={calendarOn && showHotelSyncModal}
         onClose={() => setShowHotelSyncModal(false)}
         title={`Property Channel Sync — ${hotel?.name || 'Property'}`}
         description="2-way calendar sync for whole-house / entire-property reservations."
         size="3xl"
       >
-        {bookingsEnabled && hotel && (
+        {calendarOn && hotel && (
           <IcalSyncManager
+            enabled={calendarOn}
             hotel={hotel}
             onHotelUpdated={(updated) => {
               setHotel(updated);

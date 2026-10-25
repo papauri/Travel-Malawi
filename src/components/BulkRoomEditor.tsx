@@ -1012,7 +1012,7 @@ export default function BulkRoomEditor({
                       <input
                         type="number"
                         min="0"
-                        step={rateAmountCurrency === 'MWK' ? '1000' : '1'}
+                        step="1"
                         value={customRateAmount}
                         onChange={(e) => handleCustomAmountInput(e.target.value)}
                         className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-12 py-1.5 text-sm font-medium text-stone-900 focus:border-stone-500 focus:outline-none"
@@ -1291,7 +1291,7 @@ export default function BulkRoomEditor({
                         <input
                           type="number"
                           min="0"
-                          step={promoSortedCurrency === 'MWK' ? '1000' : '1'}
+                          step="1"
                           value={customPromoAmount}
                           onChange={(e) => handleCustomPromoAmountInput(e.target.value)}
                           className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-12 py-1.5 text-sm font-medium text-stone-900 focus:border-stone-500 focus:outline-none"

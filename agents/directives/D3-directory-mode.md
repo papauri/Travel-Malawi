@@ -25,6 +25,14 @@ booking platform back on. Directory mode is the default.
 4. Ulendo: never offers to book, check availability, hold rooms or message a host; points travellers
    to the property's own contact details. Ops copilot drops booking context and booking actions.
 
+**Per-property exception — availability calendar:** an admin can switch `hotels.availabilityCalendarEnabled`
+on for one property (Admin Dashboard → property menu). In directory mode that property's page then shows
+a display-only calendar of open and unavailable nights (nothing can be picked or booked), and its host
+can block dates and use iCal import/export to sync with Airbnb, Booking.com, RoomRaccoon and others.
+Client gate: `calendarEnabledFor(hotel, bookingsEnabled)` (`src/lib/availability.ts`); server gate:
+`hotelCalendarEnabled` / `roomCalendarEnabled` (`server/icalService.ts`); only admins and marketing can
+change the field (`firestore.rules`).
+
 **ON — the directory:** listings, photos, rooms (indicative "from" rates), menus, amenities, maps,
 directions, saved/compare, displaying reviews, Ulendo trip planning, host onboarding and listing
 management, admin moderation, admin→host broadcasts, the host enquiry form, surveys.

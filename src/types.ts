@@ -236,6 +236,12 @@ export interface Hotel {
    * wizard (licences are the owner's responsibility, not Travel Malawi's).
    */
   licensingAcknowledgedAt?: string;
+  /**
+   * Admin-only switch: shows this property's availability calendar and lets
+   * its host block dates and sync iCal feeds even in directory mode. It is a
+   * display of open and unavailable nights, never a way to book.
+   */
+  availabilityCalendarEnabled?: boolean;
   /** Optional profile links; the listing shows an icon only for the ones filled in. */
   socialFacebook?: string;
   socialInstagram?: string;

@@ -36,6 +36,7 @@ import { formatMoney } from '../lib/booking';
 import { updateBookingWithSlot, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import { usePlatformMode } from '../contexts/PlatformModeContext';
+import { calendarEnabledFor } from '../lib/availability';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -1118,12 +1119,14 @@ export default function AdminDashboard() {
     { id: 'stats' as AnalyticsSub, label: 'Analytics' },
     { id: 'traffic' as AnalyticsSub, label: 'Live visitors', visible: isGlobalAdmin(user) || isMarketing(user) },
   ].filter(t => t.visible !== false), [user]);
+  const calendarHotels = hotels.filter(h => calendarEnabledFor(h, bookingsEnabled));
   const contentSubs = [
     { id: 'content' as ContentSub, label: 'Content and legal' },
     { id: 'docs' as ContentSub, label: 'Partner docs' },
   ];
   const settingsSubs = [
-    { id: 'channels' as SettingsSub, label: 'iCal and channels', visible: bookingsEnabled },
+    // Directory mode: shown once any property has its availability calendar on.
+    { id: 'channels' as SettingsSub, label: bookingsEnabled ? 'iCal and channels' : 'Availability calendars', visible: bookingsEnabled || calendarHotels.length > 0 },
     { id: 'whatsapp' as SettingsSub, label: 'WhatsApp' },
     { id: 'email' as SettingsSub, label: 'Email' },
     { id: 'ai' as SettingsSub, label: 'AI providers' },
@@ -1852,6 +1855,40 @@ export default function AdminDashboard() {
                             {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                           </button>
 
+                          {/* Per-property availability calendar: open/unavailable nights
+                              and iCal sync, shown even in directory mode. Never booking. */}
+                          {!bookingsEnabled && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const nextState = hotel.availabilityCalendarEnabled !== true;
+                              try {
+                                await updateDoc(doc(db, 'hotels', hotel.id!), { availabilityCalendarEnabled: nextState });
+                                setHotels(hotels.map(h => h.id === hotel.id ? { ...h, availabilityCalendarEnabled: nextState } : h));
+                                toast.success(nextState
+                                  ? `Availability calendar on for ${hotel.name}. The host can now block dates and sync iCal.`
+                                  : `Availability calendar off for ${hotel.name}.`);
+                                setOpenHotelMenuId(null);
+                                logSystemEvent('action', `Admin turned the availability calendar ${nextState ? 'on' : 'off'}: ${hotel.name}`, {
+                                  hotelId: hotel.id,
+                                  hotelName: hotel.name,
+                                  availabilityCalendarEnabled: nextState,
+                                }, user, 'property').catch(() => {});
+                              } catch (error) {
+                                console.error(error);
+                                toast.error('Could not update the availability calendar.');
+                              }
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <CalendarRange className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span>{hotel.availabilityCalendarEnabled ? 'Turn off availability calendar' : 'Turn on availability calendar'}</span>
+                            </span>
+                            {hotel.availabilityCalendarEnabled && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          </button>
+                          )}
+
                           {bookingsEnabled && (
                           <button
                             type="button"
@@ -2025,6 +2062,11 @@ export default function AdminDashboard() {
                                         {hotel.featured && (
                                           <span title="Featured on home page" className="shrink-0">
                                             <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                          </span>
+                                        )}
+                                        {!bookingsEnabled && hotel.availabilityCalendarEnabled && (
+                                          <span title="Availability calendar on" className="shrink-0">
+                                            <CalendarRange className="h-3.5 w-3.5 text-emerald-700" />
                                           </span>
                                         )}
                                       </div>
@@ -2211,6 +2253,9 @@ export default function AdminDashboard() {
                                     <h3 className="text-sm font-semibold text-stone-900 truncate">{hotel.name}</h3>
                                     {hotel.featured && (
                                       <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                                    )}
+                                    {!bookingsEnabled && hotel.availabilityCalendarEnabled && (
+                                      <CalendarRange aria-label="Availability calendar on" className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
                                     )}
                                   </div>
                                   <p className="text-xs text-stone-500 truncate mt-0.5">
@@ -3230,8 +3275,8 @@ export default function AdminDashboard() {
 
             {shownSettingsSub === 'channels' && (
               <AdminIcalMonitor
-                hotels={hotels}
-                rooms={rooms}
+                hotels={calendarHotels}
+                rooms={rooms.filter(r => calendarHotels.some(h => h.id === r.hotelId))}
                 onHotelsUpdated={setHotels}
                 onRoomsUpdated={setRooms}
               />

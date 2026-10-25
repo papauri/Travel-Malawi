@@ -66,7 +66,7 @@ type WizardDraft = ListingDraft & { tourismLicenceNumber?: string };
 
 const LICENCE_MAX = 60;
 
-// Shared with the document importer so both round kwacha to MK 1,000.
+// Shared with the document importer: prices are kept exactly as the host entered them.
 import { roomPriceFields } from '../lib/localPropertyParser';
 
 export interface SuggestedRoomItem {
@@ -2597,7 +2597,7 @@ export default function ListProperty() {
                         <input
                           type="number"
                           min={0}
-                          step={1000}
+                          step={1}
                           value={draft.entirePlaceDetails?.ratePerNightMwk || ''}
                           onChange={(e) => {
                             const mwk = Number(e.target.value);

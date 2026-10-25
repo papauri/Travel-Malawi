@@ -7,7 +7,7 @@
  * account for every unit. Cancelled and rejected bookings release their units.
  */
 
-import { CurrencyCode, RoomType } from '../types';
+import { CurrencyCode, Hotel, RoomType } from '../types';
 import { roomPrice } from './currency';
 import { DateStr, addDays, nightsInRange, rangesOverlap } from './dates';
 
@@ -80,6 +80,18 @@ export function normalizeBlockedDates(blockedDates: unknown): DateStr[] {
       .filter((d): d is DateStr => /^\d{4}-\d{2}-\d{2}$/.test(d));
   }
   return [];
+}
+
+/**
+ * Whether a property's availability calendar, blocked dates and iCal sync are
+ * on: always while bookings are on, and in directory mode only where an admin
+ * switched `availabilityCalendarEnabled` on (a display, never a way to book).
+ */
+export function calendarEnabledFor(
+  hotel: Pick<Hotel, 'availabilityCalendarEnabled'> | null | undefined,
+  bookingsEnabled: boolean
+): boolean {
+  return bookingsEnabled || hotel?.availabilityCalendarEnabled === true;
 }
 
 /**

@@ -2087,6 +2087,13 @@ export default function HotelDetails() {
             
             {activeSpaceTab === 'rooms' ? (
               <>
+              {/* Directory mode: a display-only availability calendar, for
+                  properties an admin switched it on for. Nothing is booked here. */}
+              {!bookingsEnabled && hotel.availabilityCalendarEnabled === true && (
+                <div id="availability-calendar" className="mb-6 sm:mb-8 scroll-mt-28 sm:scroll-mt-32 min-w-0">
+                  <AvailabilityCalendar hotelId={id!} rooms={effectiveRooms} enabled readOnly />
+                </div>
+              )}
               {/* Top Inline Hybrid Date Bar (booking mode only: no dates or availability in the directory) */}
               {bookingsEnabled && (() => {
                 const isEntirePlace = hotel.stayType === 'entire_place';

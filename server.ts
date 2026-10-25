@@ -62,7 +62,10 @@ import {
   testIcalFeedUrl,
   syncRoomIcal,
   syncHotelIcal,
-  syncAllActiveFeeds
+  syncAllActiveFeeds,
+  hotelCalendarEnabled,
+  roomCalendarEnabled,
+  callerStore
 } from './server/icalService';
 import { trafficTracker } from './server/trafficTracker';
 import { generateSitemapXml, generateRobotsTxt } from './server/seo';
@@ -292,12 +295,18 @@ async function startServer() {
   // iCal / .ics 2-Way Calendar Synchronization Routes
   // ---------------------------------------------------------------------------
 
+  // Calendar routes run everywhere while bookings are on. In directory mode
+  // they serve only properties an admin switched the availability calendar
+  // on for (hotels.availabilityCalendarEnabled): display and sync, never booking.
+
   // Public iCal Feed Export for Room (RoomRaccoon, Airbnb, Booking.com, Google Cal subscribe here)
-  app.get('/api/calendar/room/:roomId.ics', requireBookingMode, async (req, res) => {
+  app.get('/api/calendar/room/:roomId.ics', async (req, res) => {
     try {
       const { roomId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
-      const feed = isSafeId(roomId) ? await generateRoomIcalFeed(roomId, token, `${req.protocol}://${req.get('host')}`) : null;
+      const feed = isSafeId(roomId) && await roomCalendarEnabled(roomId)
+        ? await generateRoomIcalFeed(roomId, token, `${req.protocol}://${req.get('host')}`)
+        : null;
       if (!feed) {
         res.status(404).send('Calendar feed not found.');
         return;
@@ -315,11 +324,13 @@ async function startServer() {
   });
 
   // Public iCal Feed Export for Hotel / Entire Place
-  app.get('/api/calendar/hotel/:hotelId.ics', requireBookingMode, async (req, res) => {
+  app.get('/api/calendar/hotel/:hotelId.ics', async (req, res) => {
     try {
       const { hotelId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
-      const feed = isSafeId(hotelId) ? await generateHotelIcalFeed(hotelId, token, `${req.protocol}://${req.get('host')}`) : null;
+      const feed = isSafeId(hotelId) && await hotelCalendarEnabled(hotelId)
+        ? await generateHotelIcalFeed(hotelId, token, `${req.protocol}://${req.get('host')}`)
+        : null;
       if (!feed) {
         res.status(404).send('Calendar feed not found.');
         return;
@@ -339,12 +350,21 @@ async function startServer() {
   // Test an external iCal URL before saving (e.g. from RoomRaccoon or Airbnb)
   // The server fetches the URL on the caller's behalf, so it is rate limited.
   const icalFetchLimiter = rateLimit({ name: 'ical-fetch', windowMs: 60_000, max: 10 });
-  app.post('/api/calendar/test-feed', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/test-feed', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
-      const { url } = req.body || {};
+      const { url, hotelId } = req.body || {};
       if (!url || typeof url !== 'string') {
         res.status(400).json({ error: 'Feed URL is required.' });
         return;
+      }
+      // Directory mode: only for a property the caller manages whose
+      // availability calendar is on.
+      // Admins and marketing may test any link (Settings > Availability calendars).
+      if (!(await bookingsEnabled()) && !hasAnyRole(req.authUser, 'admin', 'marketing')) {
+        if (!isSafeId(hotelId) ||!(await hotelCalendarEnabled(hotelId, callerStore(req.authUser!.token))) || !(await canManageHotel(req.authUser, hotelId))) {
+          res.status(403).json({ error: 'The availability calendar is not switched on for this property.', code: 'directory_mode' });
+          return;
+        }
       }
       const result = await testIcalFeedUrl(url);
       res.json(result);
@@ -354,7 +374,7 @@ async function startServer() {
   });
 
   // Trigger manual sync for a room's feeds
-  app.post('/api/calendar/sync-room', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/sync-room', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
       const { roomId, hotelId } = req.body || {};
       if (!isSafeId(roomId) || !isSafeId(hotelId)) {
@@ -366,7 +386,11 @@ async function startServer() {
         res.status(403).json({ error: 'You do not have permission to manage this property.' });
         return;
       }
-      const result = await syncRoomIcal(roomId, hotelId);
+      if (!(await hotelCalendarEnabled(hotelId, callerStore(req.authUser!.token)))) {
+        res.status(403).json({ error: 'The availability calendar is not switched on for this property.', code: 'directory_mode' });
+        return;
+      }
+      const result = await syncRoomIcal(roomId, hotelId, callerStore(req.authUser!.token));
       res.json(result);
     } catch (err: any) {
       console.error('[iCal Sync Room Error]:', err);
@@ -375,7 +399,7 @@ async function startServer() {
   });
 
   // Trigger manual sync for a whole hotel's feeds
-  app.post('/api/calendar/sync-hotel', requireAuth, requireBookingMode, icalFetchLimiter, async (req, res) => {
+  app.post('/api/calendar/sync-hotel', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
       const { hotelId } = req.body || {};
       if (!isSafeId(hotelId)) {
@@ -387,7 +411,11 @@ async function startServer() {
         res.status(403).json({ error: 'You do not have permission to manage this property.' });
         return;
       }
-      const result = await syncHotelIcal(hotelId);
+      if (!(await hotelCalendarEnabled(hotelId, callerStore(req.authUser!.token)))) {
+        res.status(403).json({ error: 'The availability calendar is not switched on for this property.', code: 'directory_mode' });
+        return;
+      }
+      const result = await syncHotelIcal(hotelId, callerStore(req.authUser!.token));
       res.json(result);
     } catch (err: any) {
       console.error('[iCal Sync Hotel Error]:', err);
@@ -396,9 +424,10 @@ async function startServer() {
   });
 
   // Admin & Marketing global sync trigger
-  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin', 'marketing'), requireBookingMode, async (req, res) => {
+  // In directory mode this syncs only properties with the availability calendar on.
+  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin', 'marketing'), async (req, res) => {
     try {
-      const result = await syncAllActiveFeeds();
+      const result = await syncAllActiveFeeds(callerStore(req.authUser!.token));
       res.json({ success: true, ...result });
     } catch (err: any) {
       res.status(500).json({ error: err?.message || 'Failed to sync all feeds.' });

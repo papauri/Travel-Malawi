@@ -2,23 +2,68 @@
  * Server-side RFC 5545 iCalendar (iCal / .ics) 2-Way Sync Engine.
  * Enables zero-double-booking synchronization with RoomRaccoon, Airbnb, Booking.com,
  * NightsBridge, Google Calendar, and other PMS systems.
+ *
+ * Firestore is reached the same way as the rest of the server: through the
+ * REST API as the caller (their ID token), so the security rules decide what
+ * they can read and change, and anonymously for the public .ics feeds. The
+ * server has no service account in production, so the timed background sync
+ * only runs where firebase-admin finds credentials; elsewhere a host's
+ * dashboard and the admin "Sync all" keep calendars current.
  */
 
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { PROJECT_ID, DATABASE_ID } from './auth';
+import { PROJECT_ID, DATABASE_ID, readDoc, queryDocs, updateDocFields } from './auth';
 import { bookingsEnabled } from './platformMode';
 
-let firestoreInstance: Firestore | null = null;
-function getDb(): Firestore {
-  if (!firestoreInstance) {
-    const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID });
-    firestoreInstance = getFirestore(app, DATABASE_ID);
-  }
-  return firestoreInstance;
+/** The Firestore operations this module needs. */
+export interface CalendarStore {
+  get(collection: string, id: string): Promise<Record<string, any> | null>;
+  update(collection: string, id: string, fields: Record<string, unknown>): Promise<void>;
+  where(collection: string, field: string, value: string | boolean, limit?: number): Promise<Record<string, any>[]>;
 }
+
+/** As the caller: the rules decide. With no token, public reads only. */
+export function callerStore(token?: string): CalendarStore {
+  return {
+    get: (collection, id) => readDoc(collection, id, token),
+    update: async (collection, id, fields) => {
+      if (!token) throw new Error('Sign in to update a calendar.');
+      await updateDocFields(collection, id, fields, token);
+    },
+    where: (collection, field, value, limit = 500) => queryDocs(collection, field, value, token, limit),
+  };
+}
+
+let adminDb: Firestore | null = null;
+/** Privileged access for the timed background sync; throws where there are no credentials. */
+function adminStore(): CalendarStore {
+  if (!adminDb) {
+    const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID });
+    adminDb = getFirestore(app, DATABASE_ID);
+  }
+  const db = adminDb;
+  return {
+    get: async (collection, id) => {
+      const snap = await db.collection(collection).doc(id).get();
+      return snap.exists ? { id: snap.id, ...snap.data() } : null;
+    },
+    update: async (collection, id, fields) => {
+      await db.collection(collection).doc(id).update(fields);
+    },
+    where: async (collection, field, value, limit = 500) =>
+      (await db.collection(collection).where(field, '==', value).limit(limit).get()).docs.map(d => ({ id: d.id, ...d.data() })),
+  };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const dateList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((d): d is string => typeof d === 'string' && DATE_RE.test(d)) : [];
+
+/** Booking statuses that hold nights in an exported feed (booking mode only). */
+const HOLDING_STATUSES = ['confirmed', 'completed', 'checked_in'];
 
 export interface IcalFeedItem {
   id: string;
@@ -61,205 +106,119 @@ function escapeIcalText(text: string): string {
     .replace(/\r?\n/g, '\\n');
 }
 
+function pushEvent(lines: string[], uid: string, stamp: string, start: string, end: string, summary: string) {
+  lines.push('BEGIN:VEVENT');
+  lines.push(`UID:${uid}`);
+  lines.push(`DTSTAMP:${stamp}`);
+  lines.push(`DTSTART;VALUE=DATE:${toIcalDate(start)}`);
+  lines.push(`DTEND;VALUE=DATE:${toIcalDate(end)}`);
+  lines.push(`SUMMARY:${escapeIcalText(summary)}`);
+  lines.push('STATUS:CONFIRMED');
+  lines.push('TRANSP:OPAQUE');
+  lines.push('END:VEVENT');
+}
+
+function calendarHeader(name: string): string[] {
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Travel Malawi//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escapeIcalText(name)}`,
+    'X-WR-TIMEZONE:Africa/Blantyre',
+  ];
+}
+
+/**
+ * Nights taken through Travel Malawi bookings, from the public booking_slots
+ * mirror (it carries dates and status only, no guest details). Booking mode only.
+ */
+async function bookedRanges(store: CalendarStore, field: 'roomTypeId' | 'hotelId', id: string) {
+  if (!(await bookingsEnabled())) return [];
+  const slots = await store.where('booking_slots', field, id, 1000);
+  return slots
+    .filter(s => HOLDING_STATUSES.includes(s.status) && DATE_RE.test(s.checkIn) && DATE_RE.test(s.checkOut))
+    .map(s => ({ id: String(s.id), checkIn: s.checkIn as string, checkOut: s.checkOut as string }));
+}
+
 /**
  * Generates an RFC 5545 compliant .ics calendar feed for a specific room.
  * External platforms (RoomRaccoon, Airbnb, Booking.com, Google Cal) subscribe to this.
+ * It carries Travel Malawi bookings (booking mode) and the nights the host
+ * blocked here; dates imported from other calendars are not sent back out.
  */
 export async function generateRoomIcalFeed(
   roomId: string,
   token?: string,
-  origin: string = 'https://travelmalawi.app'
+  _origin?: string,
+  store: CalendarStore = callerStore()
 ): Promise<{ ics: string; roomName: string; hotelName: string } | null> {
-  const db = getDb();
-  const roomSnap = await db.collection('room_types').doc(roomId).get();
-  if (!roomSnap.exists) return null;
-  const room = roomSnap.data() || {};
+  const room = await store.get('room_types', roomId);
+  if (!room) return null;
 
   // If the room has a secret token configured, the feed is only served with it.
   if (room.icalExportToken && room.icalExportToken !== token) return null;
 
-  const hotelId = room.hotelId;
-  let hotelName = 'Malawi Lodge';
-  let hotelBlocks: string[] = [];
-  if (hotelId) {
-    const hotelSnap = await db.collection('hotels').doc(hotelId).get();
-    if (hotelSnap.exists) {
-      hotelName = (hotelSnap.data()?.name as string) || hotelName;
-      // A property-wide closure closes every room, so the room feed carries it too.
-      const hb = hotelSnap.data()?.blockedDates;
-      if (Array.isArray(hb)) hotelBlocks = hb.filter((d: unknown): d is string => typeof d === 'string');
-    }
+  const hotel = typeof room.hotelId === 'string' ? await store.get('hotels', room.hotelId) : null;
+  const hotelName = (hotel?.name as string) || 'Malawi Lodge';
+  // A property-wide closure closes every room, so the room feed carries it too.
+  const hotelBlocks = dateList(hotel?.blockedDates);
+  const roomName = (room.name as string) || 'Room';
+
+  const lines = calendarHeader(`${hotelName} - ${roomName} (Travel Malawi)`);
+  const stamp = toIcalTimestamp();
+
+  for (const b of await bookedRanges(store, 'roomTypeId', roomId)) {
+    pushEvent(lines, `tm-booking-${b.id}@travelmalawi.app`, stamp, b.checkIn, b.checkOut, 'Reserved - Travel Malawi');
   }
 
-  const roomName = (room.name as string) || 'Chalet';
-
-  // Fetch confirmed bookings for this room
-  const bookingsSnap = await db
-    .collection('bookings')
-    .where('roomTypeId', '==', roomId)
-    .where('status', 'in', ['confirmed', 'completed', 'checked_in'])
-    .get();
-
-  const lines: string[] = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Travel Malawi//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    `X-WR-CALNAME:${escapeIcalText(`${hotelName} - ${roomName} (Travel Malawi)`)}`,
-    'X-WR-TIMEZONE:Africa/Blantyre',
-  ];
-
-  const nowStamp = toIcalTimestamp();
-
-  // Add bookings
-  for (const doc of bookingsSnap.docs) {
-    const b = doc.data();
-    if (!b.checkIn || !b.checkOut) continue;
-    const uid = `tm-booking-${doc.id}@travelmalawi.app`;
-    const dtstart = toIcalDate(b.checkIn);
-    const dtend = toIcalDate(b.checkOut);
-    // The feed URL is public (room ids are public), so it carries no guest
-    // name or contact details, only that the nights are taken.
-    const summary = escapeIcalText('Reserved - Travel Malawi');
-    const desc = escapeIcalText(
-      `Travel Malawi Booking Reference: ${b.reference || doc.id}\n` +
-      `Property: ${hotelName}\n` +
-      `Room: ${roomName}\n` +
-      `Dates: ${b.checkIn} to ${b.checkOut}`
-    );
-
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${uid}`);
-    lines.push(`DTSTAMP:${nowStamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
-    lines.push(`DTEND;VALUE=DATE:${dtend}`);
-    lines.push(`SUMMARY:${summary}`);
-    lines.push(`DESCRIPTION:${desc}`);
-    lines.push('STATUS:CONFIRMED');
-    lines.push('TRANSP:OPAQUE');
-    lines.push('END:VEVENT');
-  }
-
-  // Add manually blocked dates from the host (avoiding duplicate spans)
-  const manualBlocks: string[] = Array.isArray(room.blockedDates) ? room.blockedDates : [];
-  const sortedBlocks = [...new Set([...manualBlocks, ...hotelBlocks])].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
-
-  for (const blockDate of sortedBlocks) {
-    const uid = `tm-blocked-${roomId}-${blockDate}@travelmalawi.app`;
-    const dtstart = toIcalDate(blockDate);
-    const dtend = toIcalDate(addDaysToStr(blockDate, 1));
-    const summary = escapeIcalText(`Unavailable / Blocked - Travel Malawi (${roomName})`);
-
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${uid}`);
-    lines.push(`DTSTAMP:${nowStamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
-    lines.push(`DTEND;VALUE=DATE:${dtend}`);
-    lines.push(`SUMMARY:${summary}`);
-    lines.push('STATUS:CONFIRMED');
-    lines.push('TRANSP:OPAQUE');
-    lines.push('END:VEVENT');
+  const blocks = [...new Set([...dateList(room.blockedDates), ...hotelBlocks])].sort();
+  for (const d of blocks) {
+    pushEvent(lines, `tm-blocked-${roomId}-${d}@travelmalawi.app`, stamp, d, addDaysToStr(d, 1), `Unavailable - Travel Malawi (${roomName})`);
   }
 
   lines.push('END:VCALENDAR');
-
-  // Update last export timestamp asynchronously
-  db.collection('room_types').doc(roomId).update({
-    icalLastExportAt: Date.now(),
-  }).catch(() => {});
-
-  return {
-    ics: lines.join('\r\n'),
-    roomName,
-    hotelName,
-  };
+  return { ics: lines.join('\r\n'), roomName, hotelName };
 }
 
 /**
- * Generates an RFC 5545 compliant .ics calendar feed for an entire property.
+ * Generates an RFC 5545 compliant .ics calendar feed for an entire property:
+ * bookings (booking mode), property-wide closures, and nights on which every
+ * room type is blocked by the host (for a whole-house listing, its blocks).
  */
 export async function generateHotelIcalFeed(
   hotelId: string,
   token?: string,
-  origin: string = 'https://travelmalawi.app'
+  _origin?: string,
+  store: CalendarStore = callerStore()
 ): Promise<{ ics: string; hotelName: string } | null> {
-  const db = getDb();
-  const hotelSnap = await db.collection('hotels').doc(hotelId).get();
-  if (!hotelSnap.exists) return null;
-  const hotel = hotelSnap.data() || {};
+  const hotel = await store.get('hotels', hotelId);
+  if (!hotel) return null;
 
   if (hotel.icalExportToken && hotel.icalExportToken !== token) return null;
 
   const hotelName = (hotel.name as string) || 'Malawi Stay';
+  const lines = calendarHeader(`${hotelName} (Travel Malawi)`);
+  const stamp = toIcalTimestamp();
 
-  // Fetch all confirmed bookings for this hotel
-  const bookingsSnap = await db
-    .collection('bookings')
-    .where('hotelId', '==', hotelId)
-    .where('status', 'in', ['confirmed', 'completed', 'checked_in'])
-    .get();
-
-  const lines: string[] = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Travel Malawi//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    `X-WR-CALNAME:${escapeIcalText(`${hotelName} (Travel Malawi)`)}`,
-    'X-WR-TIMEZONE:Africa/Blantyre',
-  ];
-
-  const nowStamp = toIcalTimestamp();
-
-  for (const doc of bookingsSnap.docs) {
-    const b = doc.data();
-    if (!b.checkIn || !b.checkOut) continue;
-    const uid = `tm-booking-${doc.id}@travelmalawi.app`;
-    const dtstart = toIcalDate(b.checkIn);
-    const dtend = toIcalDate(b.checkOut);
-    const summary = escapeIcalText('Reserved - Travel Malawi');
-
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${uid}`);
-    lines.push(`DTSTAMP:${nowStamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
-    lines.push(`DTEND;VALUE=DATE:${dtend}`);
-    lines.push(`SUMMARY:${summary}`);
-    lines.push('STATUS:CONFIRMED');
-    lines.push('TRANSP:OPAQUE');
-    lines.push('END:VEVENT');
+  for (const b of await bookedRanges(store, 'hotelId', hotelId)) {
+    pushEvent(lines, `tm-booking-${b.id}@travelmalawi.app`, stamp, b.checkIn, b.checkOut, 'Reserved - Travel Malawi');
   }
 
-  const manualBlocks: string[] = Array.isArray(hotel.blockedDates) ? hotel.blockedDates : [];
-  for (const blockDate of manualBlocks) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(blockDate)) continue;
-    const uid = `tm-blocked-${hotelId}-${blockDate}@travelmalawi.app`;
-    const dtstart = toIcalDate(blockDate);
-    const dtend = toIcalDate(addDaysToStr(blockDate, 1));
-    const summary = escapeIcalText(`Property Closed / Blocked - Travel Malawi`);
-
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${uid}`);
-    lines.push(`DTSTAMP:${nowStamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${dtstart}`);
-    lines.push(`DTEND;VALUE=DATE:${dtend}`);
-    lines.push(`SUMMARY:${summary}`);
-    lines.push('STATUS:CONFIRMED');
-    lines.push('TRANSP:OPAQUE');
-    lines.push('END:VEVENT');
+  const rooms = (await store.where('room_types', 'hotelId', hotelId, 200)).filter(r => (Number(r.quantity) || 0) > 0);
+  let allRoomsBlocked: Set<string> | null = null;
+  for (const r of rooms) {
+    const dates = new Set(dateList(r.blockedDates));
+    allRoomsBlocked = allRoomsBlocked === null ? dates : new Set([...allRoomsBlocked].filter(d => dates.has(d)));
+  }
+  const blocks = [...new Set([...dateList(hotel.blockedDates), ...(allRoomsBlocked ?? [])])].sort();
+  for (const d of blocks) {
+    pushEvent(lines, `tm-blocked-${hotelId}-${d}@travelmalawi.app`, stamp, d, addDaysToStr(d, 1), 'Unavailable - Travel Malawi');
   }
 
   lines.push('END:VCALENDAR');
-
-  db.collection('hotels').doc(hotelId).update({
-    icalLastExportAt: Date.now(),
-  }).catch(() => {});
-
-  return {
-    ics: lines.join('\r\n'),
-    hotelName,
-  };
+  return { ics: lines.join('\r\n'), hotelName };
 }
 
 /**
@@ -460,228 +419,154 @@ export async function testIcalFeedUrl(url: string): Promise<{
   }
 }
 
-/**
- * Executes a sync for all configured iCal feeds on a room.
- * Updates room.icalBlockedDates and feed statuses in Firestore.
- */
-export async function syncRoomIcal(
-  roomId: string,
-  hotelId: string
-): Promise<{
+export interface SyncResult {
   success: boolean;
   totalBlockedDates: number;
   feeds: IcalFeedItem[];
   combinedBlocked: string[];
-}> {
-  const db = getDb();
-  const roomRef = db.collection('room_types').doc(roomId);
-  const roomSnap = await roomRef.get();
-  if (!roomSnap.exists) {
-    throw new Error(`Room with ID ${roomId} not found.`);
-  }
+}
 
-  const room = roomSnap.data() || {};
-  // The caller was authorised for `hotelId`; the room must belong to it.
-  if (hotelId && room.hotelId !== hotelId) {
-    throw new Error(`Room with ID ${roomId} not found.`);
-  }
-  const feeds: IcalFeedItem[] = Array.isArray(room.icalSyncUrls) ? [...room.icalSyncUrls] : [];
+/**
+ * Reads every feed on a room or property and stores the nights they block in
+ * `icalBlockedDates`, with each feed's status. A feed that cannot be read this
+ * time keeps the nights it blocked last time; dropping them would show nights
+ * taken elsewhere as open.
+ */
+async function syncTarget(store: CalendarStore, collection: 'room_types' | 'hotels', id: string, data: Record<string, any>): Promise<SyncResult> {
+  const feeds: IcalFeedItem[] = Array.isArray(data.icalSyncUrls) ? [...data.icalSyncUrls] : [];
 
   if (feeds.length === 0) {
-    // Clear out ical blocked dates if no feeds remain
-    await roomRef.update({
-      icalBlockedDates: [],
-    });
+    if (dateList(data.icalBlockedDates).length > 0) await store.update(collection, id, { icalBlockedDates: [] });
     return { success: true, totalBlockedDates: 0, feeds: [], combinedBlocked: [] };
   }
 
-  const allBlockedSet = new Set<string>();
+  const allBlocked = new Set<string>();
   let feedFailed = false;
   const now = Date.now();
 
   for (let i = 0; i < feeds.length; i++) {
     const feed = feeds[i];
     try {
-      const rawIcs = await fetchExternalIcal(feed.url);
-      const parsed = parseIcalToBlockedDates(rawIcs);
-      for (const d of parsed.blockedDates) {
-        allBlockedSet.add(d);
-      }
-      feeds[i] = {
-        ...feed,
-        lastSyncedAt: now,
-        syncStatus: 'success',
-        lastError: '',
-        blockedCount: parsed.blockedDates.length,
-        updatedAt: now,
-      };
+      const parsed = parseIcalToBlockedDates(await fetchExternalIcal(feed.url));
+      for (const d of parsed.blockedDates) allBlocked.add(d);
+      feeds[i] = { ...feed, lastSyncedAt: now, syncStatus: 'success', lastError: '', blockedCount: parsed.blockedDates.length, updatedAt: now };
     } catch (err: any) {
-      console.warn(`[iCal Sync Error] Room ${roomId} feed ${feed.name}:`, err?.message);
+      console.warn(`[iCal Sync Error] ${collection}/${id} feed ${feed.name}:`, err?.message);
       feedFailed = true;
-      feeds[i] = {
-        ...feed,
-        lastSyncedAt: now,
-        syncStatus: 'error',
-        lastError: err?.message || 'Sync failed',
-        updatedAt: now,
-      };
+      feeds[i] = { ...feed, lastSyncedAt: now, syncStatus: 'error', lastError: err?.message || 'Sync failed', updatedAt: now };
     }
   }
 
-  // A feed that could not be read this time keeps the nights it blocked last
-  // time; dropping them would reopen externally booked nights for sale.
-  if (feedFailed && Array.isArray(room.icalBlockedDates)) {
-    for (const d of room.icalBlockedDates) if (typeof d === 'string') allBlockedSet.add(d);
+  if (feedFailed) for (const d of dateList(data.icalBlockedDates)) allBlocked.add(d);
+
+  const combinedBlocked = Array.from(allBlocked).sort();
+  await store.update(collection, id, { icalSyncUrls: feeds, icalBlockedDates: combinedBlocked });
+  return { success: true, totalBlockedDates: combinedBlocked.length, feeds, combinedBlocked };
+}
+
+/**
+ * Executes a sync for all configured iCal feeds on a room.
+ * Updates room.icalBlockedDates and feed statuses in Firestore.
+ */
+export async function syncRoomIcal(roomId: string, hotelId: string, store: CalendarStore): Promise<SyncResult> {
+  const room = await store.get('room_types', roomId);
+  // The caller was authorised for `hotelId`; the room must belong to it.
+  if (!room || (hotelId && room.hotelId !== hotelId)) {
+    throw new Error(`Room with ID ${roomId} not found.`);
   }
-
-  const combinedBlocked = Array.from(allBlockedSet).sort();
-
-  await roomRef.update({
-    icalSyncUrls: feeds,
-    icalBlockedDates: combinedBlocked,
-  });
-
-  return {
-    success: true,
-    totalBlockedDates: combinedBlocked.length,
-    feeds,
-    combinedBlocked,
-  };
+  return syncTarget(store, 'room_types', roomId, room);
 }
 
 /**
  * Executes a sync for all configured iCal feeds on an entire property.
  */
-export async function syncHotelIcal(
-  hotelId: string
-): Promise<{
-  success: boolean;
-  totalBlockedDates: number;
-  feeds: IcalFeedItem[];
-  combinedBlocked: string[];
-}> {
-  const db = getDb();
-  const hotelRef = db.collection('hotels').doc(hotelId);
-  const hotelSnap = await hotelRef.get();
-  if (!hotelSnap.exists) {
-    throw new Error(`Hotel with ID ${hotelId} not found.`);
-  }
-
-  const hotel = hotelSnap.data() || {};
-  const feeds: IcalFeedItem[] = Array.isArray(hotel.icalSyncUrls) ? [...hotel.icalSyncUrls] : [];
-
-  if (feeds.length === 0) {
-    await hotelRef.update({
-      icalBlockedDates: [],
-    });
-    return { success: true, totalBlockedDates: 0, feeds: [], combinedBlocked: [] };
-  }
-
-  const allBlockedSet = new Set<string>();
-  let feedFailed = false;
-  const now = Date.now();
-
-  for (let i = 0; i < feeds.length; i++) {
-    const feed = feeds[i];
-    try {
-      const rawIcs = await fetchExternalIcal(feed.url);
-      const parsed = parseIcalToBlockedDates(rawIcs);
-      for (const d of parsed.blockedDates) {
-        allBlockedSet.add(d);
-      }
-      feeds[i] = {
-        ...feed,
-        lastSyncedAt: now,
-        syncStatus: 'success',
-        lastError: '',
-        blockedCount: parsed.blockedDates.length,
-        updatedAt: now,
-      };
-    } catch (err: any) {
-      console.warn(`[iCal Sync Error] Hotel ${hotelId} feed ${feed.name}:`, err?.message);
-      feedFailed = true;
-      feeds[i] = {
-        ...feed,
-        lastSyncedAt: now,
-        syncStatus: 'error',
-        lastError: err?.message || 'Sync failed',
-        updatedAt: now,
-      };
-    }
-  }
-
-  // Keep last-known blocks while a feed is unreachable (see syncRoomIcal).
-  if (feedFailed && Array.isArray(hotel.icalBlockedDates)) {
-    for (const d of hotel.icalBlockedDates) if (typeof d === 'string') allBlockedSet.add(d);
-  }
-
-  const combinedBlocked = Array.from(allBlockedSet).sort();
-
-  await hotelRef.update({
-    icalSyncUrls: feeds,
-    icalBlockedDates: combinedBlocked,
-  });
-
-  return {
-    success: true,
-    totalBlockedDates: combinedBlocked.length,
-    feeds,
-    combinedBlocked,
-  };
+export async function syncHotelIcal(hotelId: string, store: CalendarStore): Promise<SyncResult> {
+  const hotel = await store.get('hotels', hotelId);
+  if (!hotel) throw new Error(`Hotel with ID ${hotelId} not found.`);
+  return syncTarget(store, 'hotels', hotelId, hotel);
 }
 
 /**
- * Global background sync task that runs periodically to sync all properties
- * with active iCal URLs.
+ * Calendar export and sync run for every property while bookings are on; in
+ * directory mode only for properties an admin switched the availability
+ * calendar on for (`availabilityCalendarEnabled`).
  */
-export async function syncAllActiveFeeds(): Promise<{
+export async function hotelCalendarEnabled(hotelId: string, store: CalendarStore = callerStore()): Promise<boolean> {
+  if (await bookingsEnabled()) return true;
+  if (!hotelId) return false;
+  const hotel = await store.get('hotels', hotelId);
+  return hotel?.availabilityCalendarEnabled === true;
+}
+
+/** As `hotelCalendarEnabled`, for the property a room type belongs to. */
+export async function roomCalendarEnabled(roomId: string, store: CalendarStore = callerStore()): Promise<boolean> {
+  if (await bookingsEnabled()) return true;
+  const room = await store.get('room_types', roomId);
+  return typeof room?.hotelId === 'string' && hotelCalendarEnabled(room.hotelId, store);
+}
+
+let backgroundUnavailable = false;
+
+/**
+ * Syncs every property with calendar feeds: all live properties while
+ * bookings are on, and in directory mode only those with the availability
+ * calendar switched on (other feeds are kept for when bookings return).
+ * With a store (an admin's token) it runs as that admin; without one it is
+ * the timed background pass, which needs server credentials and stops
+ * quietly where there are none.
+ */
+export async function syncAllActiveFeeds(store?: CalendarStore): Promise<{
   roomsSynced: number;
   hotelsSynced: number;
   totalFeeds: number;
 }> {
-  const db = getDb();
-  let roomsSynced = 0;
-  let hotelsSynced = 0;
-  let totalFeeds = 0;
+  const totals = { roomsSynced: 0, hotelsSynced: 0, totalFeeds: 0 };
+  const background = !store;
+  if (background && backgroundUnavailable) return totals;
 
-  // Directory mode: no calendar sync (feeds are kept for when bookings return).
-  if (!(await bookingsEnabled())) return { roomsSynced, hotelsSynced, totalFeeds };
-
+  let s: CalendarStore;
+  let hotels: Record<string, any>[];
   try {
-    // 1. Sync rooms
-    const roomsSnap = await db.collection('room_types').get();
-    for (const doc of roomsSnap.docs) {
-      const data = doc.data();
-      const urls: IcalFeedItem[] = Array.isArray(data.icalSyncUrls) ? data.icalSyncUrls : [];
-      if (urls.length > 0) {
-        try {
-          totalFeeds += urls.length;
-          await syncRoomIcal(doc.id, data.hotelId);
-          roomsSynced++;
-        } catch (err) {
-          console.error(`Failed to background-sync room ${doc.id}:`, err);
-        }
-      }
+    s = store ?? adminStore();
+    hotels = (await bookingsEnabled())
+      ? await s.where('hotels', 'status', 'approved', 1000)
+      : await s.where('hotels', 'availabilityCalendarEnabled', true, 1000);
+  } catch (err: any) {
+    if (background) {
+      backgroundUnavailable = true;
+      console.warn(`[iCal] Background sync is off (no server Firestore access: ${err?.message || err}). Hosts' dashboards and the admin "Sync all" still sync calendars.`);
+      return totals;
     }
-
-    // 2. Sync hotels
-    const hotelsSnap = await db.collection('hotels').get();
-    for (const doc of hotelsSnap.docs) {
-      const data = doc.data();
-      const urls: IcalFeedItem[] = Array.isArray(data.icalSyncUrls) ? data.icalSyncUrls : [];
-      if (urls.length > 0) {
-        try {
-          totalFeeds += urls.length;
-          await syncHotelIcal(doc.id);
-          hotelsSynced++;
-        } catch (err) {
-          console.error(`Failed to background-sync hotel ${doc.id}:`, err);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error during global iCal sync loop:', err);
+    throw err;
   }
 
-  return { roomsSynced, hotelsSynced, totalFeeds };
+  for (const hotel of hotels) {
+    if (Array.isArray(hotel.icalSyncUrls) && hotel.icalSyncUrls.length > 0) {
+      totals.totalFeeds += hotel.icalSyncUrls.length;
+      try {
+        await syncTarget(s, 'hotels', hotel.id, hotel);
+        totals.hotelsSynced++;
+      } catch (err) {
+        console.error(`Failed to sync property ${hotel.id}:`, err);
+      }
+    }
+    let rooms: Record<string, any>[] = [];
+    try {
+      rooms = await s.where('room_types', 'hotelId', hotel.id, 200);
+    } catch (err) {
+      console.error(`Failed to list rooms of ${hotel.id}:`, err);
+    }
+    for (const room of rooms) {
+      if (!Array.isArray(room.icalSyncUrls) || room.icalSyncUrls.length === 0) continue;
+      totals.totalFeeds += room.icalSyncUrls.length;
+      try {
+        await syncTarget(s, 'room_types', room.id, room);
+        totals.roomsSynced++;
+      } catch (err) {
+        console.error(`Failed to sync room ${room.id}:`, err);
+      }
+    }
+  }
+
+  return totals;
 }

@@ -31,6 +31,13 @@ interface Props {
   /** Blocked units being edited. */
   blockedUnits?: Record<string, number>;
   availableRoomNames?: string[];
+  /**
+   * Render even in directory mode, for a property whose availability calendar
+   * an admin switched on (see `calendarEnabledFor`). Defaults to booking mode.
+   */
+  enabled?: boolean;
+  /** Display only: days cannot be picked (the directory page has no booking). */
+  readOnly?: boolean;
 }
 
 interface DayInfo {
@@ -61,11 +68,16 @@ export default function AvailabilityCalendar({
   blockedDates,
   blockedUnits,
   availableRoomNames = [],
+  enabled,
+  readOnly = false,
 }: Props) {
   const today = todayStr();
   const isManagerMode = !!onToggleBlocked;
-  // Booking calendars do not exist in directory mode: no slot reads, nothing rendered.
+  // Directory mode: no booking slots are read; the grid only renders for a
+  // property with its availability calendar switched on, showing blocked
+  // (host or iCal) nights against open ones.
   const { bookingsEnabled } = usePlatformMode();
+  const visible = enabled ?? bookingsEnabled;
 
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -228,6 +240,7 @@ export default function AvailabilityCalendar({
     (viewYear === new Date().getFullYear() && viewMonth <= new Date().getMonth());
 
   function handleDayClick(day: DayInfo) {
+    if (readOnly) return;
     const avail = getAvailability(day);
     if (avail === 'past') return;
     
@@ -303,14 +316,22 @@ export default function AvailabilityCalendar({
     empty:     'hidden',
   };
 
-  const legend: { avail: Availability; label: string }[] = [
-    { avail: 'available', label: 'Available' },
-    { avail: 'limited', label: 'Limited' },
-    { avail: 'full', label: 'Fully Booked' },
-    { avail: 'blocked', label: 'Blocked / Channel Sync (RoomRaccoon, Airbnb)' },
-  ];
+  // Without bookings there is no occupancy, only nights the host or a synced
+  // calendar marked as taken.
+  const legend: { avail: Availability; label: string }[] = bookingsEnabled
+    ? [
+        { avail: 'available', label: 'Available' },
+        { avail: 'limited', label: 'Limited' },
+        { avail: 'full', label: 'Fully Booked' },
+        { avail: 'blocked', label: 'Blocked / Channel Sync (RoomRaccoon, Airbnb)' },
+      ]
+    : [
+        { avail: 'available', label: 'Open' },
+        { avail: 'limited', label: 'Partly unavailable' },
+        { avail: 'blocked', label: isManagerMode ? 'Unavailable (blocked by you or a synced calendar)' : 'Unavailable' },
+      ];
 
-  if (!bookingsEnabled) return null;
+  if (!visible) return null;
 
   return (
     <div className="tm-panel !p-0 overflow-hidden min-w-0">
@@ -319,8 +340,14 @@ export default function AvailabilityCalendar({
         <div className="flex-1 min-w-0">
           <h3 className="tm-h2">Availability</h3>
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
-            <p>{isManagerMode ? 'Tap a date to block or unblock it.' : 'Pick your check-in and check-out dates.'}</p>
-            {(!isManagerMode && (checkIn || checkOut)) && (
+            <p>
+              {isManagerMode
+                ? (bookingsEnabled ? 'Tap a date to block or unblock it.' : 'Tap a date to mark it unavailable or open again. Travellers see this on your listing.')
+                : readOnly
+                  ? 'Nights the property has marked as unavailable. Contact the property to confirm your dates.'
+                  : 'Pick your check-in and check-out dates.'}
+            </p>
+            {(!isManagerMode && !readOnly && (checkIn || checkOut)) && (
               <div className="flex flex-col gap-2 mt-1">
                 <p className="font-medium text-stone-900 self-start">
                   {checkIn ? formatDateStr(checkIn) : 'Select check-in'}
@@ -379,7 +406,7 @@ export default function AvailabilityCalendar({
         </div>
       ) : totalRooms === 0 && !isManagerMode ? (
         <div className="px-6 py-10 text-center">
-          <p className="tm-muted">No availability published yet. Message the property to check dates.</p>
+          <p className="tm-muted">No availability published yet. {bookingsEnabled ? 'Message' : 'Contact'} the property to check dates.</p>
         </div>
       ) : (
         <div className="px-3 sm:px-6 py-5">
@@ -418,7 +445,7 @@ export default function AvailabilityCalendar({
                 }
               }
 
-              const disabled = avail === 'past' || (!isManagerMode && !isValidCheckout && (avail === 'full' || avail === 'blocked'));
+              const disabled = readOnly || avail === 'past' || (!isManagerMode && !isValidCheckout && (avail === 'full' || avail === 'blocked'));
               
               const isSelected = day.dateStr === checkIn || day.dateStr === checkOut;
               const isInRange = checkIn && checkOut && day.dateStr > checkIn && day.dateStr < checkOut;
@@ -436,8 +463,8 @@ export default function AvailabilityCalendar({
                   onClick={() => handleDayClick(day)}
                   disabled={disabled}
                   title={
-                    avail === 'blocked'   ? 'Blocked by the property' :
-                    avail === 'available' ? 'Rooms available' :
+                    avail === 'blocked'   ? (bookingsEnabled ? 'Blocked by the property' : 'Unavailable') :
+                    avail === 'available' ? (bookingsEnabled ? 'Rooms available' : 'Open') :
                     avail === 'limited'   ? 'Limited availability' :
                     avail === 'full'      ? 'Fully booked' :
                     undefined
@@ -446,7 +473,7 @@ export default function AvailabilityCalendar({
                     relative flex flex-col items-center justify-center
                     rounded-lg py-2 px-1 text-sm font-medium transition-colors
                     ${rangeStyles}
-                    ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+                    ${readOnly ? 'cursor-default' : disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
                     ${isToday && !isSelected ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
                   `}
                 >

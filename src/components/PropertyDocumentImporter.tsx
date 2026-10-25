@@ -1034,7 +1034,7 @@ ROOMS & RATES:
                             <input
                               type="number"
                               min={0}
-                              step={1000}
+                              step={1}
                               value={room.prices?.MWK || ''}
                               onChange={(e) => updateRoomPrice(idx, 'MWK', e.target.value)}
                               className={inputClass}

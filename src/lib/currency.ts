@@ -18,13 +18,13 @@ interface CurrencyMeta {
   label: string;
   /** Shown next to an amount. */
   symbol: string;
-  /** Kwacha amounts are large and never quoted in tambala. */
+  /** Input step: whole kwacha (never tambala); any amount the host sets is accepted, e.g. MK 79,800. */
   step: number;
   decimals: number;
 }
 
 export const CURRENCIES: Record<CurrencyCode, CurrencyMeta> = {
-  MWK: { code: 'MWK', label: 'Malawi Kwacha', symbol: 'MK', step: 1000, decimals: 0 },
+  MWK: { code: 'MWK', label: 'Malawi Kwacha', symbol: 'MK', step: 1, decimals: 0 },
   USD: { code: 'USD', label: 'US Dollar', symbol: '$', step: 0.01, decimals: 2 },
 };
 

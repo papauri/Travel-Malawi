@@ -24,6 +24,11 @@ interface Props {
   onRoomUpdated?: (updated: RoomType) => void;
   onHotelUpdated?: (updated: Hotel) => void;
   onClose?: () => void;
+  /**
+   * Show even in directory mode, for a property whose availability calendar
+   * an admin switched on (see `calendarEnabledFor`). Defaults to booking mode.
+   */
+  enabled?: boolean;
 }
 
 export default function IcalSyncManager({
@@ -32,10 +37,13 @@ export default function IcalSyncManager({
   onRoomUpdated,
   onHotelUpdated,
   onClose,
+  enabled,
 }: Props) {
   const { user } = useAuth();
-  // iCal sync is a booking flow: hidden in directory mode (the /api/calendar routes refuse too).
+  // Directory mode: only for a property with its availability calendar on
+  // (the /api/calendar routes check the same per property).
   const { bookingsEnabled } = usePlatformMode();
+  const visible = enabled ?? bookingsEnabled;
   const isRoomMode = Boolean(room && room.id);
   const targetId = isRoomMode ? room!.id! : hotel.id!;
   const targetName = isRoomMode ? `${hotel.name} — ${room!.name}` : hotel.name;
@@ -122,13 +130,13 @@ export default function IcalSyncManager({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ url: targetUrl }),
+        body: JSON.stringify({ url: targetUrl, hotelId: hotel.id }),
       });
       const data = await res.json();
       const latencyMs = Math.round(performance.now() - startTime);
       if (data.success) {
         setTestResult({ ...data, latencyMs });
-        toast.success(`Link works: ${data.eventCount} bookings found (${latencyMs} ms).`);
+        toast.success(`Link works: ${data.eventCount} calendar entries found (${latencyMs} ms).`);
       } else {
         setTestResult({
           success: false,
@@ -170,7 +178,7 @@ export default function IcalSyncManager({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ url: targetUrl }),
+        body: JSON.stringify({ url: targetUrl, hotelId: hotel.id }),
       });
       const data = await res.json();
       const latencyMs = Math.round(performance.now() - startTime);
@@ -188,7 +196,7 @@ export default function IcalSyncManager({
             previewDates: data.previewDates,
           },
         }));
-        toast.success(`Link works: ${data.eventCount} bookings found (${latencyMs} ms).`);
+        toast.success(`Link works: ${data.eventCount} calendar entries found (${latencyMs} ms).`);
       } else {
         setExistingFeedTests(prev => ({
           ...prev,
@@ -347,7 +355,7 @@ export default function IcalSyncManager({
     ? (room?.icalBlockedDates?.length || 0)
     : (hotel.icalBlockedDates?.length || 0);
 
-  if (!bookingsEnabled) return null;
+  if (!visible) return null;
 
   return (
     <div className="space-y-4 text-stone-900 min-w-0">
@@ -355,7 +363,11 @@ export default function IcalSyncManager({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h3 className="tm-h2 flex items-center gap-2"><CalendarSync className="w-5 h-5 text-stone-500" /> Calendar sync</h3>
-          <p className="tm-muted mt-1">Link calendars from Airbnb, Booking.com, RoomRaccoon and others so the same night is never sold twice.</p>
+          <p className="tm-muted mt-1">
+            {bookingsEnabled
+              ? 'Link calendars from Airbnb, Booking.com, RoomRaccoon and others so the same night is never sold twice.'
+              : 'Link calendars from Airbnb, Booking.com, RoomRaccoon and others so your listing shows the nights you are already full.'}
+          </p>
           {totalBlockedDates > 0 && (
             <p className="text-sm text-stone-700 mt-2 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
@@ -380,7 +392,11 @@ export default function IcalSyncManager({
       <section className="tm-panel space-y-3">
         <div>
           <h4 className="font-semibold text-stone-900 text-sm">1. Share your Travel Malawi calendar</h4>
-          <p className="tm-muted mt-0.5">Paste this link into your other channels so our bookings block dates there too.</p>
+          <p className="tm-muted mt-0.5">
+            {bookingsEnabled
+              ? 'Paste this link into your other channels so our bookings block dates there too.'
+              : 'Paste this link into your other channels so nights you block here are blocked there too.'}
+          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -421,7 +437,7 @@ export default function IcalSyncManager({
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h4 className="font-semibold text-stone-900 text-sm">2. Bring in your other calendars</h4>
-            <p className="tm-muted mt-0.5">Dates booked elsewhere are blocked here automatically.</p>
+            <p className="tm-muted mt-0.5">Dates taken on your other calendars are blocked here automatically.</p>
           </div>
           {!showAddForm && (
             <button type="button" onClick={() => setShowAddForm(true)} className="tm-btn tm-btn-secondary tm-btn-sm">

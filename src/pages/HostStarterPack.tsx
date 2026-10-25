@@ -68,7 +68,7 @@ export default function HostStarterPack() {
 
 Six steps to take direct bookings:
 1. Take four photos: bed, view, bathroom, dining.
-2. Set clean prices in MWK (nearest 1,000) and USD (nearest $5).
+2. Set your prices in MWK and/or USD.
 3. Answer guests directly in the app or on your contact line.
 4. Sync your calendar (optional).
 5. Get paid straight to Airtel Money, TNM Mpamba or your bank.
@@ -79,7 +79,7 @@ How hosting works: ${window.location.origin}/how-hosting-works` : `Travel Malawi
 
 Five steps to get listed:
 1. Take four photos: bed, view, bathroom, dining.
-2. Set clean "from" rates in MWK (nearest 1,000) and USD (nearest $5).
+2. Set your "from" rates in MWK and/or USD.
 3. Add your phone, WhatsApp or email so travellers can contact you directly.
 4. No commission and no listing fee: you agree prices and payment with your guests.
 5. List it yourself at ${window.location.origin}/list-your-property, or send a listing request and our team reviews it and replies by email.
@@ -164,7 +164,7 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
 
           <li id="section-pricing" className="tm-divider p-4 sm:p-5">
             <h2 className="tm-h2">2. Set clean prices</h2>
-            <p className="mt-1 text-sm">MWK to the nearest 1,000. USD to the nearest $5.</p>
+            <p className="mt-1 text-sm">Enter MWK and/or USD exactly as you charge them. Round numbers are easiest for travellers to read.</p>
             <Details>
               <p>Example: MK 120,000 and $80 a night for a lakeview chalet.</p>
               <p>Whole house? Enter one rate for the whole stay.</p>

@@ -181,7 +181,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                   <input 
                     type="number" 
                     min="0"
-                    step="1000"
+                    step="1"
                     value={editingRoom.price ?? ''} 
                     onChange={e => setEditingRoom({ ...editingRoom, price: e.target.value ? parseFloat(e.target.value) : undefined })} 
                     className="tm-input" 

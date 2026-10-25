@@ -227,7 +227,7 @@ export default function AdminIcalMonitor({
           success: true,
           eventCount: data.eventCount || 0,
           blockedNightsCount: data.blockedNightsCount || 0,
-          summary: data.summary || `Found ${data.eventCount} booking events.`,
+          summary: data.summary || `Found ${data.eventCount} calendar entries.`,
         });
         toast.success('Feed verified successfully!');
       }
@@ -348,7 +348,7 @@ export default function AdminIcalMonitor({
                 <div className="font-semibold">{testResult.summary}</div>
                 {testResult.success && (
                   <div className="mt-1 text-[11px] text-emerald-800">
-                    Extracted {testResult.eventCount} booking events totaling {testResult.blockedNightsCount} blocked night(s).
+                    Found {testResult.eventCount} calendar entries covering {testResult.blockedNightsCount} blocked night(s).
                   </div>
                 )}
               </div>
@@ -666,6 +666,7 @@ export default function AdminIcalMonitor({
       >
         {selectedTarget && (
           <IcalSyncManager
+            enabled
             hotel={selectedTarget.hotel}
             room={selectedTarget.room}
             onRoomUpdated={(updated) => {
