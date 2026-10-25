@@ -47,7 +47,7 @@ import {
 } from './server/reminders';
 import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc, docVisibleTo } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
-import { OWNER_EMAILS } from './src/lib/roles';
+import { isOwnerEmail } from './src/lib/roles';
 import { getHotelDepositInfo, formatDepositSnippet } from './src/lib/depositInfo';
 import {
   getAdminWhatsAppConfig,
@@ -89,6 +89,7 @@ import {
   AuthUser,
   adminAuth,
   FIRESTORE_BASE,
+  PROJECT_ID,
 } from './server/auth';
 
 /** Logs the real error and returns a generic message to the client. */
@@ -225,6 +226,36 @@ async function startServer() {
     windowMs: 15 * 60_000,
     max: 1,
     key: req => `email:${lower(req.body?.email)}`,
+  });
+
+  // Firebase Auth's sign-in helper pages, served from our own domain so Google
+  // sign-in says "continue to ulendomalawi.com" instead of the Firebase
+  // project's address. Proxied as-is from <project>.firebaseapp.com
+  // (Firebase's documented set-up for apps not on Firebase Hosting); the
+  // client switches its authDomain over in src/lib/firebase.ts.
+  const AUTH_HELPER_ORIGIN = `https://${PROJECT_ID}.firebaseapp.com`;
+  app.get(/^\/__\/(auth|firebase)\//, async (req, res) => {
+    try {
+      const upstream = await fetch(`${AUTH_HELPER_ORIGIN}${req.originalUrl}`, {
+        headers: {
+          accept: String(req.headers.accept || '*/*'),
+          'accept-language': String(req.headers['accept-language'] || ''),
+          'user-agent': String(req.headers['user-agent'] || ''),
+        },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10_000),
+      });
+      res.status(upstream.status);
+      upstream.headers.forEach((value, key) => {
+        if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie'].includes(key)) {
+          res.setHeader(key, value);
+        }
+      });
+      res.send(Buffer.from(await upstream.arrayBuffer()));
+    } catch (err) {
+      console.warn('[Auth helper proxy] failed:', (err as Error)?.message);
+      res.status(502).send('Sign-in is unavailable right now. Please try again.');
+    }
   });
 
   // Health check routes for Cloud Run / AI Studio container probes
@@ -1576,7 +1607,7 @@ async function startServer() {
       // An owner account is a global admin even without a profile document.
       if (!isCallerGlobal) {
         const targetEmail = await adminAuth().getUser(uid).then(u => u.email?.toLowerCase() || '').catch(() => '');
-        if (targetEmail && OWNER_EMAILS.includes(targetEmail)) {
+        if (targetEmail && isOwnerEmail(targetEmail)) {
           return res.status(403).json({ error: 'Only a Global Admin can delete an administrator profile' });
         }
       }

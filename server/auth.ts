@@ -15,7 +15,7 @@ import path from 'path';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { OWNER_EMAILS } from '../src/lib/roles';
+import { isOwnerEmail } from '../src/lib/roles';
 
 export type ServerRole = 'traveller' | 'hotel_manager' | 'admin' | 'marketing' | 'global_admin';
 
@@ -221,7 +221,7 @@ async function lookupRoles(uid: string, email: string | null, emailVerified: boo
       roles.clear();
     }
   }
-  if (emailVerified && email && OWNER_EMAILS.includes(email.toLowerCase())) roles.add('global_admin');
+  if (emailVerified && email && isOwnerEmail(email)) roles.add('global_admin');
   if (roles.size === 0) roles.add('traveller');
 
   const list = [...roles];

@@ -57,7 +57,8 @@ export default defineConfig(() => {
         },
         workbox: {
           navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api/],
+          // /__/ is Firebase Auth's sign-in helper (proxied by server.ts), never the app shell.
+          navigateFallbackDenylist: [/^\/api/, /^\/__\//],
           maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
           globIgnores: ['**/server.cjs', '**/server.cjs.map', '**/host_app_*.png'],
           globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,webmanifest,woff,woff2}'],

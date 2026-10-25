@@ -12,6 +12,7 @@
  */
 
 import { Role, User } from '../types';
+import { sha256Hex } from './sha256';
 
 export const ALL_ROLES: Role[] = ['traveller', 'hotel_manager', 'admin', 'marketing', 'global_admin'];
 
@@ -43,11 +44,21 @@ export function hasRole(user: Pick<User, 'role' | 'roles'> | null | undefined, r
 
 export const isTraveller = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'traveller');
 export const isHotelManager = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'hotel_manager');
-/** Platform owner accounts, always treated as global admins. */
-export const OWNER_EMAILS: readonly string[] = ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com'];
+/**
+ * Platform owner accounts, always treated as global admins. Kept as salted
+ * SHA-256 hashes of the lower-cased address so the owners' emails are not
+ * readable in the site's public JavaScript. To add an owner, add
+ * sha256Hex(OWNER_HASH_SALT + email-in-lower-case) here, and the plain address
+ * to the owner check in firestore.rules (rules are not public).
+ */
+const OWNER_HASH_SALT = 'travel-malawi-owner:';
+const OWNER_EMAIL_HASHES: readonly string[] = [
+  'b9128335c84c64d00885cdda19fcc01c1a3306a3b04c0c3147c50f4f8f07b82c',
+  '4c188ead6555a64bd66d1b351176dd22cca49ea10eeb32246ec5d3e2bda96aff',
+];
 
 export const isOwnerEmail = (email: string | null | undefined): boolean =>
-  Boolean(email && OWNER_EMAILS.includes(email.toLowerCase()));
+  Boolean(email && OWNER_EMAIL_HASHES.includes(sha256Hex(OWNER_HASH_SALT + email.trim().toLowerCase())));
 
 export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) =>
   hasRole(user, 'global_admin') ||

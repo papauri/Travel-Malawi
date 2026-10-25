@@ -51,8 +51,8 @@ service cloud.firestore {
             || role in profile(request.auth.uid).get('roles', []));
     }
 
-    // Mirrors OWNER_EMAILS in src/lib/roles.ts.
-    // Requires a verified address, like OWNER_EMAILS in server/auth.ts: anyone
+    // Mirrors the owner list in src/lib/roles.ts (kept there only as hashes).
+    // Requires a verified address, like isOwnerEmail in server/auth.ts: anyone
     // can register an unverified email/password account with these addresses.
     function isOwner() {
       return isActive()
