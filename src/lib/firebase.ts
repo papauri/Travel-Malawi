@@ -7,11 +7,12 @@ import firebaseConfig from '../../firebase-applet-config.json';
 /**
  * Google sign-in through our own domain, so the account chooser says
  * "continue to ulendomalawi.com" rather than the Firebase project address.
- * server.ts proxies the sign-in helper at /__/auth/. Only switch this on once
+ * server.ts proxies the sign-in helper at /__/auth/, and
  * https://ulendomalawi.com/__/auth/handler is an authorised redirect URI on
- * the OAuth web client in Google Cloud; until then Google refuses the sign-in.
+ * the OAuth web client in Google Cloud. Set false to fall back to the
+ * Firebase address if that ever changes.
  */
-const OWN_DOMAIN_SIGN_IN = false;
+const OWN_DOMAIN_SIGN_IN = true;
 const ownDomain = typeof window !== 'undefined' && /(^|\.)ulendomalawi\.com$/i.test(window.location.hostname)
   ? window.location.host
   : null;
