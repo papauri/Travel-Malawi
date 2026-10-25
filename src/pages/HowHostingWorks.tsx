@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
-  Mail,
-  Send,
-  Home,
-  CheckCircle2,
   ShieldCheck,
   Search,
   MessageSquare,
@@ -16,9 +12,7 @@ import {
   Compass,
   Phone,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import ListingRequestForm from '../components/ListingRequestForm';
 import SEOHead from '../components/SEOHead';
 import { usePlatformMode } from '../contexts/PlatformModeContext';
 
@@ -586,77 +580,6 @@ export default function HowHostingWorks() {
     setSearchParams({ tab });
   };
 
-  const [formData, setFormData] = useState({
-    propName: '',
-    propLoc: '',
-    stayType: 'whole_house',
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    nightlyMwk: '',
-    roomCount: '1',
-    notes: '',
-  });
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
-
-  const handleSubmitEnquiry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.propName.trim() || !formData.contactEmail.trim() || !formData.contactEmail.includes('@')) {
-      toast.error('Please enter property name and email');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      let assignedId = 'ENQ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-      // Dispatch to email notification endpoint
-      try {
-        const apiRes = await fetch('/api/host-enquiry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            source: 'how-to-list-page',
-          }),
-        });
-        if (apiRes.ok) {
-          const apiData = await apiRes.json();
-          if (apiData?.id) assignedId = apiData.id;
-        }
-      } catch (err) {
-        console.warn('API enquiry dispatch:', err);
-      }
-
-      // Record in Firestore
-      try {
-        const docRef = await addDoc(collection(db, 'host_onboarding_submissions'), {
-          ...formData,
-          createdAt: serverTimestamp(),
-          source: 'how-to-list-web',
-          status: 'pending_review',
-        });
-        setSubmissionId(docRef.id);
-      } catch {
-        setSubmissionId(assignedId);
-      }
-
-      setSubmitted(true);
-      toast.success('Takulandirani. Enquiry received.');
-    } catch {
-      const fallbackId = 'ENQ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      setSubmissionId(fallbackId);
-      setSubmitted(true);
-      toast.success('Takulandirani. Enquiry received.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const whole = formData.stayType === 'whole_house';
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-16 font-sans">
@@ -801,7 +724,7 @@ export default function HowHostingWorks() {
                 <ArrowRight size={14} />
               </Link>
               <a href="#manual-help" className="tm-btn tm-btn-quiet tm-btn-sm">
-                Prefer help? Send enquiry
+                Prefer help? Request a listing
               </a>
             </div>
 
@@ -878,162 +801,24 @@ export default function HowHostingWorks() {
               </div>
             </section>
 
-            {/* Collapsible Manual Enquiry Fallback for Users Who Prefer Help */}
+            {/* Listing request for owners who want our team to review first */}
             <details id="manual-help" className="tm-panel mt-6 group">
               <summary className="cursor-pointer font-medium text-stone-800 flex items-center justify-between select-none">
                 <div>
                   <span className="text-sm font-semibold text-stone-900 block">
-                    Prefer our team to set it up for you?
+                    Prefer our team to review it first?
                   </span>
                   <span className="text-xs text-stone-500 font-normal">
-                    Leave your stay details and our team will email you at info@ulendomalawi.com to prepare your listing.
+                    Send us the property details. We review every request and reply by email; nothing is published until then.
                   </span>
                 </div>
                 <span className="tm-link text-xs shrink-0 ml-3">
-                  Send enquiry ↓
+                  Request a listing ↓
                 </span>
               </summary>
 
               <div className="pt-4 mt-3 border-t border-stone-200">
-                {submitted ? (
-                  <div className="p-4 rounded-lg bg-stone-100 border border-stone-200 space-y-2">
-                    <div className="flex items-center gap-2 text-stone-900 font-medium text-sm">
-                      <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
-                      <span>Takulandirani. We received your stay details.</span>
-                    </div>
-                    <p className="text-xs text-stone-600">
-                      Reference: <span className="font-mono font-semibold">{submissionId}</span>. We will review your stay and email you at <strong className="text-stone-900">{formData.contactEmail}</strong>.
-                    </p>
-                    <div className="tm-actions pt-2">
-                      <a
-                        href={`mailto:info@ulendomalawi.com?subject=${encodeURIComponent(`Enquiry: ${formData.propName} (Ref: ${submissionId})`)}`}
-                        className="tm-btn tm-btn-primary tm-btn-sm"
-                      >
-                        <Mail size={14} /> Email info@ulendomalawi.com
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmitEnquiry} className="space-y-4">
-                    <div>
-                      <span className="tm-label">{bookingsEnabled ? 'How is it booked?' : 'What are you listing?'}</span>
-                      <div className="tm-actions">
-                        <button
-                          type="button"
-                          aria-pressed={whole}
-                          onClick={() => setFormData({ ...formData, stayType: 'whole_house' })}
-                          className={`tm-btn tm-btn-sm ${whole ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
-                        >
-                          <Home size={14} />
-                          Whole house
-                        </button>
-                        <button
-                          type="button"
-                          aria-pressed={!whole}
-                          onClick={() => setFormData({ ...formData, stayType: 'rooms' })}
-                          className={`tm-btn tm-btn-sm ${!whole ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
-                        >
-                          Individual rooms
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="min-w-0">
-                        <label className="tm-label">Property name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.propName}
-                          onChange={(e) => setFormData({ ...formData, propName: e.target.value })}
-                          placeholder="e.g. Lakeside Cottage"
-                          className="tm-input"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <label className="tm-label">Location in Malawi *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.propLoc}
-                          onChange={(e) => setFormData({ ...formData, propLoc: e.target.value })}
-                          placeholder="e.g. Cape Maclear, Mangochi"
-                          className="tm-input"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <label className="tm-label">Your name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.contactName}
-                          onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                          placeholder="e.g. John Chirwa"
-                          className="tm-input"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <label className="tm-label">Your email *</label>
-                        <input
-                          type="email"
-                          required
-                          value={formData.contactEmail}
-                          onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                          placeholder="e.g. host@example.com"
-                          className="tm-input"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="min-w-0">
-                        <label className="tm-label">Phone number (optional)</label>
-                        <input
-                          type="tel"
-                          value={formData.contactPhone}
-                          onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                          placeholder="e.g. +265 999 123 456"
-                          className="tm-input"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <label className="tm-label">{whole ? 'Bedrooms' : 'Rooms'}</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={formData.roomCount}
-                          onChange={(e) => setFormData({ ...formData, roomCount: e.target.value })}
-                          className="tm-input"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="tm-label">Notes about your stay (optional)</label>
-                      <textarea
-                        rows={2}
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="e.g. Beachfront frontage, solar backup power, boat pickup"
-                        className="tm-input resize-y"
-                      />
-                    </div>
-
-                    <div className="tm-actions justify-between items-center pt-1">
-                      <span className="text-xs text-stone-500">
-                        Enquiries route to <strong className="text-stone-700">info@ulendomalawi.com</strong>
-                      </span>
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="tm-btn tm-btn-primary tm-btn-sm"
-                      >
-                        <Send size={14} />
-                        {submitting ? 'Sending...' : 'Send stay enquiry'}
-                      </button>
-                    </div>
-                  </form>
-                )}
+                <ListingRequestForm source="how-to-list-page" />
               </div>
             </details>
 

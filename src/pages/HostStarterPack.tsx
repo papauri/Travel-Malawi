@@ -4,8 +4,7 @@ import {
   ArrowLeft, MessageSquare, Copy, Check, Printer, Send, Download, Mail, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import ListingRequestForm from '../components/ListingRequestForm';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
 import { downloadDocHtml } from '../lib/downloadDoc';
@@ -39,23 +38,6 @@ export default function HostStarterPack() {
   const [copiedEmailText, setCopiedEmailText] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState({
-    propName: '',
-    propLoc: '',
-    stayType: 'whole_house', // 'whole_house' | 'rooms'
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    nightlyMwk: '',
-    nightlyUsd: '',
-    roomCount: '1',
-    notes: '',
-  });
-
   const handlePrint = () => window.print();
 
   const handleCopyLink = () => {
@@ -90,7 +72,7 @@ Six steps to take direct bookings:
 3. Answer guests directly in the app or on your contact line.
 4. Sync your calendar (optional).
 5. Get paid straight to Airtel Money, TNM Mpamba or your bank.
-6. Send us an enquiry with your stay details and our team follows up by email.
+6. List it yourself at ${window.location.origin}/list-your-property, or send a listing request and our team reviews it and replies by email.
 
 Full guide: ${window.location.origin}/host-guide
 How hosting works: ${window.location.origin}/how-hosting-works` : `Travel Malawi: Host Starter Pack
@@ -100,7 +82,7 @@ Five steps to get listed:
 2. Set clean "from" rates in MWK (nearest 1,000) and USD (nearest $5).
 3. Add your phone, WhatsApp or email so travellers can contact you directly.
 4. No commission and no listing fee: you agree prices and payment with your guests.
-5. Send us an enquiry with your stay details and our team follows up by email.
+5. List it yourself at ${window.location.origin}/list-your-property, or send a listing request and our team reviews it and replies by email.
 
 Full guide: ${window.location.origin}/host-guide
 How hosting works: ${window.location.origin}/how-hosting-works`;
@@ -120,64 +102,6 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
     toast.success('Summary copied');
     setTimeout(() => setCopiedEmailText(false), 2000);
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.propName.trim() || !formData.contactEmail.trim() || !formData.contactEmail.includes('@')) {
-      toast.error('Please enter property name and a valid email address');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // 1. Dispatch email notification to info@ulendomalawi.com via backend
-      let assignedId = 'ENQ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      try {
-        const apiRes = await fetch('/api/host-enquiry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            source: 'host-starter-pack',
-          }),
-        });
-        if (apiRes.ok) {
-          const apiData = await apiRes.json();
-          if (apiData?.id) assignedId = apiData.id;
-        }
-      } catch (apiErr) {
-        console.warn('API host enquiry warning:', apiErr);
-      }
-
-      // 2. Persist to Firestore host_onboarding_submissions
-      try {
-        const docRef = await addDoc(collection(db, 'host_onboarding_submissions'), {
-          ...formData,
-          createdAt: serverTimestamp(),
-          source: 'host-starter-pack-web',
-          status: 'pending_review',
-        });
-        setSubmissionId(docRef.id);
-      } catch (fsErr) {
-        console.warn('Firestore submission fallback to API ID:', fsErr);
-        setSubmissionId(assignedId);
-      }
-
-      setSubmitted(true);
-      toast.success('Enquiry received! Our team will contact you by email.');
-    } catch {
-      const fallbackId = 'ENQ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      setSubmissionId(fallbackId);
-      setSubmitted(true);
-      toast.success('Enquiry received! Our team will contact you by email.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const set = (k: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setFormData({ ...formData, [k]: e.target.value });
-
-  const whole = formData.stayType === 'whole_house';
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-700 font-sans print:bg-white">
@@ -300,159 +224,25 @@ How hosting works: ${window.location.origin}/how-hosting-works`;
           )}
 
           <li className="tm-divider p-4 sm:p-5">
-            <h2 className="tm-h2">{bookingsEnabled ? '6' : '5'}. Send us an enquiry</h2>
+            <h2 className="tm-h2">{bookingsEnabled ? '6' : '5'}. List it, or request a listing</h2>
             <p className="mt-1 text-sm">
-              Fill in the short enquiry form below. We review your stay details and follow up with you by email.
+              The quickest way is to list the property yourself. If you would rather our team looked first, send a listing request below; we review it and reply by email.
             </p>
             <Details>
-              <p>We are just getting to know about your stay. Our team follows up directly via email to help you finalize your listing.</p>
+              <p>Nothing is published until our team has reviewed the request and the listing is complete. Licences and permits remain the owner's responsibility.</p>
             </Details>
           </li>
         </ol>
 
         <section id="onboarding-form" className="tm-panel mt-6 print:hidden">
           <div className="border-b border-stone-200 pb-3 mb-4">
-            <h2 className="tm-h2">Tell us about your stay</h2>
+            <h2 className="tm-h2">Request a listing</h2>
             <p className="tm-muted text-sm mt-1">
-              Send us an enquiry with details of your cottage, lodge, or guest house. We review your stay and email you back to help you get listed.
+              Tell us about your lodge, guest house, cottage or camp. We review every request and reply by email.
             </p>
           </div>
 
-          {submitted ? (
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center gap-2 text-emerald-800 font-medium">
-                <Check size={20} className="text-emerald-700 shrink-0" />
-                <span>Takulandirani! We have received your stay enquiry.</span>
-              </div>
-              <p className="text-sm text-stone-700">
-                Reference: <span className="font-mono font-bold text-stone-900">{submissionId}</span>. Our team will review your details and get in touch with you by email at{' '}
-                <strong className="text-stone-900 break-words">{formData.contactEmail}</strong>.
-              </p>
-              <div className="p-3 bg-stone-100 rounded-lg text-xs text-stone-600 leading-relaxed">
-                We are just trying to know about the stay so we can prepare your direct listing. If you have photos, rate sheets, or questions right away, feel free to email our team directly at{' '}
-                <a href="mailto:info@ulendomalawi.com" className="font-semibold text-amber-800 underline">
-                  info@ulendomalawi.com
-                </a>.
-              </div>
-              <div className="tm-actions pt-2">
-                <a
-                  href={`mailto:info@ulendomalawi.com?subject=${encodeURIComponent(`Enquiry: ${formData.propName} (Ref: ${submissionId})`)}&body=${encodeURIComponent(`Muli bwanji,\n\nI have submitted an enquiry for ${formData.propName} (Ref: ${submissionId}).\n\nLooking forward to hearing from you!`)}`}
-                  className="tm-btn tm-btn-primary"
-                >
-                  <Mail size={16} /> Email info@ulendomalawi.com
-                </a>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubmitted(false);
-                    setFormData({
-                      propName: '',
-                      propLoc: '',
-                      stayType: 'whole_house',
-                      contactName: '',
-                      contactEmail: '',
-                      contactPhone: '',
-                      nightlyMwk: '',
-                      nightlyUsd: '',
-                      roomCount: '1',
-                      notes: '',
-                    });
-                  }}
-                  className="tm-btn tm-btn-secondary"
-                >
-                  Submit another stay
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div>
-                <span className="tm-label">How is it let?</span>
-                <div className="tm-actions">
-                  <button
-                    type="button"
-                    aria-pressed={whole}
-                    onClick={() => setFormData({ ...formData, stayType: 'whole_house' })}
-                    className={`tm-btn ${whole ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
-                  >
-                    Whole house
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={!whole}
-                    onClick={() => setFormData({ ...formData, stayType: 'rooms' })}
-                    className={`tm-btn ${!whole ? 'tm-btn-primary' : 'tm-btn-secondary'}`}
-                  >
-                    Individual rooms
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <label className="tm-label">Property name *</label>
-                  <input type="text" required value={formData.propName} onChange={set('propName')}
-                    placeholder="e.g. Example Lakeside Cottage" className="tm-input" />
-                </div>
-                <div className="min-w-0">
-                  <label className="tm-label">Location in Malawi *</label>
-                  <input type="text" required value={formData.propLoc} onChange={set('propLoc')}
-                    placeholder="e.g. Cape Maclear, Mangochi" className="tm-input" />
-                </div>
-                <div className="min-w-0">
-                  <label className="tm-label">Your name *</label>
-                  <input type="text" required value={formData.contactName} onChange={set('contactName')}
-                    placeholder="e.g. John Chirwa" className="tm-input" />
-                </div>
-                <div className="min-w-0">
-                  <label className="tm-label">Your email address * (for enquiry reply)</label>
-                  <input type="email" required value={formData.contactEmail} onChange={set('contactEmail')}
-                    placeholder="e.g. host@example.com" className="tm-input" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <label className="tm-label">Phone / WhatsApp number (optional)</label>
-                  <input type="tel" value={formData.contactPhone} onChange={set('contactPhone')}
-                    placeholder="e.g. +265 999 123 456" className="tm-input" />
-                </div>
-                <div className="min-w-0">
-                  <label className="tm-label">{whole ? 'Bedrooms' : 'Rooms'}</label>
-                  <input type="number" min="1" value={formData.roomCount} onChange={set('roomCount')} className="tm-input" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <label className="tm-label">{whole ? 'Whole stay rate (MWK, optional)' : 'Room rate (MWK, optional)'}</label>
-                  <input type="text" value={formData.nightlyMwk} onChange={set('nightlyMwk')}
-                    placeholder="e.g. 180,000" className="tm-input" />
-                </div>
-                <div className="min-w-0">
-                  <label className="tm-label">{whole ? 'Whole stay rate (USD, optional)' : 'Room rate (USD, optional)'}</label>
-                  <input type="text" value={formData.nightlyUsd} onChange={set('nightlyUsd')}
-                    placeholder="e.g. 115" className="tm-input" />
-                </div>
-              </div>
-
-              <div>
-                <label className="tm-label">Tell us about your stay (features, questions, directions)</label>
-                <textarea rows={3} value={formData.notes} onChange={set('notes')}
-                  placeholder="e.g. Beachfront lawn, solar backup power, borehole water, boat pickup available" className="tm-input resize-y" />
-              </div>
-
-              <div className="tm-actions justify-between items-center pt-2">
-                <span className="text-xs text-stone-500">
-                  Enquiries are sent directly to <strong className="text-stone-700">info@ulendomalawi.com</strong>
-                </span>
-                <button type="submit" disabled={submitting} className="tm-btn tm-btn-primary">
-                  <Send size={16} />
-                  {submitting ? 'Sending enquiry...' : 'Send stay enquiry'}
-                </button>
-              </div>
-            </form>
-          )}
+          <ListingRequestForm source="host-starter-pack" />
         </section>
       </main>
 

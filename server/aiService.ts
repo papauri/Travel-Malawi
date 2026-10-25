@@ -3223,6 +3223,83 @@ ${UNTRUSTED_DATA_RULE}`;
 }
 
 
+/**
+ * Drafts an email from the Travel Malawi team to a host or prospective host
+ * (Admin > Hosts). The team edits and sends it; nothing is sent from here.
+ */
+export async function draftHostEmail(params: {
+  instruction?: string;
+  purpose?: string;
+  recipientName?: string;
+  propertyName?: string;
+  context?: string;
+  currentDraft?: string;
+  history?: string;
+}): Promise<{ subject: string; body: string; provider: string; model: string }> {
+  const config = loadAIConfig();
+  const providers = getAvailableProviders();
+  if (!config.enabled || providers.length === 0) {
+    throw new Error('No AI provider is configured right now.');
+  }
+  const booking = (await getPlatformMode()) === 'booking';
+
+  const systemPrompt = `You are Ulendo, writing on behalf of the Travel Malawi team (ulendomalawi.com) to a property owner or manager in Malawi.
+
+What Travel Malawi is:
+- ${booking
+    ? 'A platform where travellers find independent Malawian stays and book directly with them. No commission; Travel Malawi never handles payments.'
+    : 'An information directory of independent Malawian places to stay. It does not take bookings, payments, deposits, commissions or listing fees. Travellers contact each property directly using the contact details on its listing.'}
+- Owners list their own property for free at https://ulendomalawi.com/list-your-property (create an account, add photos, rooms, "from" prices in MWK and/or USD, and a phone, WhatsApp or email). The team reviews every listing before it goes live. Listed hosts manage their listing at https://ulendomalawi.com/dashboard.
+- Owners who prefer help can send a listing request; the team reviews it, may ask for missing details (photos, address, description, contact details, prices) and then invites the owner to complete the listing themselves.
+- Licensing: property owners are responsible for the licences and permits Malawian law requires, including a tourism operating licence under Section 27 of the Tourism Act, 2025 where it applies. Travel Malawi does not issue or verify licences. Never say or imply a property is licensed, approved, verified or endorsed by Travel Malawi or the Ministry of Tourism.
+- Team inbox: info@ulendomalawi.com.
+
+Writing rules:
+- Warm, clear, respectful Malawian hospitality; plain English a busy lodge owner reads on a phone. Open with "Muli bwanji <name>," and sign off "Zikomo,\\nThe Travel Malawi team".
+- Follow the team's instruction exactly. Keep it short: usually under 180 words.
+- Only state facts given here or in the details provided. Never invent dates, prices, deadlines, guarantees or promises. Where something specific is needed but unknown, leave a [bracketed placeholder] for the team.
+- Plain text only (no markdown, no HTML). Use "- " for short lists.
+- Do not mention AI.
+Return JSON only: {"subject": "...", "body": "..."}
+${UNTRUSTED_DATA_RULE}`;
+
+  const userPrompt = [
+    `Purpose: ${clip(params.purpose, 60) || 'general message'}`,
+    `Recipient: ${clip(params.recipientName, 120) || 'unknown'}`,
+    `Property: ${clip(params.propertyName, 200) || 'unknown'}`,
+    params.context ? `Details we hold (supplied by the host): ${untrusted('host_details', params.context, 4000)}` : '',
+    params.history ? `Earlier emails to this host: ${untrusted('previous_emails', params.history, 3000)}` : '',
+    params.currentDraft ? `Current draft to improve: ${untrusted('current_draft', params.currentDraft, 4000)}` : '',
+    `Team's instruction: ${clip(params.instruction, 1000) || 'Write the email for this purpose.'}`,
+  ].filter(Boolean).join('\n\n');
+
+  const failures: any[] = [];
+  for (const providerId of providers) {
+    try {
+      const apiKey = getEffectiveApiKey(providerId)!;
+      const model = resolveModel(providerId, config.providers[providerId]?.model);
+      const raw = await callProvider(providerId, apiKey, model, systemPrompt, userPrompt, 0.5, 900, false, { responseMimeType: 'application/json', thinkingBudget: 0 });
+      const text = (raw || '').trim();
+      if (!text) continue;
+      let subject = '';
+      let body = '';
+      try {
+        const match = text.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(match ? match[0] : text);
+        subject = typeof parsed.subject === 'string' ? parsed.subject.trim() : '';
+        body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
+      } catch {
+        body = text;
+      }
+      if (!body) continue;
+      return { subject, body, provider: providerId, model: getLastModelUsed(providerId, model) };
+    } catch (err: any) {
+      failures.push(err);
+    }
+  }
+  throw failureOr(failures, 'No AI provider could draft the email right now. Please try again shortly.');
+}
+
 export function handleCuratedActionFallback(_req: GenerationRequest): GenerationResult {
   // Reviews are the only action allowed a non-AI result: an empty list, never fabricated reviews.
   const data: any[] = [];

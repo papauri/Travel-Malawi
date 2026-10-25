@@ -25,7 +25,8 @@ import {
   executeOperationsAssistantChat,
   testProviderConnection,
   generateTripInsights,
-  executeTripConciergeChat
+  executeTripConciergeChat,
+  draftHostEmail
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { requireBookingMode, getPlatformMode, bookingsEnabled, invalidatePlatformMode } from './server/platformMode';
@@ -244,31 +245,35 @@ async function startServer() {
     try {
       let liveHotels: { id: string; updatedAt?: number; location?: string; district?: string; status?: string }[] = [];
       try {
-        // Follow page tokens: a single page of 100 left every later listing out of the sitemap.
-        let pageToken = '';
-        for (let page = 0; page < 10; page++) {
-          const firestoreRes = await fetch(
-            `${FIRESTORE_BASE}/hotels?pageSize=100${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
-            { signal: AbortSignal.timeout(3000) }
-          );
-          if (!firestoreRes.ok) break;
-          const body: any = await firestoreRes.json();
-          if (Array.isArray(body.documents)) {
-            for (const doc of body.documents) {
-              const id = doc.name ? String(doc.name).split('/').pop() : '';
-              if (!id) continue;
-              const fields = doc.fields || {};
-              const location = fields.location?.stringValue || fields.city?.stringValue;
-              const district = fields.district?.stringValue || fields.region?.stringValue;
-              const status = fields.status?.stringValue;
-              const updatedAt = fields.updatedAt?.integerValue
-                ? Number(fields.updatedAt.integerValue)
-                : undefined;
-              liveHotels.push({ id, updatedAt, location, district, status });
-            }
+        // Live listings only, asked for by status: the published rules let the
+        // public list approved listings, not the whole collection.
+        const firestoreRes = await fetch(`${FIRESTORE_BASE}:runQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: 'hotels' }],
+              where: { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } } },
+              limit: 1000,
+            },
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (firestoreRes.ok) {
+          const rows: any[] = await firestoreRes.json();
+          for (const row of rows) {
+            const doc = row?.document;
+            const id = doc?.name ? String(doc.name).split('/').pop() : '';
+            if (!id) continue;
+            const fields = doc.fields || {};
+            const location = fields.location?.stringValue || fields.city?.stringValue;
+            const district = fields.district?.stringValue || fields.region?.stringValue;
+            const status = fields.status?.stringValue;
+            const updatedAt = fields.updatedAt?.integerValue
+              ? Number(fields.updatedAt.integerValue)
+              : undefined;
+            liveHotels.push({ id, updatedAt, location, district, status });
           }
-          if (!body.nextPageToken) break;
-          pageToken = String(body.nextPageToken);
         }
       } catch {
         // A partial or empty list still yields a valid sitemap of the static pages.
@@ -1330,7 +1335,9 @@ async function startServer() {
           ? `${property} needs changes before it can go live`
           : `${property} has been moved back to review`;
       const body = status === 'approved'
-        ? 'Takulandirani! Your listing has been approved and travellers can now find and book it.'
+        ? (await bookingsEnabled()
+          ? 'Takulandirani! Your listing has been approved and travellers can now find and book it.'
+          : 'Takulandirani! Your listing has been approved. Travellers can now find it on Travel Malawi and contact you directly.')
         : status === 'rejected'
           ? 'Your listing was not approved yet. Please review the note below, update the listing and resubmit.'
           : 'Your listing is no longer public while our team reviews it again. We will let you know once it is back online.';
@@ -2078,91 +2085,79 @@ async function startServer() {
     }
   });
 
-  // Dedicated host stay enquiry endpoint — sends notification email to info@ulendomalawi.com
+  // Listing request (src/components/ListingRequestForm.tsx): emails the full
+  // property details to the team at info@ulendomalawi.com and returns the
+  // reference the review copy is saved under. Nothing is published from here.
   app.post(['/api/host-enquiry', '/api/host-onboarding-enquiry'], surveyLimiter, async (req, res) => {
     try {
-      const {
-        propName,
-        propLoc,
-        stayType,
-        contactName,
-        contactEmail,
-        contactPhone,
-        nightlyMwk,
-        nightlyUsd,
-        roomCount,
-        notes,
-        source
-      } = req.body || {};
+      const b = req.body || {};
+      const t = (v: unknown, max: number) => cleanText(v, max, true);
+      const r = {
+        propName: t(b.propName, 200),
+        category: t(b.category, 60),
+        stayModel: b.stayType === 'rooms' ? 'Individual rooms' : 'Whole place',
+        propLoc: t(b.propLoc, 200) || 'Malawi',
+        address: t(b.address, 300),
+        mapLink: t(b.mapLink, 500),
+        description: cleanText(b.description, 2000),
+        roomCount: t(b.roomCount, 20) || '1',
+        maxGuests: t(b.maxGuests, 20),
+        nightlyMwk: t(b.nightlyMwk, 60),
+        nightlyUsd: t(b.nightlyUsd, 60),
+        amenities: shortList(b.amenities, 40).join(', '),
+        propertyPhone: t(b.propertyPhone, 40),
+        propertyWhatsapp: t(b.propertyWhatsapp, 40),
+        propertyEmail: lower(t(b.propertyEmail, 254)),
+        website: t(b.website, 300),
+        photosLink: t(b.photosLink, 500),
+        contactName: t(b.contactName, 120) || 'Prospective host',
+        contactRole: t(b.contactRole, 40),
+        contactEmail: lower(t(b.contactEmail, 254)),
+        contactPhone: t(b.contactPhone, 40),
+        notes: cleanText(b.notes, 2000),
+        declared: !!t(b.declarationAt, 40),
+        source: t(b.source, 60) || 'listing-request',
+      };
 
-      const cleanPropName = cleanText(propName, 200, true);
-      const cleanEmail = lower(cleanText(contactEmail, 254, true));
-      const cleanName = cleanText(contactName, 120, true) || 'Prospective Host';
-      const cleanLocation = cleanText(propLoc, 200, true) || 'Malawi';
-      const cleanPhone = cleanText(contactPhone, 40, true);
-      const cleanNotes = cleanText(notes, 5000);
-      const cleanMwk = cleanText(nightlyMwk, 60, true);
-      const cleanUsd = cleanText(nightlyUsd, 60, true);
-      const cleanRooms = cleanText(roomCount, 20, true) || '1';
-      const stayModel = stayType === 'whole_house' ? 'Whole House / Cottage' : 'Individual Rooms';
-
-      if (!cleanPropName || !cleanEmail || !cleanEmail.includes('@')) {
+      if (!r.propName || !r.contactEmail.includes('@')) {
         return res.status(400).json({ error: 'Property name and a valid contact email are required.' });
       }
 
       const submissionId = `ENQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-      // Dispatch notification email to info@ulendomalawi.com
+      const rows: [string, string][] = [
+        ['Property', r.propName],
+        ['Type', r.category || 'Not given'],
+        ['Travellers stay in', `${r.stayModel} (${r.roomCount} ${b.stayType === 'rooms' ? 'rooms' : 'bedrooms'}${r.maxGuests ? `, up to ${r.maxGuests} guests` : ''})`],
+        ['Town / area', r.propLoc],
+        ['Address / directions', r.address || 'Not given'],
+        ['Map link', r.mapLink || 'Not given'],
+        ['From price', [r.nightlyMwk && `MK ${r.nightlyMwk}`, r.nightlyUsd && `$${r.nightlyUsd}`].filter(Boolean).join(' / ') || 'Not given'],
+        ['Facilities', r.amenities || 'None ticked'],
+        ['Description', r.description || 'Not given'],
+        ['Photos', r.photosLink || 'Not given'],
+        ['Property phone', r.propertyPhone || '-'],
+        ['Property WhatsApp', r.propertyWhatsapp || '-'],
+        ['Property email', r.propertyEmail || '-'],
+        ['Website / social', r.website || '-'],
+        ['Sent by', `${r.contactName}${r.contactRole ? ` (${r.contactRole})` : ''}`],
+        ['Their email', r.contactEmail],
+        ['Their phone', r.contactPhone || '-'],
+        ['Notes', r.notes || '-'],
+        ['Declaration', r.declared ? 'Confirmed owner/authorised and details accurate' : 'Not confirmed'],
+      ];
+
       const emailContent = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
-          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 6px;">
-            Travel Malawi · Host Stay Enquiry
-          </div>
-          <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 800; color: #1c1917;">New Property Enquiry: ${escapeHtml(cleanPropName)}</h2>
-          <p style="font-size: 14px; line-height: 1.6; color: #44403c; margin-bottom: 20px;">
-            A property owner has submitted an enquiry to list their stay on Travel Malawi. Here are the details:
-          </p>
-
-          <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c; width: 140px;">Property Name:</td>
-              <td style="padding: 8px 0; color: #1c1917; font-weight: 700;">${escapeHtml(cleanPropName)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Location:</td>
-              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanLocation)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Name:</td>
-              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanName)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Email:</td>
-              <td style="padding: 8px 0; color: #1c1917;"><a href="mailto:${escapeHtml(cleanEmail)}" style="color: #b45309;">${escapeHtml(cleanEmail)}</a></td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Contact Phone:</td>
-              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(cleanPhone || 'Not specified')}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Booking Model:</td>
-              <td style="padding: 8px 0; color: #1c1917;">${escapeHtml(stayModel)} (${escapeHtml(cleanRooms)} ${stayType === 'whole_house' ? 'bedrooms' : 'rooms'})</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f5f5f4;">
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c;">Rates:</td>
-              <td style="padding: 8px 0; color: #1c1917;">${cleanMwk ? `MK ${escapeHtml(cleanMwk)}` : 'N/A'} · ${cleanUsd ? `$${escapeHtml(cleanUsd)}` : 'N/A'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; font-weight: 600; color: #78716c; vertical-align: top;">Notes &amp; Features:</td>
-              <td style="padding: 8px 0; color: #1c1917; white-space: pre-wrap;">${escapeHtml(cleanNotes || 'None provided')}</td>
-            </tr>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 640px; margin: 0 auto; padding: 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 6px;">Travel Malawi · Listing request</div>
+          <h2 style="margin: 0 0 12px; font-size: 22px; font-weight: 800; color: #1c1917;">${escapeHtml(r.propName)}</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #44403c; margin: 0 0 16px;">A property owner has asked to be listed. Review it in Admin &gt; Hosts &gt; Listing requests, where you can reply, ask for more information or invite them to finish the listing.</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
+            ${rows.map(([k, v]) => `<tr style="border-bottom: 1px solid #f5f5f4;"><td style="padding: 7px 8px 7px 0; font-weight: 600; color: #78716c; width: 150px; vertical-align: top;">${escapeHtml(k)}</td><td style="padding: 7px 0; color: #1c1917; white-space: pre-wrap;">${escapeHtml(v)}</td></tr>`).join('')}
           </table>
-
-          <div style="background: #fafaf9; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #78716c; margin-top: 16px;">
-            Enquiry Reference: <strong>${escapeHtml(submissionId)}</strong> · Source: ${escapeHtml(cleanText(source, 60, true) || 'Host Starter Pack')}
-          </div>
+          <div style="background: #fafaf9; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #78716c;">Reference: <strong>${escapeHtml(submissionId)}</strong> · Source: ${escapeHtml(r.source)}</div>
           <div style="margin-top: 20px; text-align: center;">
-            <a href="mailto:${escapeHtml(cleanEmail)}?subject=Re:%20Travel%20Malawi%20Listing%20Enquiry%20-%20${encodeURIComponent(cleanPropName)}" style="display: inline-block; background: #1c1917; color: #ffffff; padding: 10px 20px; border-radius: 9999px; text-decoration: none; font-size: 13px; font-weight: 600;">Reply to Host</a>
+            <a href="https://ulendomalawi.com/admin?tab=hosts" style="display: inline-block; background: #1c1917; color: #ffffff; padding: 10px 20px; border-radius: 9999px; text-decoration: none; font-size: 13px; font-weight: 600;">Review in the app</a>
           </div>
         </div>
       `;
@@ -2171,32 +2166,24 @@ async function startServer() {
       try {
         const mailResult = await sendSystemEmail({
           to: 'info@ulendomalawi.com',
-          replyTo: cleanEmail,
-          subject: `New Property Enquiry: ${cleanPropName} (Ref: ${submissionId})`,
-          text: `New Property Enquiry: ${cleanPropName}\nHost: ${cleanName} <${cleanEmail}>\nLocation: ${cleanLocation}\nPhone: ${cleanPhone || 'N/A'}\nModel: ${stayModel} (${cleanRooms} rooms)\nRates: MK ${cleanMwk || 'N/A'} / $${cleanUsd || 'N/A'}\nNotes: ${cleanNotes || 'None'}\nRef: ${submissionId}`,
+          replyTo: r.contactEmail,
+          subject: `Listing request: ${r.propName} (Ref: ${submissionId})`,
+          text: `Listing request: ${r.propName}\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nRef: ${submissionId}`,
           html: emailContent,
         });
         emailSent = mailResult.success;
       } catch (mailErr) {
-        console.warn('[Host Enquiry] Email dispatch warning:', mailErr);
+        console.warn('[Listing request] Email dispatch warning:', mailErr);
       }
 
-      // Record also in surveys.json for admin oversight
+      // A server-side copy, so a request is never lost if the browser could not save its review copy.
       const surveys = readSurveys();
       surveys.unshift({
         id: submissionId,
         type: 'host_enquiry',
-        sourceDoc: cleanText(source, 120, true) || 'Host Starter Pack',
-        propName: cleanPropName,
-        propLoc: cleanLocation,
-        contactName: cleanName,
-        contactEmail: cleanEmail,
-        contactPhone: cleanPhone,
-        stayType,
-        roomCount: cleanRooms,
-        nightlyMwk: cleanMwk,
-        nightlyUsd: cleanUsd,
-        notes: cleanNotes,
+        sourceDoc: r.source,
+        ...r,
+        stayType: b.stayType === 'rooms' ? 'rooms' : 'whole_house',
         status: 'pending_review',
         emailSent,
         submittedAt: new Date().toISOString(),
@@ -2209,10 +2196,63 @@ async function startServer() {
         success: true,
         id: submissionId,
         emailSent,
-        message: 'Zikomo! We have received your property enquiry. Our team will review your stay details and get in touch by email.',
+        message: 'Zikomo! We have received your listing request. Our team will review it and reply by email.',
       });
     } catch (err) {
-      sendError(res, err, 'Failed to process property enquiry');
+      sendError(res, err, 'Failed to process listing request');
+    }
+  });
+
+  // Email a host (a listing requester or a listed property) from Admin > Hosts.
+  // The body is plain text written or approved by the team; it is wrapped in
+  // the branded layout with the directory/licensing footer.
+  app.post('/api/admin/host-email', requireRole('admin', 'marketing'), async (req, res) => {
+    try {
+      const to = lower(cleanText(req.body?.to, 254, true));
+      const subject = cleanText(req.body?.subject, 200, true);
+      const body = cleanText(req.body?.body, 8000);
+      if (!to.includes('@') || !subject || !body) {
+        return res.status(400).json({ error: 'A recipient, subject and message are required.' });
+      }
+      const footer = 'Travel Malawi is an information directory. A listing is not a licence, approval or endorsement by Travel Malawi or the Ministry of Tourism; property owners are responsible for the licences and permits Malawian law requires, including under the Tourism Act, 2025.';
+      const paragraphs = body.split(/\n{2,}/).map(p =>
+        `<p style="font-size: 14px; line-height: 1.6; color: #44403c; margin: 0 0 14px;">${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`).join('');
+      const result = await sendSystemEmail({
+        to,
+        replyTo: 'info@ulendomalawi.com',
+        subject,
+        text: `${body}\n\n--\n${footer}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 580px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 14px;">Travel Malawi</div>
+            ${paragraphs}
+            <p style="font-size: 11px; line-height: 1.5; color: #a8a29e; border-top: 1px solid #f5f5f4; padding-top: 12px; margin: 20px 0 0;">${escapeHtml(footer)}</p>
+          </div>
+        `,
+      });
+      if (!result.success) return res.status(502).json({ error: result.error || 'The email could not be sent.' });
+      res.json({ success: true, messageId: result.messageId });
+    } catch (err) {
+      sendError(res, err, 'Failed to send the email');
+    }
+  });
+
+  // Ulendo drafts a host email from the team's instruction and the request or
+  // listing details. The team always reviews the draft before sending.
+  app.post('/api/admin/host-email/draft', requireRole('admin', 'marketing'), aiLimiter, async (req, res) => {
+    try {
+      const result = await draftHostEmail({
+        instruction: cleanText(req.body?.instruction, 1000),
+        purpose: cleanText(req.body?.purpose, 60, true),
+        recipientName: cleanText(req.body?.recipientName, 120, true),
+        propertyName: cleanText(req.body?.propertyName, 200, true),
+        context: cleanText(req.body?.context, 4000),
+        currentDraft: cleanText(req.body?.currentDraft, 4000),
+        history: cleanText(req.body?.history, 3000),
+      });
+      res.json(result);
+    } catch (err: any) {
+      sendAIError(res, err, 'Ulendo could not draft that email. Please try again.');
     }
   });
 

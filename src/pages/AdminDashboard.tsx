@@ -28,6 +28,7 @@ import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import AdminIcalMonitor from '../components/AdminIcalMonitor';
 import AdminLogs from '../components/AdminLogs';
 import AdminTrafficMonitor from '../components/AdminTrafficMonitor';
+import AdminHostDesk from '../components/AdminHostDesk';
 import { logSystemEvent } from '../lib/logger';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields, isOwnerEmail } from '../lib/roles';
@@ -40,12 +41,12 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'properties' | 'bookings' | 'users' | 'analytics' | 'reviews' | 'destinations' | 'content' | 'settings';
+type Tab = 'overview' | 'properties' | 'hosts' | 'bookings' | 'users' | 'analytics' | 'reviews' | 'destinations' | 'content' | 'settings';
 type AnalyticsSub = 'stats' | 'traffic';
 type ContentSub = 'content' | 'docs';
 type SettingsSub = 'channels' | 'whatsapp' | 'email' | 'ai' | 'logs';
 
-const TAB_IDS: Tab[] = ['overview', 'properties', 'bookings', 'users', 'analytics', 'reviews', 'destinations', 'content', 'settings'];
+const TAB_IDS: Tab[] = ['overview', 'properties', 'hosts', 'bookings', 'users', 'analytics', 'reviews', 'destinations', 'content', 'settings'];
 const ANALYTICS_SUBS: AnalyticsSub[] = ['stats', 'traffic'];
 const CONTENT_SUBS: ContentSub[] = ['content', 'docs'];
 const SETTINGS_SUBS: SettingsSub[] = ['channels', 'whatsapp', 'email', 'ai', 'logs'];
@@ -284,6 +285,17 @@ export default function AdminDashboard() {
         id: doc.id,
         ...doc.data()
       })) as Hotel[];
+
+      // Only a live listing can be featured. Older code left the flag on when a
+      // featured listing went back to review, so the listing came straight back
+      // as featured the moment it was approved again; clear any such leftovers.
+      const strayFeatured = hotelsData.filter(h => h.featured && h.status && h.status !== 'approved');
+      for (const h of strayFeatured) {
+        h.featured = false;
+        h.featuredAt = undefined;
+        updateDoc(doc(db, 'hotels', h.id!), { featured: false, featuredAt: null })
+          .catch(err => console.warn('[Admin] Could not unfeature non-live listing', h.id, err?.message));
+      }
       setHotels(hotelsData);
 
       const roomsData = roomsSnapshot.docs.map(doc => ({
@@ -485,14 +497,21 @@ export default function AdminDashboard() {
     try {
       const hotelRef = doc(db, 'hotels', hotelId);
       const updatePayload: Record<string, any> = { status: newStatus };
+      // A listing that leaves "live" stops being featured; it is not re-featured on approval.
+      const unfeature = newStatus !== 'approved' && !!targetHotel?.featured;
+      if (unfeature) {
+        updatePayload.featured = false;
+        updatePayload.featuredAt = null;
+      }
       if (reason) {
         updatePayload.moderationNotes = reason;
         updatePayload.moderatedAt = Date.now();
       }
       await updateDoc(hotelRef, updatePayload);
-      setHotels(hotels.map(h => h.id === hotelId ? { ...h, status: newStatus, moderationNotes: reason || h.moderationNotes } : h));
+      const featuredPatch = unfeature ? { featured: false, featuredAt: undefined } : {};
+      setHotels(hotels.map(h => h.id === hotelId ? { ...h, ...featuredPatch, status: newStatus, moderationNotes: reason || h.moderationNotes } : h));
       if (inspectingHotel && inspectingHotel.id === hotelId) {
-        setInspectingHotel(prev => prev ? { ...prev, status: newStatus, moderationNotes: reason || prev.moderationNotes } : null);
+        setInspectingHotel(prev => prev ? { ...prev, ...featuredPatch, status: newStatus, moderationNotes: reason || prev.moderationNotes } : null);
       }
       // Tell the host once per real status change (not on a repeated click or a no-op update).
       const hostEmail = targetHotel?.managerEmail || targetHotel?.ownerEmail;
@@ -1080,6 +1099,7 @@ export default function AdminDashboard() {
     return [
       { id: 'overview' as Tab, label: 'Overview' },
       { id: 'properties' as Tab, label: 'Properties' },
+      { id: 'hosts' as Tab, label: 'Hosts', visible: isAdmin(user) || isMarketing(user) },
       { id: 'bookings' as Tab, label: 'Bookings', visible: bookingsEnabled },
       { id: 'users' as Tab, label: 'Users', visible: isAdmin(user) || isMarketing(user) },
       { id: 'analytics' as Tab, label: 'Analytics' },
@@ -2332,6 +2352,11 @@ export default function AdminDashboard() {
           </div>
         )}
         {/* ===================== USERS TAB ===================== */}
+        {/* ===================== HOSTS TAB ===================== */}
+        {activeTab === 'hosts' && canViewTab('hosts') && (
+          <AdminHostDesk hotels={hotels} />
+        )}
+
         {activeTab === 'users' && canViewTab('users') && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-stone-200">

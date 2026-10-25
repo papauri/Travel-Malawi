@@ -1306,10 +1306,12 @@ export default function OperationsCopilot() {
           toast.error('Permission denied: Only Global Administrators can approve/reject listings.');
           return;
         }
+        // A listing that leaves "live" stops being featured.
+        const unfeature = action.newStatus !== 'approved' ? { featured: false, featuredAt: null } : {};
         for (const hid of targetIds) {
-          await updateDoc(doc(db, 'hotels', hid), { status: action.newStatus });
+          await updateDoc(doc(db, 'hotels', hid), { status: action.newStatus, ...unfeature });
         }
-        setProperties(prev => prev.map(p => targetIds.includes(p.id!) ? { ...p, status: action.newStatus as any } : p));
+        setProperties(prev => prev.map(p => targetIds.includes(p.id!) ? { ...p, status: action.newStatus as any, ...(action.newStatus !== 'approved' ? { featured: false } : {}) } : p));
         actionSummaryText = `Updated listing status to **"${action.newStatus}"** for ${targetIds.length} properties.`;
         toast.success(`Listing status updated!`);
 
@@ -1319,11 +1321,22 @@ export default function OperationsCopilot() {
           return;
         }
         const featured = Boolean(action.featured);
-        for (const hid of targetIds) {
+        // Only live listings can be featured; pending or rejected ones are skipped.
+        const isLive = (hid: string) => {
+          const p = properties.find(x => x.id === hid);
+          return !!p && (!p.status || p.status === 'approved');
+        };
+        const changeIds = featured ? targetIds.filter(isLive) : targetIds;
+        const skipped = targetIds.length - changeIds.length;
+        if (changeIds.length === 0) {
+          toast.error('Only live (approved) listings can be featured.');
+          return;
+        }
+        for (const hid of changeIds) {
           await updateDoc(doc(db, 'hotels', hid), { featured, featuredAt: featured ? Date.now() : null });
         }
-        setProperties(prev => prev.map(p => targetIds.includes(p.id!) ? { ...p, featured } : p));
-        actionSummaryText = `${featured ? '🌟 Featured' : 'Removed from featured'} ${targetIds.length} properties on the homepage.`;
+        setProperties(prev => prev.map(p => changeIds.includes(p.id!) ? { ...p, featured } : p));
+        actionSummaryText = `${featured ? '🌟 Featured' : 'Removed from featured'} ${changeIds.length} properties on the homepage.${skipped ? ` Skipped ${skipped} that ${skipped === 1 ? 'is' : 'are'} not live yet.` : ''}`;
         toast.success(`Homepage featured status updated!`);
 
       // 9. PROMOTIONS / DISCOUNTS

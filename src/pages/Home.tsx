@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
 import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen, AlignJustify, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -641,12 +641,16 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // Only live listings are ever fetched here, so a pending or rejected one
+    // cannot reach the grid or the featured row whoever is signed in (an admin
+    // can read them all). Public visitors may only list live ones anyway.
+    const liveHotelsQuery = query(collection(db, 'hotels'), where('status', '==', 'approved'));
     async function fetchListings() {
       try {
         // Rooms come along with the listings because search now filters on
         // capacity and price, both of which live on the room type.
         const [hotelSnap, roomSnap, settingsSnap] = await Promise.all([
-          getDocs(collection(db, 'hotels')),
+          getDocs(liveHotelsQuery),
           getDocs(collection(db, 'room_types')),
           getDoc(doc(db, 'system', 'settings'))
         ]);
@@ -691,7 +695,7 @@ export default function Home() {
 
     // Real-time synchronization: Any bulk price updates or promotion launches
     // in the Admin or Manager Dashboard immediately update the live home page
-    const unsubHotels = onSnapshot(collection(db, 'hotels'), (snap) => {
+    const unsubHotels = onSnapshot(liveHotelsQuery, (snap) => {
       setLoadFailed(false);
       const hotelsData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Hotel[];
       const approvedHotels = hotelsData.filter(h => h.status === 'approved' || !h.status);
@@ -720,7 +724,9 @@ export default function Home() {
       if (customEvent.detail?.hotels) {
         setHotels(prev => {
           const map = new Map(customEvent.detail.hotels.map(h => [h.id, h]));
-          return prev.map(h => (h.id && map.has(h.id) ? { ...h, ...map.get(h.id) } : h));
+          return prev
+            .map(h => (h.id && map.has(h.id) ? { ...h, ...map.get(h.id) } : h))
+            .filter(h => h.status === 'approved' || !h.status);
         });
       }
     };

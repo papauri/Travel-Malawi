@@ -380,8 +380,10 @@ service cloud.firestore {
                     && request.resource.data.get('featured', false) == false;
       // Admins and marketing approve, feature, or assign a manager.
       // `get(field, default)` because older listings lack some fields.
-      allow update: if isAdmin()
-                    || isMarketing()
+      // Only a live (approved) listing can be featured on the home page.
+      allow update: if ((isAdmin() || isMarketing())
+                        && (request.resource.data.get('featured', false) == false
+                            || request.resource.data.get('status', 'approved') == 'approved'))
                     || (isManager(hotelId)
                         && unchanged('managerId')
                         && request.resource.data.get('status', 'approved') == resource.data.get('status', 'approved')
@@ -598,13 +600,18 @@ service cloud.firestore {
       allow delete: if isManager(resource.data.hotelId) || isAdmin() || isMarketing();
     }
 
-    // Host Starter Pack sign-up form (src/pages/HostStarterPack.tsx). Public,
-    // write-only, in the form's shape.
+    // Listing requests (src/components/ListingRequestForm.tsx). Public and
+    // write-only, in the form's shape, under the reference the server issued;
+    // reviewed and answered by the team in Admin > Hosts.
     match /host_onboarding_submissions/{submissionId} {
       allow read, update, delete: if isAdmin() || isMarketing();
-      allow create: if request.resource.data.keys().hasOnly(
-                         ['propName', 'propLoc', 'stayType', 'contactName', 'contactPhone', 'contactEmail', 'nightlyMwk',
-                          'nightlyUsd', 'roomCount', 'notes', 'createdAt', 'source', 'status'])
+      allow create: if isAdmin() || isMarketing() || (
+                       request.resource.data.keys().hasOnly(
+                         ['ref', 'propName', 'category', 'stayType', 'propLoc', 'address', 'mapLink', 'description',
+                          'roomCount', 'maxGuests', 'nightlyMwk', 'nightlyUsd', 'amenities', 'propertyPhone',
+                          'propertyWhatsapp', 'propertyEmail', 'website', 'photosLink', 'contactName', 'contactRole',
+                          'contactEmail', 'contactPhone', 'notes', 'declarationAt', 'source', 'createdAt', 'status'])
+                    && submissionId.size() <= 40
                     && request.resource.data.propName is string
                     && request.resource.data.propName.size() > 0
                     && request.resource.data.propName.size() <= 200
@@ -613,9 +620,18 @@ service cloud.firestore {
                     && request.resource.data.contactEmail.size() <= 254
                     && request.resource.data.get('contactPhone', '') is string
                     && request.resource.data.get('contactPhone', '').size() <= 40
+                    && request.resource.data.get('description', '') is string
+                    && request.resource.data.get('description', '').size() <= 2000
                     && request.resource.data.get('notes', '') is string
                     && request.resource.data.get('notes', '').size() <= 5000
-                    && request.resource.data.status == 'pending_review';
+                    && request.resource.data.get('amenities', []) is list
+                    && request.resource.data.get('amenities', []).size() <= 40
+                    && request.resource.data.status == 'pending_review');
+    }
+
+    // Emails the team sends hosts from Admin > Hosts, and saved drafts. Team only.
+    match /host_messages/{messageId} {
+      allow read, write: if isAdmin() || isMarketing();
     }
 
     // Client activity log (src/lib/logger.ts). Anyone may append, but only in
