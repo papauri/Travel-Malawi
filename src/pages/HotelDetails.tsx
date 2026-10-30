@@ -1087,16 +1087,21 @@ export default function HotelDetails() {
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const shareUrl = hotel?.id
+      ? `${window.location.origin}/hotel/${hotel.id}`
+      : window.location.href.split('#')[0];
     const shareData = {
-      title: hotel?.name || 'Travel Malawi',
-      text: `Check out ${hotel?.name} in ${hotel?.location} on Travel Malawi!`,
-      url: window.location.href,
+      title: hotel?.name ? `${hotel.name} — Travel Malawi` : 'Travel Malawi',
+      text: hotel?.location
+        ? `Check out ${hotel.name} in ${hotel.location} on Travel Malawi!`
+        : `Check out ${hotel?.name || 'this property'} on Travel Malawi!`,
+      url: shareUrl,
     };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         toast.success('Link copied to clipboard!');
       }
     } catch (err) {

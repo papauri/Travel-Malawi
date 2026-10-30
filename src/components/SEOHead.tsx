@@ -83,11 +83,15 @@ export default function SEOHead({
       : DEFAULT_TITLE;
 
     const metaDescription = description || DEFAULT_DESCRIPTION;
-    const metaImage = image
+    let metaImage = image
       ? image.startsWith('http')
         ? image
         : `${BASE_ORIGIN}${image.startsWith('/') ? '' : '/'}${image}`
       : DEFAULT_IMAGE;
+
+    if (metaImage.includes('res.cloudinary.com')) {
+      metaImage = metaImage.replace(/\.(webp|avif)(\?.*)?$/i, '.jpg$2');
+    }
 
     const canonicalUrl = url || `${BASE_ORIGIN}${location.pathname}`;
 
@@ -104,6 +108,10 @@ export default function SEOHead({
     setMetaTag('property', 'og:title', fullTitle);
     setMetaTag('property', 'og:description', metaDescription);
     setMetaTag('property', 'og:image', metaImage);
+    setMetaTag('property', 'og:image:secure_url', metaImage);
+    setMetaTag('property', 'og:image:alt', fullTitle);
+    setMetaTag('property', 'og:image:width', '1200');
+    setMetaTag('property', 'og:image:height', '630');
     setMetaTag('property', 'og:url', canonicalUrl);
     setMetaTag('property', 'og:type', type === 'hotel' ? 'website' : type);
     setMetaTag('property', 'og:site_name', 'Travel Malawi');
@@ -112,6 +120,7 @@ export default function SEOHead({
     setMetaTag('name', 'twitter:title', fullTitle);
     setMetaTag('name', 'twitter:description', metaDescription);
     setMetaTag('name', 'twitter:image', metaImage);
+    setMetaTag('name', 'twitter:image:alt', fullTitle);
     setMetaTag('name', 'twitter:card', 'summary_large_image');
 
     // 5. Canonical Link Tag and robots

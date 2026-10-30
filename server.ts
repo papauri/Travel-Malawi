@@ -68,7 +68,13 @@ import {
   callerStore
 } from './server/icalService';
 import { trafficTracker } from './server/trafficTracker';
-import { generateSitemapXml, generateRobotsTxt } from './server/seo';
+import {
+  generateSitemapXml,
+  generateRobotsTxt,
+  injectHotelMetaIntoHtml,
+  getCachedHotelData,
+  invalidateHotelMetaCache,
+} from './server/seo';
 import {
   optionalAuth,
   requireAuth,
@@ -2363,6 +2369,43 @@ async function startServer() {
 
   const server = http.createServer(app);
 
+  // Serve /hotel/:id with dynamically injected Open Graph metadata (hotel featured photo, title, description)
+  // so social link scrapers (WhatsApp, Facebook, Twitter, iMessage, etc.) receive the real property image.
+  const handleHotelRoute: express.RequestHandler = async (req, res, next) => {
+    const hotelId = req.params.id;
+    if (!hotelId || !isSafeId(hotelId)) return next();
+
+    try {
+      let rawHtml = '';
+      if (isProduction) {
+        const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+        if (fs.existsSync(distIndexPath)) {
+          rawHtml = fs.readFileSync(distIndexPath, 'utf-8');
+        }
+      } else if (vite) {
+        const devIndexPath = path.join(process.cwd(), 'index.html');
+        const template = fs.readFileSync(devIndexPath, 'utf-8');
+        rawHtml = await vite.transformIndexHtml(req.originalUrl, template);
+      } else {
+        const devIndexPath = path.join(process.cwd(), 'index.html');
+        rawHtml = fs.readFileSync(devIndexPath, 'utf-8');
+      }
+
+      if (!rawHtml) return next();
+
+      const hotel = await getCachedHotelData(hotelId);
+      if (!hotel) {
+        return res.status(200).type('html').send(rawHtml);
+      }
+
+      const injectedHtml = injectHotelMetaIntoHtml(rawHtml, hotel);
+      return res.status(200).type('html').send(injectedHtml);
+    } catch (err) {
+      console.error('[SEO] Error serving /hotel/:id with injected meta:', err);
+      next();
+    }
+  };
+
   // Vite middleware for development
   let vite: ViteDevServer | null = null;
   if (!isProduction) {
@@ -2373,10 +2416,12 @@ async function startServer() {
       },
       appType: 'spa',
     });
+    app.get(['/hotel/:id', '/hotel/:id/'], handleHotelRoute);
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    app.get(['/hotel/:id', '/hotel/:id/'], handleHotelRoute);
     app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

@@ -1,3 +1,6 @@
+import { resolveShareUrl } from '../src/lib/shareLinks';
+import { readDoc, escapeHtml, isSafeId } from './auth';
+
 export const BASE_URL = 'https://ulendomalawi.com';
 
 export interface SitemapUrl {
@@ -5,6 +8,190 @@ export interface SitemapUrl {
   priority: string;
   changefreq: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
   lastmod?: string;
+}
+
+export interface HotelMeta {
+  id: string;
+  name: string;
+  location: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  canonicalUrl: string;
+}
+
+const hotelMetaCache = new Map<string, { data: any; expiresAt: number }>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export function invalidateHotelMetaCache(hotelId?: string) {
+  if (hotelId) {
+    hotelMetaCache.delete(hotelId);
+  } else {
+    hotelMetaCache.clear();
+  }
+}
+
+export async function getCachedHotelData(hotelId: string): Promise<any | null> {
+  if (!isSafeId(hotelId)) return null;
+  const cached = hotelMetaCache.get(hotelId);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.data;
+  }
+  const hotel = await readDoc('hotels', hotelId);
+  if (hotel) {
+    hotelMetaCache.set(hotelId, { data: hotel, expiresAt: now + CACHE_TTL_MS });
+  }
+  return hotel;
+}
+
+/**
+ * Resolves the primary featured photograph URL for a hotel.
+ * Always resolves to an absolute, crawler-friendly HTTPS URL.
+ * Automatically converts Cloudinary .webp / .avif extensions to .jpg for universal
+ * OpenGraph compatibility with WhatsApp, iMessage, and social scrapers.
+ */
+export function resolveHotelFeaturedImage(hotel: any, baseUrl = BASE_URL): string {
+  let img: unknown = hotel?.imageUrl;
+  if (!img) {
+    if (Array.isArray(hotel?.galleryUrls) && hotel.galleryUrls.length > 0) {
+      img = hotel.galleryUrls[0];
+    } else if (typeof hotel?.galleryUrls === 'string') {
+      img = hotel.galleryUrls.split(',')[0]?.trim();
+    }
+  }
+
+  if (typeof img !== 'string' || !img.trim()) {
+    return `${baseUrl}/icons/icon-512.png`;
+  }
+
+  let trimmed = img.trim();
+  if (trimmed === 'undefined' || trimmed === 'null') {
+    return `${baseUrl}/icons/icon-512.png`;
+  }
+
+  // Rewrite OneDrive / Google Drive / Dropbox share links to direct images
+  const resolved = resolveShareUrl(trimmed).url;
+  trimmed = resolved || trimmed;
+
+  // Relative URL -> absolute
+  if (trimmed.startsWith('/')) {
+    trimmed = `${baseUrl}${trimmed}`;
+  } else if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    trimmed = `${baseUrl}/${trimmed}`;
+  }
+
+  // Cloudinary: convert .webp or .avif to .jpg so all social bots (including WhatsApp) unfurl reliably
+  if (trimmed.includes('res.cloudinary.com')) {
+    trimmed = trimmed.replace(/\.(webp|avif)(\?.*)?$/i, '.jpg$2');
+  }
+
+  return trimmed;
+}
+
+export function getHotelMeta(hotel: any, baseUrl = BASE_URL): HotelMeta {
+  const name = String(hotel?.name || 'Property').trim();
+  const location = String(hotel?.location || 'Malawi').trim();
+  const category = String(hotel?.category || 'Lodge').trim();
+  const title = `${name} — ${location} | Travel Malawi`;
+
+  const rawDesc = String(hotel?.description || '')
+    .replace(/[#*_`~[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const snippet = rawDesc.length > 160 ? `${rawDesc.slice(0, 157)}...` : rawDesc;
+  const description =
+    snippet ||
+    `Discover ${name} in ${location}. Independent ${category.toLowerCase()} in Malawi with photos, rates and direct property contact details on Travel Malawi.`;
+
+  const imageUrl = resolveHotelFeaturedImage(hotel, baseUrl);
+  const canonicalUrl = `${baseUrl}/hotel/${encodeURIComponent(hotel?.id || '')}`;
+
+  return {
+    id: hotel?.id || '',
+    name,
+    location,
+    title,
+    description,
+    imageUrl,
+    canonicalUrl,
+  };
+}
+
+/**
+ * Injects hotel-specific OpenGraph, Twitter card, canonical, title, and description
+ * metadata into the static index.html template so social share cards (WhatsApp, Facebook,
+ * Twitter/X, iMessage, LinkedIn, Telegram, etc.) display the property's featured photograph
+ * instead of the generic TM brand logo.
+ */
+export function injectHotelMetaIntoHtml(html: string, hotel: any, baseUrl = BASE_URL): string {
+  const meta = getHotelMeta(hotel, baseUrl);
+  const escapedTitle = escapeHtml(meta.title);
+  const escapedDesc = escapeHtml(meta.description);
+  const escapedUrl = escapeHtml(meta.canonicalUrl);
+  const escapedImg = escapeHtml(meta.imageUrl);
+
+  let result = html;
+
+  result = result.replace(/<title>.*?<\/title>/i, `<title>${escapedTitle}</title>`);
+  result = result.replace(
+    /<meta\s+name=["']description["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="description" content="${escapedDesc}" />`
+  );
+  result = result.replace(
+    /<link\s+rel=["']canonical["']\s+href=["'].*?["']\s*\/?>/i,
+    `<link rel="canonical" href="${escapedUrl}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:title["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:title" content="${escapedTitle}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:description["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:description" content="${escapedDesc}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:url["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:url" content="${escapedUrl}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:image["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:image" content="${escapedImg}" />\n    <meta property="og:image:secure_url" content="${escapedImg}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:image:alt["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:image:alt" content="${escapedTitle}" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:image:width["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:image:width" content="1200" />`
+  );
+  result = result.replace(
+    /<meta\s+property=["']og:image:height["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta property="og:image:height" content="630" />`
+  );
+  result = result.replace(
+    /<meta\s+name=["']twitter:card["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="twitter:card" content="summary_large_image" />`
+  );
+  result = result.replace(
+    /<meta\s+name=["']twitter:title["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="twitter:title" content="${escapedTitle}" />`
+  );
+  result = result.replace(
+    /<meta\s+name=["']twitter:description["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="twitter:description" content="${escapedDesc}" />`
+  );
+  result = result.replace(
+    /<meta\s+name=["']twitter:image["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="twitter:image" content="${escapedImg}" />`
+  );
+  result = result.replace(
+    /<meta\s+name=["']twitter:image:alt["']\s+content=["'].*?["']\s*\/?>/i,
+    `<meta name="twitter:image:alt" content="${escapedTitle}" />`
+  );
+
+  return result;
 }
 
 /**
